@@ -155,7 +155,46 @@ button, input { font: inherit; }
 .hero-debug button[data-active="true"] { color: #eee; border-color: #777; }
 .hero-bounds { position: fixed; z-index: 10; top: 10px; right: 10px; color: #777; font-size: 10px; }
 
+/* Ending mirrors identity: one copy column, with the persistent phone and
+   charger in their existing resting pose. No shade over the physical scene. */
+.hero-sandbox ~ .public-twitter-outro {
+  justify-items: start;
+  padding: 32px clamp(32px, 8vw, 128px);
+  background: transparent;
+}
+.hero-sandbox ~ .public-twitter-outro .public-twitter-outro-content {
+  width: min(38vw, 560px);
+  max-height: calc(100dvh - 64px);
+  overflow-wrap: anywhere;
+}
+/* Allow the centered phone to leave the copy region before revealing it. */
+.hero-sandbox:is([data-phase="power-loss"], [data-phase="returning"]) ~ .public-twitter-outro .public-twitter-outro-content {
+  visibility: hidden;
+}
+
 @media (max-width: 760px) {
+  /* Separate document rows accommodate every preview step without shrinking
+     or remounting the phone. The canvas retains its existing narrow pose. */
+  #hero-root:has(> .public-twitter-outro) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #hero-root:has(> .public-twitter-outro) > .hero-sandbox {
+    grid-row: 2;
+    min-height: 700px;
+  }
+  .hero-sandbox ~ .public-twitter-outro {
+    position: relative;
+    inset: auto;
+    grid-row: 1;
+    padding: 48px 24px 24px;
+    background: #171717;
+  }
+  .hero-sandbox ~ .public-twitter-outro .public-twitter-outro-content {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
   body { overflow: auto; }
   .hero-sandbox { min-height: 700px; }
   .hero-identity {

@@ -79,10 +79,13 @@ export function HeroPhone({
   const cableAnchor = useRef<HeroCableAnchor>({ position: [0, 0, 0] });
   const reportedDiagnostics = useRef("");
   const [bootAmount, setBootAmount] = useState(0);
-  const { camera, invalidate, size } = useThree();
+  const { camera, invalidate, size, viewport } = useThree();
   const narrow = size.width < 760;
   const initialX = narrow ? 0 : Math.min(2.15, size.width / 420);
   const initialY = narrow ? -0.72 : 0;
+  // Keep the ending phone inside its right-hand region near the breakpoint;
+  // the opening pose and all model scales remain unchanged.
+  const endingX = narrow ? initialX : Math.min(initialX, viewport.width * 0.25);
 
   const handleRolesReady = useCallback((resolved: IPhone4MeshRoles | null) => {
     roles.current = resolved;
@@ -170,7 +173,7 @@ export function HeroPhone({
     } else if (phase === "returning") {
       const progress = Math.min(1, phaseElapsed.current / HERO_RETURN_SECONDS);
       const eased = restrainedEase(progress / 0.75);
-      x = MathUtils.lerp(0, initialX, eased);
+      x = MathUtils.lerp(0, endingX, eased);
       y = MathUtils.lerp(0, initialY, eased);
       scale = MathUtils.lerp(finalScale, narrow ? 0.76 : 0.9, eased);
       rotation.current = { x: START_ROTATION_X * eased, y: START_ROTATION_Y * eased };
@@ -178,6 +181,7 @@ export function HeroPhone({
       invalidate();
       if (progress === 1) onLifecycleAdvance();
     } else if (phase === "recharging" || phase === "resetting") {
+      x = endingX;
       detachProgress = phase === "resetting" ? 1 : Math.min(1, phaseElapsed.current / HERO_RECHARGE_SECONDS);
       rotation.current = { x: START_ROTATION_X, y: START_ROTATION_Y };
       if (phase === "recharging") {
