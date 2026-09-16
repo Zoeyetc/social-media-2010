@@ -199,7 +199,7 @@ try {
 
   const appSource = readFileSync(new URL("../src/device/App.tsx", import.meta.url), "utf8");
   assert.match(appSource, /session\.shutdownReason !== "battery"[\s\S]+performCanonicalShutdownReset/, "manual shutdown must use canonical reset without outro");
-  assert.match(appSource, /session\.phase === "shutdown"\) return;[\s\S]+nextDueDeviceEvent/, "scheduler delivery must freeze during shutdown/outro");
+  assert.match(appSource, /session\.phase === "shutdown" \|\| elapsed >= SESSION_DURATION_MS\) return;[\s\S]+nextDueDeviceEvent/, "scheduler delivery must freeze during shutdown/outro");
   assert.match(appSource, /performCanonicalShutdownReset\(session\.shutdownReason\)/, "outro completion must converge on canonical reset");
   const twitterContainerSource = readFileSync(new URL("../src/device/TwitterContainer.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(twitterContainerSource, /PublicTwitterOutro|Leave a Tweet for other visitors/, "P1d must not modify or enter historical Twitter UI");

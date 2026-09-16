@@ -177,6 +177,8 @@ function historicalAccountStatistics(profileId: string): TwitterAccountStatistic
 }
 
 const TWITTER_USER_PROFILES: TwitterUserProfile[] = [
+  // RECONSTRUCTED canonical Twitter metadata; default avatar, no invented bio or counts.
+  { id: "jay", displayName: "Jay Diaz", handle: "@jaydiaz", avatarSeed: "J", statsHold: { following: true, follower: true, tweet: true, favorite: true } },
   {
     id: "june",
     displayName: "June",
@@ -355,16 +357,16 @@ export function createInitialTwitterState(sessionDisplayName: string): TwitterSt
   return {
     activeTab: "timeline",
     currentView: "timeline",
-    timeline: SESSION_SEED_CONTENT.twitter.map(tweet => ({
+    timeline: sortTwitterTimeline(SESSION_SEED_CONTENT.twitter.map(tweet => ({
       ...tweet,
       contentStatus: "HOLD-fictional",
-    })),
+    }))),
     selectedTweetId: null,
     scrollPosition: 0,
     favoriteTweetIds: [],
     retweetedTweetIds: [],
     retweetActivities: [],
-    replies: [],
+    replies: SESSION_SEED_CONTENT.twitterReplies.map(reply => ({ ...reply })),
     replyComposerTweetId: null,
     replyDraft: "",
     newTweetDraft: "",
@@ -748,7 +750,7 @@ export function selectTwitterUserProfile(state: TwitterState, profileId: string,
   return {
     ...profile,
     following: profile.id !== "unknown" && state.followedUserIds.includes(profile.id),
-    followerCount: profile.id === "unknown"
+    followerCount: profile.statsHold?.follower || profile.id === "unknown"
       ? profile.followerCount
       : (profile.followerCount ?? 0) + sessionFollowerDelta(state, profile.id),
   };

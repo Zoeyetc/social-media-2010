@@ -1,0 +1,24 @@
+.final-safari,.final-youtube,.final-itunes { width:320px;height:460px;box-sizing:border-box;overflow:hidden;font-family:Helvetica,Arial,sans-serif;color:#222;background:#fff; }
+.final-safari { display:flex;flex-direction:column; }
+.final-safari-chrome { flex:none;height:76px;box-sizing:border-box;padding:5px 7px 8px;background:linear-gradient(#d7e0e9,#a8b8ca);border-bottom:1px solid #74889e; }
+.final-safari-title { height:24px;text-align:center;font-size:13px;font-weight:bold;color:#394c63;text-shadow:0 1px #eff4f8; }
+.final-safari-fields { display:flex;gap:6px;height:31px; }
+.final-safari-address,.final-safari-search { border:1px solid #8293a8;border-radius:6px;background:white;box-shadow:inset 0 1px 2px #aaa;font-size:14px;line-height:29px; }
+.final-safari-address { flex:1; }.final-safari-search { width:79px;color:#888;text-align:center; }
+.final-safari-page,.final-youtube-loading { flex:1;display:flex;align-items:center;justify-content:center; }
+.final-app-spinner { display:block;position:relative;width:24px;height:24px; }
+.final-app-spinner i { position:absolute;left:10px;top:1px;width:3px;height:7px;border-radius:2px;background:#777;transform-origin:1.5px 11px; }
+.final-store-nav { height:44px;flex:none;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:linear-gradient(#999,#494949 50%,#292929 51%,#444);border-bottom:1px solid #111;color:white;font-size:20px;text-shadow:0 -1px #222; }
+.final-youtube { display:flex;flex-direction:column;background:linear-gradient(#3b3b3b,#242424); }
+.final-youtube-loading { position:relative;flex-direction:column; }
+.final-youtube-wordmark { display:flex;align-items:center;gap:3px;height:68px;margin-top:-26px;font-family:Impact,"Arial Narrow",sans-serif;font-size:49px;line-height:1;letter-spacing:-1.5px;color:#e5e5e5;text-shadow:0 1px 1px #111; }
+.final-youtube-wordmark > span:last-child { padding:6px 7px 8px;border-radius:13px/10px;color:#fff;background:linear-gradient(#c9332e,#ac1715 55%,#83100e);box-shadow:inset 0 1px 1px #eb6c63,0 1px 1px #161616; }
+.final-youtube-loading > .final-app-spinner { position:absolute;top:calc(50% + 61px); }
+.final-youtube .final-app-spinner i { background:#bcbcbc; }
+.final-itunes { display:flex;flex-direction:column; }.final-itunes-heading { flex:none;margin:0;padding:5px 10px;font-size:15px;height:28px;box-sizing:border-box;background:linear-gradient(#edf0f3,#c2cbd5);border-bottom:1px solid #8996a6;text-shadow:0 1px white; }
+.final-itunes-list { margin:0;padding:0;list-style:none;flex:none; }.final-itunes-list li { height:51px; }.final-itunes-list button { width:100%;height:100%;box-sizing:border-box;display:flex;align-items:center;gap:9px;border:0;border-bottom:1px solid #c5c5c5;padding:4px 9px;background:white;color:#222;text-align:left;font-family:inherit; }.final-itunes-list button[aria-pressed="true"] { color:white;background:linear-gradient(#53a2e4,#1761c6); }.final-itunes-rank { width:19px;flex:none;text-align:center;color:#777;font-size:20px; }.final-itunes-track { min-width:0;flex:1; }.final-itunes-track strong { display:block;font-size:14px;line-height:17px; }.final-itunes-track small { display:block;font-size:10px;line-height:12px;color:#666; }.final-itunes-list button[aria-pressed="true"] small,.final-itunes-list button[aria-pressed="true"] .final-itunes-rank { color:#fff; }.final-itunes-chevron { color:#aaa;font-size:25px; }
+.final-itunes-player { flex:1;min-height:0;background:linear-gradient(#edf0f3,#b0bac7);border-top:1px solid #888;text-align:center;padding:6px 8px;box-sizing:border-box; }.final-itunes-selected { height:35px; }.final-itunes-selected strong { display:block;font-size:13px;line-height:17px; }.final-itunes-selected small { display:block;font-size:10px;line-height:12px; }.final-itunes-transport { display:flex;justify-content:center;gap:25px;height:43px; }.final-itunes-transport button { width:48px;border:0;background:transparent;color:#344456; }.final-itunes-transport svg { width:30px;height:24px;fill:currentColor; }.final-itunes-transport button:disabled { opacity:.3; }.final-itunes-preview-status { font-size:11px;line-height:17px;color:#4a5058;min-height:17px; }
+
+@keyframes final-app-spinner-turn { to { transform:rotate(360deg); } }
+.final-app-spinner { animation:final-app-spinner-turn 1s steps(12,end) infinite; }
+.screen:not(.app) .final-app-spinner { animation-play-state:paused; }

@@ -85,7 +85,6 @@ export type TumblrEvent =
   | { type: "RESET" };
 
 const TUMBLR_SEED_NOTES: ReadonlyArray<TumblrNote> = Object.freeze([
-  Object.freeze({ id: "tumblr-seed-note:corner-photo:1", sourcePostId: "corner-photo", blogName: "nightreader", type: "liked", origin: "seed" }),
   Object.freeze({ id: "tumblr-seed-note:sunset-note:1", sourcePostId: "sunset-note", blogName: "smallhours", type: "reblogged", origin: "seed" }),
 ]);
 

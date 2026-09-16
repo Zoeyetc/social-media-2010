@@ -61,7 +61,8 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
     if (id === "\0lifecycle-persistence") return Object.keys(persistence).map(key => `export const ${key}=globalThis.__lifecyclePersistence.${key};`).join("\n");
   },
   transform(code, id) {
-    if (id.endsWith("/src/device/App.tsx")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
+    if (id.endsWith("/src/device/useVoiceMemos.ts")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
+    if (id.endsWith("/src/device/App.tsx")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";').replaceAll("import.meta.env.DEV", process.argv.includes("--production") ? "false" : "true");
     if (id.endsWith("/src/world/cameraVideoScenes.ts")) return code.replace("  const random = options.random ?? Math.random;", "  globalThis.__sceneSelected();\n  const random = options.random ?? Math.random;");
   },
 }] });
@@ -116,11 +117,84 @@ try {
     assert.equal(t0, clock); assert.equal(view.sessionDiagnostics.elapsedMs, 0);
     assert.equal(view.screen.props.apps.messagesState.draft, "");
     assert.equal(view.screen.props.apps.messagesState.messages.some(message => message.id === "mom-home-yet"), false);
+    assert.deepEqual(view.screen.props.apps.basicSystemApps.calendar, {year:2010,month:9,day:20});
+    assert.equal(view.screen.props.apps.basicSystemApps.maps.selectedVenueId,null);
+    assert.equal(view.screen.props.apps.basicSystemApps.calculator.display,"0");
+    assert.deepEqual(view.screen.props.apps.iTunesState,{selectedIndex:null,playRequested:false});
+    assert.equal(view.screen.props.apps.remainingBasicApps.heading,0);
+    assert.equal(view.screen.props.apps.remainingBasicApps.stopwatch.startedAt,null);
+    assert.deepEqual(view.screen.props.apps.voiceMemos.state.recordings,[]);
+    const publicState = view.screen.props.apps.publicTwitterState;
+    assert.equal(publicState.pendingSubmission, null, "session starts without a stale public intent");
+    if (process.argv.includes("--production")) assert.deepEqual(publicState.approvedPosts, [], "production never loads mock archive");
+    assert.ok(view.screen.props.apps.messagesState.messages.some(m=>m.conversationId==="dad"),"canonical Dad restored on new run");
     const initialMessagesBadgeCount = view.screen.props.navigation.messagesBadgeCount;
     assert.equal(view.screen.props.overlays.activeLockNotification, null, "new user has no previous notification");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);
     view.screen.props.actions.completeScreenUnlock(); await flush();
     assert.equal(view.sessionDiagnostics.softwarePhase, "springboard");
+    for (const key of ["2","+","3","="]) view.screen.props.apps.dispatchBasicSystemApps({type:"CALCULATOR_KEY",key});
+    view.screen.props.apps.dispatchBasicSystemApps({type:"CALENDAR_MONTH",delta:1}); await flush();
+    view.screen.props.navigation.launchSpringBoardApp("foursquare"); await flush();
+    view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"}); await flush();
+    view.screen.props.apps.dispatchFoursquare({type:"OPEN_VENUE",venueId:"main-street-diner",scrollPosition:80});
+    view.screen.props.apps.dispatchFoursquare({type:"SHOW_VENUE_INFO"}); await flush();
+    const beforeMaps = view.screen.props.apps.foursquareState;
+    view.screen.props.apps.openSystemMap("night-owl"); await flush();
+    assert.equal(view.screen.props.navigation.appRuntime.activeAppId,"foursquare");
+    view.screen.props.apps.openSystemMap("main-street-diner"); await flush();
+    assert.equal(view.screen.props.navigation.appRuntime.activeAppId,"maps");
+    assert.equal(view.screen.props.apps.basicSystemApps.maps.selectedVenueId,"main-street-diner");
+    view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"}); await flush();
+    view.screen.props.actions.selectScreenMultitaskingApp("foursquare"); await flush();
+    view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"}); await flush();
+    assert.deepEqual(view.screen.props.apps.foursquareState,beforeMaps);
+    assert.equal(view.screen.props.apps.basicSystemApps.calculator.display,"5");
+    assert.equal(view.screen.props.apps.basicSystemApps.calendar.month,10);
+    view.screen.props.navigation.dispatchAppRuntime({type:"SUSPEND"}); await flush();
+    view.screen.props.apps.dispatchRemainingBasicApps({type:"HEADING",heading:405});
+    view.screen.props.apps.dispatchRemainingBasicApps({type:"STOPWATCH_START",now:clock});
+    await view.screen.props.apps.voiceMemos.controller.record(true); await flush();
+    view.screen.props.apps.voiceMemos.controller.stop(); await flush();
+    assert.equal(view.screen.props.apps.remainingBasicApps.heading,45);
+    assert.equal(view.screen.props.apps.voiceMemos.state.recordings.length,1);
+    for (const appId of ["clock","compass","voice-memos","whatsapp","skype"]) {
+      view.screen.props.navigation.launchSpringBoardApp(appId); await flush();
+      view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"}); await flush();
+      assert.equal(view.screen.props.navigation.appRuntime.activeAppId,appId);
+      view.screen.props.navigation.dispatchAppRuntime({type:"SUSPEND"}); await flush();
+      view.screen.props.actions.selectScreenMultitaskingApp(appId); await flush();
+      view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"}); await flush();
+      assert.equal(view.screen.props.navigation.appRuntime.activeAppId,appId);
+      assert.equal(view.screen.props.apps.remainingBasicApps.heading,45);
+      assert.notEqual(view.screen.props.apps.remainingBasicApps.stopwatch.startedAt,null);
+      assert.equal(view.screen.props.apps.voiceMemos.state.recordings.length,1);
+      view.screen.props.navigation.dispatchAppRuntime({type:"SUSPEND"}); await flush();
+    }
+
+    const deletedDadUnread = view.screen.props.apps.messagesState.messages.filter(m=>m.conversationId==="dad" && m.status==="unread").length;
+    view.screen.props.apps.dispatchMessages({type:"TOGGLE_LIST_EDIT"});
+    view.screen.props.apps.dispatchMessages({type:"SELECT_DELETE_CONVERSATION",conversationId:"dad"});
+    view.screen.props.apps.dispatchMessages({type:"DELETE_CONVERSATION",conversationId:"dad"});
+    view.screen.props.apps.dispatchMessages({type:"TOGGLE_LIST_EDIT"});await flush();
+    for (const appId of ["safari","youtube","itunes"]) {
+      view.screen.props.navigation.launchSpringBoardApp(appId); await flush();
+      view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"}); await flush();
+      assert.equal(view.screen.props.navigation.appRuntime.activeAppId,appId);
+      assert.ok(!view.screen.props.apps.messagesState.messages.some(m=>m.conversationId==="dad"),"deleted thread stays absent on switching");
+      if(appId==="itunes") {view.screen.props.apps.dispatchITunes({type:"SELECT",index:3});view.screen.props.apps.dispatchITunes({type:"PLAY"});await flush();}
+      let home=walk(tree).find(n=>n.props?.["aria-label"]==="Home button");
+      const pointer={pointerId:1,currentTarget:{setPointerCapture(){},releasePointerCapture(){}}};
+      home.props.onPointerDown(pointer);await flush();
+      home=walk(tree).find(n=>n.props?.["aria-label"]==="Home button");home.props.onPointerUp(pointer);await tick(350);
+      assert.equal(view.sessionDiagnostics.softwarePhase,"springboard",`${appId} Home returns`);
+      view.screen.props.actions.selectScreenMultitaskingApp(appId);await flush();
+      view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"});await flush();
+      assert.equal(view.screen.props.navigation.appRuntime.activeAppId,appId);
+      assert.ok(!view.screen.props.apps.messagesState.messages.some(m=>m.conversationId==="dad"),"deleted thread stays absent on switching");
+      if(appId==="itunes")assert.deepEqual(view.screen.props.apps.iTunesState,{selectedIndex:3,playRequested:true});
+      view.screen.props.navigation.dispatchAppRuntime({type:"SUSPEND"});await flush();
+    }
     view.screen.props.navigation.launchSpringBoardApp("camera"); await flush();
     view.screen.props.navigation.dispatchAppRuntime({ type: "ANIMATION_COMPLETE" }); await flush();
     assert.equal(view.screen.props.camera.cameraRuntime.cameraApp.phase, "previewing");
@@ -133,9 +207,9 @@ try {
     assert.equal(view.sessionDiagnostics.experienceSessionId, id);
     assert.equal(view.sessionDiagnostics.sessionStartedAt, t0);
     assert.equal(sceneSelections, run + 1, "sleep/wake does not reroll Camera");
-    await tick(60000);
+    await tick(t0 + 60000 - clock); // Keep the existing timeline checkpoint despite Home double-click waits.
     assert.equal(view.screen.props.apps.messagesState.messages.filter(message => message.id === "mom-home-yet").length, 1, "scheduler can deliver again in each new run");
-    assert.equal(view.screen.props.navigation.messagesBadgeCount, initialMessagesBadgeCount + 1);
+    assert.equal(view.screen.props.navigation.messagesBadgeCount, initialMessagesBadgeCount - deletedDadUnread + 1);
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "mom-home-yet");
     await tick(95000);
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 2, "existing scheduler delivers request and direct message");
@@ -171,8 +245,31 @@ try {
     assert.equal(view.sessionDiagnostics.softwarePhase, "sleeping");
     view.powerControl.begin(); view.powerControl.end(); await flush();
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "foursquare-friend-checkin");
-    // End through the existing software power-off/reset boundary.
-    view.screen.props.actions.confirmScreenPowerOff(); await flush();
+    await tick(380000);
+    assert.ok(view.screen.props.apps.twitterState.timeline.some(tweet => tweet.id === "terminal-goodnight-world"), "T+890 survives cutoff");
+    await tick(5000);
+    view.screen.props.actions.scheduleScreenMomReply(); await flush();
+    view.screen.props.actions.scheduleScreenMomLoveReply(); await flush();
+    assert.ok(!view.screen.props.display.session.deviceEvents.some(event => event.dueElapsedMs > device.SESSION_DURATION_MS), "late dynamic replies never admitted");
+    const notificationState = () => slots.find(slot => slot?.value?.unread && Array.isArray(slot.value.delivered))?.value;
+    const claimsBeforeResume = [...notificationState().delivered];
+    const deliveredBeforeResume = [...view.screen.props.display.session.deliveredTimelineEventIds];
+    const messagesBeforeResume = view.screen.props.apps.messagesState.messages.length;
+    // Browser timer jumps directly past the terminal boundary; no app catch-up.
+    await tick(10000);
+    assert.deepEqual(view.screen.props.display.session.deliveredTimelineEventIds, deliveredBeforeResume);
+    assert.ok(view.screen.props.apps.messagesState.messages.length <= messagesBeforeResume, "no late messages; terminal reset may already have cleared runtime messages");
+    assert.ok(notificationState().delivered.every(claim => claimsBeforeResume.includes(claim)), "rejected late events create no notification claims");
+    await tick(2000); // terminal warning presentation completes, canonical reset follows
+
+    assert.deepEqual(view.screen.props.apps.basicSystemApps.calendar,{year:2010,month:9,day:20});
+    assert.equal(view.screen.props.apps.basicSystemApps.calculator.display,"0");
+    assert.deepEqual(view.screen.props.apps.iTunesState,{selectedIndex:null,playRequested:false});
+    assert.equal(view.screen.props.apps.remainingBasicApps.heading,0);
+    assert.equal(view.screen.props.apps.remainingBasicApps.stopwatch.startedAt,null);
+    assert.deepEqual(view.screen.props.apps.voiceMemos.state.recordings,[]);
+    assert.equal(view.screen.props.apps.basicSystemApps.maps.selectedVenueId,null);
+    assert.deepEqual(notificationState().delivered, [], "terminal reset clears notification claims");
     assert.equal(view.screen.props.apps.messagesState.draft, "");
     assert.equal(view.screen.props.navigation.appRuntime.phase, "none");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);

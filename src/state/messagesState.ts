@@ -24,6 +24,9 @@ export type MobileSMSMessage = {
 };
 
 export type MessagesState = {
+  editingConversations: boolean;
+  deleteConversationId: string | null;
+  outgoingSequence: number;
   pendingAttachments: Readonly<Record<string, MediaAttachment>>;
   view: MessagesView;
   activeConversationId: string | null;
@@ -37,6 +40,9 @@ export type MessagesState = {
 };
 
 export type MessagesEvent =
+  | { type: "TOGGLE_LIST_EDIT" }
+  | { type: "SELECT_DELETE_CONVERSATION"; conversationId: string }
+  | { type: "DELETE_CONVERSATION"; conversationId: string }
   | { type: "MEDIA_RETURN"; contextId: string; attachment?: MediaAttachment }
   | { type: "REMOVE_ATTACHMENT"; contextId: string }
   | { type: "OPEN_CONVERSATION"; conversationId?: string }
@@ -54,6 +60,9 @@ export type MessagesEvent =
 
 export function createInitialMessagesState(): MessagesState {
   return {
+    editingConversations: false,
+    deleteConversationId: null,
+    outgoingSequence: 1,
     pendingAttachments: {},
     view: "list",
     activeConversationId: null,
@@ -151,6 +160,19 @@ export function deterministicMomLoveReplyDelayMs(sessionKey: string): number {
 
 export function messagesStateTransition(state: MessagesState, event: MessagesEvent): MessagesState {
   switch (event.type) {
+    case "TOGGLE_LIST_EDIT":
+      return state.view === "list" ? { ...state, editingConversations: !state.editingConversations, deleteConversationId: null } : state;
+    case "SELECT_DELETE_CONVERSATION":
+      return state.view === "list" && state.editingConversations ? { ...state, deleteConversationId: state.deleteConversationId === event.conversationId ? null : event.conversationId } : state;
+    case "DELETE_CONVERSATION": {
+      if (state.view !== "list" || !state.editingConversations || state.deleteConversationId !== event.conversationId) return state;
+      const pendingAttachments = { ...state.pendingAttachments };
+      delete pendingAttachments[event.conversationId];
+      // Do not cancel scheduled replies or erase their eligibility/delivery claims.
+      // Future incoming events append to this list and naturally reveal the thread again.
+      return { ...state, messages: state.messages.filter(message => message.conversationId !== event.conversationId),
+        pendingAttachments, deleteConversationId: null };
+    }
     case "MEDIA_RETURN":
       return { ...state, view: "conversation", activeConversationId: event.contextId,
         pendingAttachments: event.attachment ? { ...state.pendingAttachments, [event.contextId]: event.attachment } : state.pendingAttachments };
@@ -164,6 +186,8 @@ export function messagesStateTransition(state: MessagesState, event: MessagesEve
       return {
         ...state,
         view: "conversation",
+        editingConversations: false,
+        deleteConversationId: null,
         activeConversationId: conversationId,
         messages: state.messages.map(message => message.conversationId === conversationId && message.direction === "incoming" && message.status === "unread"
           ? { ...message, status: "read" }
@@ -194,7 +218,7 @@ export function messagesStateTransition(state: MessagesState, event: MessagesEve
       const attachment = state.activeConversationId ? state.pendingAttachments[state.activeConversationId] : undefined;
       const pendingAttachments = { ...state.pendingAttachments };
       if (state.activeConversationId) delete pendingAttachments[state.activeConversationId];
-      const outgoingSequence = state.messages.filter(message => message.direction === "outgoing").length + 1;
+      const outgoingSequence = state.outgoingSequence;
       const schedulesMomLoveReply = shouldScheduleMomLoveReply(state, text);
       const schedulesMomReply = shouldScheduleMomReply(state, text);
       const schedulesDadLoveReply = shouldScheduleDadLoveReply(state, text, event.elapsedMs ?? 0);
@@ -202,6 +226,7 @@ export function messagesStateTransition(state: MessagesState, event: MessagesEve
         ? {
             ...state,
             draft: "",
+            outgoingSequence: outgoingSequence + 1,
             pendingAttachments,
             momReplyEligibility: schedulesMomReply ? "affirmative" : state.momReplyEligibility,
             momReply: schedulesMomReply ? "pending" : state.momReply,

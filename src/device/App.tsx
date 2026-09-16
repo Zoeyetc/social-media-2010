@@ -1,3 +1,4 @@
+import { ITUNES_TRACKS, initialITunesState, iTunesTransition } from "../state/finalDecorativeApps";
 import { FormEvent, PointerEvent, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { createExperienceSessionResource } from "./experienceSessionResources";
 import { DeviceAudio } from "../audio/deviceAudio";
@@ -21,6 +22,9 @@ import { batteryPercent, BOOT_DURATION_MS, createExperienceSessionId, currentWar
 import { folderStateTransition } from "../state/folderState";
 import { createInitialFacebookState, deterministicFacebookPartyInviteDelayMs, FACEBOOK_PARTY_INVITE_EVENT_ID, facebookStateTransition } from "../state/facebookState";
 import type { FacebookEvent } from "../state/facebookState";
+import { createInitialRemainingBasicApps, remainingBasicAppsTransition } from "../state/remainingBasicApps";
+import { useVoiceMemos } from "./useVoiceMemos";
+import { createInitialBasicSystemApps, basicSystemAppsTransition, resolveSystemMapVenue } from "../state/basicSystemApps";
 import { createInitialFoursquareState, foursquareStateTransition } from "../state/foursquareState";
 import { createInitialInstagramState, instagramStateTransition } from "../state/instagramState";
 import { multitaskingBarStateTransition } from "../state/multitaskingBarState";
@@ -61,8 +65,9 @@ const TERMINAL_POWERED_OFF_MS = 500;
 const MOM_REPLY_SMS = { id: "mom-sleep-early", sender: "Mom", message: "Good. Sleep early." } as const;
 const MOM_LOVE_REPLY_SMS = { id: "mom-love-you-too", sender: "Mom", message: "I love you too." } as const;
 const DAD_LOVE_REPLY_SMS = { id: "dad-sleep-early", sender: "Dad", message: "Sleep early." } as const;
-const publicTwitterRepository = createMockPublicTwitterRepository();
-const publicTwitterSubmissionRepository = createMockPublicTwitterSubmissionRepository();
+const publicTwitterPreviewEnabled = import.meta.env.DEV;
+const publicTwitterRepository = publicTwitterPreviewEnabled ? createMockPublicTwitterRepository() : null;
+const publicTwitterSubmissionRepository = publicTwitterPreviewEnabled ? createMockPublicTwitterSubmissionRepository() : null;
 const cameraVideoQuery = import.meta.env.DEV
   ? new URLSearchParams(window.location.search)
   : new URLSearchParams();
@@ -172,6 +177,21 @@ export function App() {
     createInitialFacebookState,
   );
   const [instagramState, dispatchInstagram] = useReducer(instagramStateTransition, undefined, createInitialInstagramState);
+  const [iTunesState, dispatchITunesState] = useReducer(iTunesTransition, undefined, initialITunesState);
+  const [iTunesPreview, setITunesPreview] = useState(DeviceAudio.getPreviewState);
+  useEffect(() => DeviceAudio.subscribePreview(setITunesPreview), []);
+  useEffect(() => { if (["sleeping", "poweredOff", "shutdown", "hero"].includes(session.phase)) DeviceAudio.pausePreview(); }, [session.phase]);
+  useEffect(() => () => DeviceAudio.resetPreview(), []);
+  const dispatchITunes = (event: Parameters<typeof iTunesTransition>[1]) => {
+    if (event.type === "RESET") DeviceAudio.resetPreview();
+    else if (event.type === "PAUSE") DeviceAudio.pausePreview();
+    else if (event.type === "PLAY" && iTunesState.selectedIndex !== null) void DeviceAudio.playPreview(ITUNES_TRACKS[iTunesState.selectedIndex]);
+    else if (iTunesTransition(iTunesState, event).selectedIndex !== iTunesState.selectedIndex) DeviceAudio.stopPreview();
+    dispatchITunesState(event);
+  };
+  const voiceMemos = useVoiceMemos();
+  const [remainingBasicApps, dispatchRemainingBasicApps] = useReducer(remainingBasicAppsTransition, undefined, createInitialRemainingBasicApps);
+  const [basicSystemApps, dispatchBasicSystemApps] = useReducer(basicSystemAppsTransition, undefined, createInitialBasicSystemApps);
   const [foursquareState, dispatchFoursquare] = useReducer(foursquareStateTransition, undefined, createInitialFoursquareState);
   const [flickrState, dispatchFlickr] = useReducer(flickrStateTransition, undefined, createInitialFlickrState);
   const [flickrMail] = useState(() => new FlickrMailController());
@@ -234,7 +254,7 @@ export function App() {
     let cancelled = false;
     localTweetSnapshotsRef.current.clear();
     dispatchPublicTwitterEvent({ type: "RESET_PUBLIC_SESSION" });
-    if (!experienceSessionId) return () => { cancelled = true; };
+    if (!experienceSessionId || !publicTwitterRepository) return () => { cancelled = true; };
     dispatchPublicTwitterEvent({ type: "LOAD_STARTED" });
     void publicTwitterRepository.listApprovedPosts().then(posts => {
       if (cancelled || experienceSessionId !== activeExperienceSessionIdRef.current) return;
@@ -247,7 +267,7 @@ export function App() {
   }, [dispatchPublicTwitterEvent, session.experienceSessionId]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!import.meta.env.DEV || !publicTwitterSubmissionRepository) return;
     const qaWindow = window as PublicTwitterQaWindow;
     const submitPending = async () => {
       const current = publicTwitterStateRef.current;
@@ -320,6 +340,10 @@ export function App() {
     dispatchFacebook({ type: "RESET" });
     dispatchInstagram({ type: "RESET" });
     dispatchFoursquare({ type: "RESET" });
+    dispatchBasicSystemApps({ type: "RESET" });
+    dispatchRemainingBasicApps({ type: "RESET" });
+    dispatchITunes({ type: "RESET" });
+    voiceMemos.controller.reset();
     flickrMail.reset();
     dispatchFlickr({ type: "RESET" });
     dispatchTumblr({ type: "RESET" });
@@ -548,7 +572,7 @@ export function App() {
   }, []);
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 250); return () => clearInterval(id); }, []);
   useEffect(() => {
-    if (session.phase === "shutdown") return;
+    if (session.phase === "shutdown" || elapsed >= SESSION_DURATION_MS) return;
     const event = nextDueDeviceEvent(session.deviceEvents, elapsed);
     if (!event) return;
     const isMessagesReplyEvent = event.type === "momReply" || event.type === "momLoveReply" || event.type === "dadLoveReply";
@@ -785,7 +809,7 @@ export function App() {
     }
     if (publicTwitterOutro.phase !== "idle") return;
     const eligibleTweetIds = selectEligibleLocalTweetIds(twitterState.timeline);
-    if (eligibleTweetIds.length === 0) {
+    if (!publicTwitterPreviewEnabled || eligibleTweetIds.length === 0) {
       performCanonicalShutdownReset(session.shutdownReason);
       return;
     }
@@ -953,7 +977,7 @@ export function App() {
   };
   const submitPublicTwitterOutro = async (retry = false) => {
     const current = publicTwitterStateRef.current;
-    if (!current.pendingSubmission || !current.publicHandle) return;
+    if (!publicTwitterSubmissionRepository || !current.pendingSubmission || !current.publicHandle) return;
     dispatchPublicTwitterOutro({ type: retry ? "RETRY" : "SUBMIT" });
     dispatchPublicTwitterEvent({ type: "SUBMISSION_STARTED" });
     try {
@@ -974,7 +998,7 @@ export function App() {
     }
   };
   const withdrawPublicTwitterOutro = async () => {
-    if (!publicTwitterOutro.submissionId) return;
+    if (!publicTwitterSubmissionRepository || !publicTwitterOutro.submissionId) return;
     await publicTwitterSubmissionRepository.withdraw(publicTwitterOutro.submissionId);
     dispatchPublicTwitterOutro({ type: "WITHDRAW" });
   };
@@ -1317,6 +1341,21 @@ export function App() {
           flickrMail,
           tumblrState,
           dispatchTumblr,
+          iTunesPreview,
+          iTunesState,
+          dispatchITunes,
+          remainingBasicApps,
+          dispatchRemainingBasicApps,
+          voiceMemos,
+          monotonicNow: performance.now(),
+          basicSystemApps,
+          dispatchBasicSystemApps,
+          openSystemMap: (venueId: string) => {
+            if (!resolveSystemMapVenue(venueId) || appRuntime.activeAppId !== "foursquare" || appRuntime.phase !== "running") return;
+            dispatchBasicSystemApps({ type: "MAP_VENUE", venueId });
+            dispatchAppRuntime({ type: "SUSPEND" });
+            dispatchAppRuntime({ type: "LAUNCH", appId: "maps" });
+          },
           foursquareState,
           dispatchFoursquare,
         }}

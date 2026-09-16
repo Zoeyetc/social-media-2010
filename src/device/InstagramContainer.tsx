@@ -185,7 +185,6 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
 
     {state.currentView === "knownConnections" && selectedKnownAccount && selectedKnownStats && state.knownConnectionsKind && <section className="instagram-facebook-friends instagram-known-connections" aria-label={`${selectedKnownAccount.displayName} ${state.knownConnectionsKind}`}>
       <p>{selectedKnownAccount.displayName} · {state.knownConnectionsKind === "followers" ? selectedKnownStats.followers : selectedKnownStats.following} {state.knownConnectionsKind}</p>
-      <article data-content-status="HOLD"><strong>Account list</strong><span>Individual rows remain HOLD pending approved social-graph identities.</span></article>
     </section>}
 
     {state.currentView === "filter" && <section className="instagram-filter-step" data-geometry-status="RECONSTRUCTED">

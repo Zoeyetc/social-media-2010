@@ -98,14 +98,14 @@ const UTILITIES_APPS = [
 ] as const;
 
 const PAGE_ONE_APPS: readonly (SpringBoardApp | undefined)[] = [
-  { name: "Calendar", iconSrc: calendarIconSrc, calendarDay: "20" },
+  { name: "Calendar", iconSrc: calendarIconSrc, calendarDay: "20", launchId: "calendar" },
   { name: "Photos", iconSrc: photosIconSrc, launchId: "photos" },
   { name: "Stocks", iconSrc: stocksIconSrc },
-  { name: "Maps", iconSrc: mapsIconSrc },
+  { name: "Maps", iconSrc: mapsIconSrc, launchId: "maps" },
   { name: "Weather", iconSrc: weatherIconSrc },
   { name: "Notes", iconSrc: notesIconSrc },
   { name: "Utilities", iconSrc: folderIconSrc, kind: "folder", folderId: "utilities", folderApps: UTILITIES_APPS },
-  { name: "iTunes", iconSrc: iTunesIconSrc },
+  { name: "iTunes", iconSrc: iTunesIconSrc, launchId: "itunes" },
   { name: "App Store", iconSrc: appStoreIconSrc },
   { name: "Game Center", iconSrc: gameCenterIconSrc },
   { name: "Settings", iconSrc: settingsIconSrc },
@@ -255,7 +255,9 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
           ? () => onLaunchApp("messages")
           : app.name === "Camera"
             ? () => onLaunchApp("camera")
-            : undefined}
+            : app.name === "Safari" ? () => onLaunchApp("safari")
+              : app.name === "YouTube" ? () => onLaunchApp("youtube")
+                : undefined}
       />)}
     </div>
     <SpringBoardFolder sourceSlotIndex={activeFolderSlotIndex} panelTop={folderTrayTop} state={folderState} dispatch={dispatchFolderEvent} onLaunchApp={onLaunchApp} />

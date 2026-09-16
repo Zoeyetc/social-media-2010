@@ -1,3 +1,4 @@
+import { SafariContainer, YouTubeContainer, ITunesContainer, type ITunesProps } from "./FinalDecorativeApps";
 import type { ComponentProps } from "react";
 import type { Session } from "../state/deviceMachine";
 import type { CameraRuntimeState } from "../state/cameraRuntime";
@@ -6,6 +7,9 @@ import lowBatterySrc from "../assets/device/low-battery-iphone4.png";
 import { LockScreen } from "./LockScreen";
 import { CameraContainer } from "./CameraContainer";
 import { FacebookContainer } from "./FacebookContainer";
+import { ClockContainer, CompassContainer, VoiceMemosContainer, LegacyLoadingContainer, type RemainingAppsProps } from "./RemainingBasicApps";
+import type { useVoiceMemos } from "./useVoiceMemos";
+import { CalculatorContainer, CalendarContainer, MapsContainer, type BasicSystemAppsProps } from "./BasicSystemApps";
 import { FoursquareContainer } from "./FoursquareContainer";
 import { InstagramContainer } from "./InstagramContainer";
 import { FlickrContainer } from "./FlickrContainer";
@@ -61,6 +65,16 @@ export type DeviceScreenProps = {
     dispatchMultitaskingBar: ComponentProps<typeof MultitaskingBar>["dispatch"];
   };
   apps: {
+    iTunesPreview: ITunesProps["preview"];
+    iTunesState: ITunesProps["state"];
+    dispatchITunes: ITunesProps["dispatch"];
+    remainingBasicApps: RemainingAppsProps["state"];
+    dispatchRemainingBasicApps: RemainingAppsProps["dispatch"];
+    monotonicNow: number;
+    voiceMemos: ReturnType<typeof useVoiceMemos>;
+    basicSystemApps: BasicSystemAppsProps["state"];
+    dispatchBasicSystemApps: BasicSystemAppsProps["dispatch"];
+    openSystemMap: (venueId: string) => void;
     photosState: PhotosBrowseProps["state"];
     dispatchPhotos: PhotosBrowseProps["dispatch"];
     messagesState: ComponentProps<typeof MobileSMSContainer>["state"];
@@ -305,7 +319,18 @@ export function DeviceScreen({ display, navigation, apps, camera, overlays, acti
         mediaAttachmentActive={media.visible && media.request?.requester === "tumblr"}
         onRequestMedia={contextId => media.requestAttachment({ requester: "tumblr", mode: "photo", source: "camera-or-library", contextId })}
       />}
+      {appRuntime.activeAppId === "safari" && <SafariContainer />}
+      {appRuntime.activeAppId === "youtube" && <YouTubeContainer />}
+      {appRuntime.activeAppId === "itunes" && <ITunesContainer state={apps.iTunesState} dispatch={apps.dispatchITunes} preview={apps.iTunesPreview} />}
+      {appRuntime.activeAppId === "clock" && <ClockContainer state={apps.remainingBasicApps} dispatch={apps.dispatchRemainingBasicApps} now={apps.monotonicNow} worldTime={deviceStatusTime} />}
+      {appRuntime.activeAppId === "compass" && <CompassContainer state={apps.remainingBasicApps} dispatch={apps.dispatchRemainingBasicApps} />}
+      {appRuntime.activeAppId === "voice-memos" && <VoiceMemosContainer memos={apps.voiceMemos} now={apps.monotonicNow} />}
+      {(appRuntime.activeAppId === "whatsapp" || appRuntime.activeAppId === "skype") && <LegacyLoadingContainer appId={appRuntime.activeAppId} />}
+      {appRuntime.activeAppId === "calculator" && <CalculatorContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
+      {appRuntime.activeAppId === "calendar" && <CalendarContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
+      {appRuntime.activeAppId === "maps" && <MapsContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
       {appRuntime.activeAppId === "foursquare" && <FoursquareContainer
+        onOpenMap={apps.openSystemMap}
         state={foursquareState}
         dispatch={dispatchFoursquare}
         currentDeviceDateTime={deviceDateTime}
@@ -356,5 +381,5 @@ function BootLogo() {
 }
 
 function PowerOffConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
-  return <div className="modal-shade"><div className="battery-alert"><strong>Power Off</strong><p>Power-off UI artwork: HOLD.</p><button onClick={onConfirm}>Confirm power off</button><button onClick={onCancel}>Cancel</button></div></div>;
+  return <div className="modal-shade"><div className="battery-alert"><strong>Power Off</strong><button onClick={onConfirm}>Confirm power off</button><button onClick={onCancel}>Cancel</button></div></div>;
 }

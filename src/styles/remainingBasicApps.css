@@ -1,0 +1,23 @@
+.remaining-clock,.remaining-compass,.remaining-voice,.remaining-loading { width:320px; height:460px; overflow:hidden; box-sizing:border-box; font-family:Helvetica,Arial,sans-serif; }
+.remaining-nav { box-sizing:border-box; height:44px; display:flex; align-items:center; justify-content:center; color:white; background:linear-gradient(#777,#222 50%,#111 51%,#333); border-bottom:1px solid black; text-shadow:0 -1px black; font-size:20px; }
+.remaining-clock { display:grid; grid-template-rows:44px 1fr 49px; background:#171717; color:white; }
+.remaining-clock main { overflow:auto; min-height:0; }
+.remaining-clock button,.remaining-voice button { border:1px solid #111; border-radius:6px; background:linear-gradient(#eee,#aaa); color:#222; font-size:15px; font-weight:bold; padding:8px 12px; text-shadow:0 1px #ddd; }
+.remaining-clock button:disabled,.remaining-voice button:disabled { opacity:.5; }
+.remaining-tabs { display:flex; border-top:1px solid #777; background:linear-gradient(#555,#111 50%,#000); }
+.remaining-tabs button { flex:1; padding:0 2px; border-radius:0; border:0; background:transparent; color:#aaa; text-shadow:0 -1px black; font-size:11px; }
+.remaining-tabs button[aria-current="page"] { color:#80cfff; background:linear-gradient(#5558,#aaa2); }
+.world-clock-row { display:flex; flex-direction:column; gap:12px; padding:25px 18px; border-bottom:1px solid #555; }
+.world-clock-row strong { font-size:23px; }.world-clock-row time { font-size:42px; font-variant-numeric:tabular-nums; }
+.clock-counter { padding:25px 10px; text-align:center; }.clock-counter output { display:block; font-size:43px; line-height:90px; font-variant-numeric:tabular-nums; }
+.clock-counter > div:last-child { display:flex; justify-content:space-around; }.remaining-clock button.start { background:linear-gradient(#90c892,#347838); color:white; text-shadow:0 -1px #444; }.remaining-clock button.stop { background:linear-gradient(#d99491,#953c36); color:white; text-shadow:0 -1px #444; }
+.time-picker { display:flex; justify-content:center; gap:14px; }.time-picker > div { display:flex; flex-direction:column; align-items:center; gap:6px; }.time-picker output { font-size:36px; line-height:45px; }.time-picker small { color:#ddd; font-size:12px; }
+.alarm-surface { padding:14px; }.alarm-surface h2 { font-size:18px; }.alarm-surface > button { margin:14px 5px; }.alarm-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:20px 0; border-bottom:1px solid #777; }.alarm-row strong { font-size:32px; }.alarm-row button[aria-checked="true"] { background:linear-gradient(#73a5d5,#2868a6); color:white; text-shadow:none; }
+.remaining-compass { color:#ddd; background:radial-gradient(#494944,#151513); padding:20px 10px; }.compass-readout { text-align:center; margin:8px 0 24px; }.compass-readout strong { display:block; font-size:34px; }.compass-readout small { display:block; margin-top:8px; font-size:12px; color:#aaa; }.compass-drag { width:300px; height:300px; touch-action:none; user-select:none; }.compass-drag svg { width:300px; height:300px; }
+.remaining-voice { display:flex; flex-direction:column; color:#ddd; background:linear-gradient(90deg,#323232,#505050,#323232); }.memo-instrument { text-align:center; padding:5px 0 10px; }.memo-instrument svg { display:block; width:150px; height:150px; margin:auto; }.memo-instrument output { display:block; font-size:25px; font-variant-numeric:tabular-nums; }.memo-instrument p { font-size:12px; margin:4px; }.memo-instrument button { margin:7px 4px 0; }.memo-instrument button.memo-record { background:linear-gradient(#c47670,#842a25); color:white; text-shadow:0 -1px #511; }.memo-list { margin:0; padding:0; flex:1; overflow:auto; list-style:none; background:#eee; color:#222; }.memo-list li { padding:8px 12px; border-bottom:1px solid #aaa; display:flex; align-items:center; justify-content:space-between; }.memo-list strong,.memo-list small { display:block; }.memo-list small { color:#666; font-size:11px; margin-top:3px; }
+.whatsapp-loading { background:#f4f4f1;display:flex;flex-direction:column;align-items:center;padding-top:145px; }
+.whatsapp-loading-mark { display:block;width:128px;height:128px;border-radius:22px; }
+.whatsapp-loading-progress { margin-top:37px; }
+.skype-loading { background:linear-gradient(#fff,#edf5f8);display:flex;flex-direction:column;align-items:center;padding-top:129px; }
+.skype-loading-brand img { display:block;width:152px;height:152px;border-radius:25px; }
+.skype-loading-progress { margin-top:28px; }

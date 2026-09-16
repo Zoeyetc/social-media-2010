@@ -13,7 +13,7 @@ class FakeAudio {
   pause() { this.pauses++; }
   addEventListener(name, listener) { this.listeners[name] = listener; }
 }
-const audio = new Function("DEVICE_AUDIO_REGISTRY", "Audio", stripTypeScriptTypes(source) + ";return DeviceAudio;")(registry, FakeAudio);
+const audio = new Function("ITunesPreviewResolver", "DEVICE_AUDIO_REGISTRY", "Audio", stripTypeScriptTypes(source) + ";return DeviceAudio;")(class {}, registry, FakeAudio);
 assert.equal(audio.canPlayAudio, true, "software/default is audible");
 audio.unlock();
 assert.equal(sounds.length, 1);

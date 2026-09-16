@@ -1,8 +1,32 @@
+import safariFinalIcon from "../assets/historical/ios4.1/springboard/apps/Safari@2x.browser.png";
+import youtubeFinalIcon from "../assets/historical/ios4.1/springboard/apps/YouTube@2x.browser.png";
+import itunesFinalIcon from "../assets/historical/ios4.1/springboard/apps/iTunes@2x.browser.png";
+import skypeRemainingIcon from "../assets/historical/ios4.1/springboard/apps/Skype-2010-AppStore.jpg";
+import whatsappRemainingIcon from "../assets/historical/ios4.1/springboard/apps/WhatsApp-2010-AppStore.jpg";
+import voicememosRemainingIcon from "../assets/historical/ios4.1/springboard/apps/VoiceMemos@2x.browser.png";
+import compassRemainingIcon from "../assets/historical/ios4.1/springboard/apps/Compass@2x.browser.png";
+import clockRemainingIcon from "../assets/historical/ios4.1/springboard/apps/Clock@2x.browser.png";
+import calculatorIcon from "../assets/historical/ios4.1/springboard/apps/Calculator@2x.browser.png";
+import calendarIcon from "../assets/historical/ios4.1/springboard/apps/Calendar@2x.browser.png";
+import mapsIcon from "../assets/historical/ios4.1/springboard/apps/Maps@2x.browser.png";
 import { Dispatch, PointerEvent, useEffect, useRef } from "react";
-import { SPRINGBOARD_SOCIAL_APPS, SpringBoardSocialApp } from "../data/springBoardSocialApps";
+import { SPRINGBOARD_SOCIAL_APPS } from "../data/springBoardSocialApps";
 import { AppRuntimeState } from "../state/appRuntimeState";
 import { MultitaskingBarEvent, MultitaskingBarState } from "../state/multitaskingBarState";
 
+const SYSTEM_MULTITASKING_APPS = [
+  {id:"safari",name:"Safari",iconSrc:safariFinalIcon,iconStatus:"READY",available:true},
+  {id:"youtube",name:"YouTube",iconSrc:youtubeFinalIcon,iconStatus:"READY",available:true},
+  {id:"itunes",name:"iTunes",iconSrc:itunesFinalIcon,iconStatus:"READY",available:true},
+  {id:"skype",name:"Skype",iconSrc:skypeRemainingIcon,iconStatus:"READY",available:true},
+  {id:"whatsapp",name:"WhatsApp",iconSrc:whatsappRemainingIcon,iconStatus:"READY",available:true},
+  {id:"voice-memos",name:"Voice Memos",iconSrc:voicememosRemainingIcon,iconStatus:"READY",available:true},
+  {id:"compass",name:"Compass",iconSrc:compassRemainingIcon,iconStatus:"READY",available:true},
+  {id:"clock",name:"Clock",iconSrc:clockRemainingIcon,iconStatus:"READY",available:true},
+  {id:"calculator",name:"Calculator",iconSrc:calculatorIcon,iconStatus:"READY",available:true},
+  {id:"calendar",name:"Calendar",iconSrc:calendarIcon,iconStatus:"READY",available:true},
+  {id:"maps",name:"Maps",iconSrc:mapsIcon,iconStatus:"READY",available:true},
+];
 const EDITING_HOLD_MS = 500;
 
 type MultitaskingBarProps = {
@@ -25,8 +49,8 @@ export function MultitaskingBar({ state, appRuntime, dispatch, onSelectApp }: Mu
   ]);
   const visibleApps = appRuntime.recentAppIds
     .filter(appId => retainedIds.has(appId))
-    .map(appId => SPRINGBOARD_SOCIAL_APPS.find(app => app.id === appId))
-    .filter((app): app is SpringBoardSocialApp & { iconSrc: string } => Boolean(
+    .map(appId => SYSTEM_MULTITASKING_APPS.find(app => app.id === appId) ?? SPRINGBOARD_SOCIAL_APPS.find(app => app.id === appId))
+    .filter((app): app is NonNullable<typeof app> => Boolean(
       app?.iconStatus === "READY" && app.available && app.iconSrc,
     ));
 
