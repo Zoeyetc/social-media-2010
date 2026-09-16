@@ -2,13 +2,13 @@ import type { TwitterTweet } from "../state/twitterState";
 import type { PublicTwitterOutroState } from "../state/publicTwitterOutroState";
 
 export const PUBLIC_TWITTER_OUTRO_COPY = Object.freeze({
-  title: "Leave a Tweet for other visitors",
-  explanation: "Choose one Tweet from this experience. It may remain visible to people who play later. Your character name will not be shared.",
+  title: "Preview a Tweet",
+  explanation: "Choose one Tweet to preview with a username. This preview stays in this experience and is not published to other visitors.",
   selection: "Select one Tweet",
   handle: "Public username",
   handleExplanation: "This username labels your Tweet only. It does not create an account or profile.",
   skip: "Keep private to this experience",
-  success: "Thanks. We received your Tweet. It may appear for other visitors later.",
+  success: "Your preview is ready. It has not been published to other visitors.",
   failure: "Your Tweet is still in this experience, but it couldn't be left for other visitors.",
 });
 
@@ -47,7 +47,7 @@ export function PublicTwitterOutro({ state, tweets, selectedTweet, onSelect, onC
         <p>{PUBLIC_TWITTER_OUTRO_COPY.explanation}</p>
         <blockquote>{selectedTweet.text}</blockquote>
         <p className="public-twitter-outro-attribution">@{state.publicHandle}</p>
-        <button type="button" className="public-twitter-outro-primary" onClick={onSubmit}>Share as @{state.publicHandle}</button>
+        <button type="button" className="public-twitter-outro-primary" onClick={onSubmit}>Preview as @{state.publicHandle}</button>
         <button type="button" className="public-twitter-outro-secondary" onClick={onComplete}>{PUBLIC_TWITTER_OUTRO_COPY.skip}</button>
       </>}
       {state.phase === "submitting" && <p>Sending…</p>}

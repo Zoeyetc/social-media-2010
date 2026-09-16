@@ -34,7 +34,7 @@ const server=await createServer({server:{middlewareMode:true},appType:"custom",l
 try {
   const {IOS4KeyboardSystem,IOS4Textarea}=await server.ssrLoadModule("/src/device/IOS4KeyboardSystem.tsx");
   const walk=node=>!node||typeof node!=="object"?[]:Array.isArray(node)?node.flatMap(walk):[node,...walk(node.props?.children)];
-  for(let loop=0;loop<2;loop++)for(const inputId of ["facebook-status","twitter-compose","messages-compose"]){
+  for(let loop=0;loop<2;loop++)for(const inputId of ["facebook-status","twitter-compose","messages-compose","flickr-upload-description","flickr-search","flickr-comment-photo","tumblr-photo-caption","tumblr-composer-text","tumblr-search"]){
     const provider=host(),binding=host();let tree,suspended=false,visible=false;
     draft="preserved draft";
     element={isConnected:true,selectionStart:4,selectionEnd:4,closest:()=>null,
@@ -76,5 +76,5 @@ try {
     assert.equal(draft,"presqerved draft");
     [...binding.slots,...provider.slots].forEach(slot=>slot?.cleanup?.());
   }
-  console.log("PASS: actual shared keyboard + bindings, 3 app owners × 3 media stages × 2 loops; blur, no reacquisition, no forced return focus, caret/draft retention, stale key-frame cancellation.");
+  console.log("PASS: actual shared keyboard + bindings, 6 input owners × 3 media stages × 2 loops; blur, no reacquisition, no forced return focus, caret/draft retention, stale key-frame cancellation.");
 }finally{await server.close();}

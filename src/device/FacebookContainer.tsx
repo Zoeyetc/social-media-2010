@@ -279,7 +279,7 @@ function FacebookNavigationHeader({ state, displayName, selectedItem, dispatch }
     <header className="facebook-navigation-bar is-home">
       <button type="button" className="facebook-account-control facebook-2010-nav-button is-normal is-left" onClick={() => dispatch({ type: "SHOW_ACCOUNT", profileName: displayName })}>Account</button>
       <strong>facebook</strong>
-      <button type="button" className="facebook-shortcut-control facebook-2010-nav-button is-icon is-right" disabled aria-label="Shortcut customization HOLD">+</button>
+      <button type="button" className="facebook-shortcut-control facebook-2010-nav-button is-icon is-right" disabled aria-label="Shortcut customization">+</button>
     </header>
     <div className="facebook-home-search-row">
       <label className="facebook-search-field facebook-home-search"><span className="facebook-search-glyph" aria-hidden="true" />
@@ -515,7 +515,7 @@ function FacebookEvents({ state, dispatch }: { state: FacebookState; dispatch: D
 function FacebookPartyEvent({ state, dispatch }: { state: FacebookState; dispatch: Dispatch<FacebookEvent> }) {
   const alexPost = state.feed.find(item => item.id === "alex-jacks-party-friday");
   return <section className="facebook-event-detail">
-    <header><strong>Jack's Party</strong><span>Friday</span><small>Hosted by <button type="button" className="facebook-author-link" onClick={() => dispatch({ type: "OPEN_PROFILE", profileName: CORE_SOCIAL_CHARACTERS.jack.displayName })}>{CORE_SOCIAL_CHARACTERS.jack.displayName}</button> · Location HOLD</small></header>
+    <header><strong>Jack's Party</strong><span>Friday</span><small>Hosted by <button type="button" className="facebook-author-link" onClick={() => dispatch({ type: "OPEN_PROFILE", profileName: CORE_SOCIAL_CHARACTERS.jack.displayName })}>{CORE_SOCIAL_CHARACTERS.jack.displayName}</button></small></header>
     <fieldset><legend>RSVP</legend>{(["yes", "maybe", "no"] as const).map(value => <button key={value} type="button" aria-pressed={state.partyRsvp === value} onClick={() => dispatch({ type: "SET_PARTY_RSVP", value })}>{value === "yes" ? "Yes" : value[0].toUpperCase() + value.slice(1)}</button>)}</fieldset>
     <section className="facebook-event-wall"><h2>Event Wall</h2>{alexPost && <article className="facebook-event-wall-story" data-route-classification="NO_ACTION"><strong>{alexPost.author}</strong><span>{alexPost.text}</span></article>}</section>
   </section>;

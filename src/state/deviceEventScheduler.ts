@@ -1,3 +1,5 @@
+import { SESSION_DURATION_MS } from "./deviceMachine";
+
 export type DeviceEventSource = "messages" | "facebook" | "instagram" | "twitter" | "foursquare" | "tumblr";
 
 export type DeviceEventType =
@@ -31,7 +33,7 @@ export type DeviceEventPayload =
   | { kind: "facebook-sophie-june-comment"; commentId: "facebook-sophie-june-instagram-comment-1" | "facebook-sophie-june-instagram-comment-2"; text: "what are you doing???" | "Jack????" }
   | { kind: "instagram-june-post"; postId: "june-ig-01"; mediaId: "june-ig-01"; timestamp: string }
   | { kind: "instagram-june-delete"; postId: "june-ig-04" }
-  | { kind: "twitter-post"; post: { id: string; displayName: string; text: string; timestamp: string } }
+  | { kind: "twitter-post"; post: { id: string; friendId?: import("../data/coreSocialFriends").CoreSocialFriendId; displayName: string; text: string; timestamp: string; createdAt?: number } }
   | { kind: "foursquare-activity"; activityId: string; message: string }
   | { kind: "tumblr-post"; post: { id: string; type: "text" | "photo" | "quote"; blog: string; title: string; content: string; timestamp: string } };
 
@@ -46,6 +48,7 @@ export type DeviceEvent = {
 };
 
 export function scheduleDeviceEvent(events: readonly DeviceEvent[], event: DeviceEvent): DeviceEvent[] {
+  if (!Number.isFinite(event.dueElapsedMs) || event.dueElapsedMs > SESSION_DURATION_MS) return [...events];
   return events.some(scheduled => scheduled.id === event.id)
     ? [...events]
     : [...events, event].sort((a, b) => a.dueElapsedMs - b.dueElapsedMs);
@@ -56,7 +59,9 @@ export function scheduleDeviceEvents(events: readonly DeviceEvent[], additions: 
 }
 
 export function nextDueDeviceEvent(events: readonly DeviceEvent[], elapsed: number): DeviceEvent | null {
-  return events.find(event => event.dueElapsedMs <= elapsed) ?? null;
+  // Narrative delivery ends before presentation/reset; never catch up after resume.
+  if (!Number.isFinite(elapsed) || elapsed >= SESSION_DURATION_MS) return null;
+  return events.find(event => event.dueElapsedMs <= SESSION_DURATION_MS && event.dueElapsedMs <= elapsed) ?? null;
 }
 
 export function removeDeviceEvent(events: readonly DeviceEvent[], eventId: string): DeviceEvent[] {

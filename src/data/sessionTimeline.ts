@@ -1,3 +1,4 @@
+import { CORE_SOCIAL_CHARACTERS } from "./coreSocialFriends";
 import type { DeviceEvent, DeviceEventPayload, DeviceEventSource, DeviceEventType } from "../state/deviceEventScheduler";
 import { simulatedClock, simulatedDeviceDateTime } from "../state/deviceMachine";
 
@@ -20,6 +21,8 @@ export const TWITTER_LIVE_ACTIVITY_POOL: readonly SessionTimelineEventDefinition
   { id: "twitter-slang-fml", atElapsedSeconds: 540, sourceApp: "twitter", type: "twitterBackgroundTweet", payload: { kind: "twitter-post", post: { id: "slang-fml", displayName: "Dana", text: "just realized the file i worked on all night is the wrong version. FML", timestamp: simulatedClock(540 * 1000) } }, deliveryPolicy: "internal", provenanceStatus: "CURATED", languageReference: "PERIOD-EVIDENCE" },
   { id: "twitter-nora-homework", atElapsedSeconds: 690, sourceApp: "twitter", type: "twitterBackgroundTweet", payload: { kind: "twitter-post", post: { id: "nora-homework", displayName: "Nora", text: "finally starting the homework I ignored all night", timestamp: simulatedClock(690 * 1000) } }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   { id: "twitter-terminal-goodnight-world", atElapsedSeconds: 890, sourceApp: "twitter", type: "twitterBackgroundTweet", payload: { kind: "twitter-post", post: { id: "terminal-goodnight-world", displayName: "Eli", text: "goodnight, world.", timestamp: simulatedClock(890 * 1000) } }, deliveryPolicy: "internal", provenanceStatus: "CURATED", role: "terminal-easter-egg" },
+  { id: "twitter-matt-mac-rumors", atElapsedSeconds: 220, sourceApp: "twitter", type: "twitterBackgroundTweet", payload: { kind: "twitter-post", post: { id: "matt-mac-rumors", friendId: CORE_SOCIAL_CHARACTERS.matt.id, displayName: CORE_SOCIAL_CHARACTERS.matt.displayName, text: "still awake reading mac rumors. great idea", timestamp: simulatedClock(220 * 1000), createdAt: simulatedDeviceDateTime(220 * 1000).getTime() } }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
+  { id: "twitter-jay-headphones", atElapsedSeconds: 760, sourceApp: "twitter", type: "twitterBackgroundTweet", payload: { kind: "twitter-post", post: { id: "jay-headphones-late", friendId: CORE_SOCIAL_CHARACTERS.jay.id, displayName: CORE_SOCIAL_CHARACTERS.jay.displayName, text: "headphones on. not sleeping anytime soon", timestamp: simulatedClock(760 * 1000), createdAt: simulatedDeviceDateTime(760 * 1000).getTime() } }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
 ];
 
 export const SESSION_TIMELINE_EVENTS: readonly SessionTimelineEventDefinition[] = [
@@ -33,6 +36,7 @@ export const SESSION_TIMELINE_EVENTS: readonly SessionTimelineEventDefinition[] 
   { id: "facebook-katie-jack-gossip-message", atElapsedSeconds: 155, sourceApp: "facebook", type: "facebookKatieGossipMessage", payload: { kind: "facebook-katie-jack-gossip-message", message: "Do you know Jack????" }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   { id: "instagram-june-jack-accidental-delete", atElapsedSeconds: 200, sourceApp: "instagram", type: "instagramJuneDelete", payload: { kind: "instagram-june-delete", postId: "june-ig-04" }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   { id: "instagram-june-replacement-photo", atElapsedSeconds: 210, sourceApp: "instagram", type: "instagramJunePost", payload: { kind: "instagram-june-post", postId: "june-ig-01", mediaId: "june-ig-01", timestamp: simulatedDeviceDateTime(210 * 1000).toISOString() }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
+  TWITTER_LIVE_ACTIVITY_POOL[6],
   { id: "facebook-june-message", atElapsedSeconds: 270, sourceApp: "facebook", type: "facebookJuneMessage", payload: { kind: "june-message", sender: "June", message: "Hey, are you online?" }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   TWITTER_LIVE_ACTIVITY_POOL[1],
   TWITTER_LIVE_ACTIVITY_POOL[2],
@@ -40,6 +44,7 @@ export const SESSION_TIMELINE_EVENTS: readonly SessionTimelineEventDefinition[] 
   TWITTER_LIVE_ACTIVITY_POOL[3],
   { id: "tumblr-background-post", atElapsedSeconds: 630, sourceApp: "tumblr", type: "tumblrBackgroundPost", payload: { kind: "tumblr-post", post: { id: "late-note", type: "text", blog: "latewatch", title: "After midnight", content: "The city gets quieter after midnight.", timestamp: `${simulatedDeviceDateTime(630 * 1000).toISOString().slice(0, 10)} ${simulatedClock(630 * 1000)}` } }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   TWITTER_LIVE_ACTIVITY_POOL[4],
+  TWITTER_LIVE_ACTIVITY_POOL[7],
   { id: "facebook-sophie-june-instagram-comment-1", atElapsedSeconds: 780, sourceApp: "facebook", type: "facebookSophieJuneComment", payload: { kind: "facebook-sophie-june-comment", commentId: "facebook-sophie-june-instagram-comment-1", text: "what are you doing???" }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   { id: "facebook-sophie-june-instagram-comment-2", atElapsedSeconds: 795, sourceApp: "facebook", type: "facebookSophieJuneComment", payload: { kind: "facebook-sophie-june-comment", commentId: "facebook-sophie-june-instagram-comment-2", text: "Jack????" }, deliveryPolicy: "internal", provenanceStatus: "CURATED" },
   TWITTER_LIVE_ACTIVITY_POOL[5],

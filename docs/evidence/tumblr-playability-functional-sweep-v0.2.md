@@ -42,8 +42,8 @@ Notes use:
 }
 ```
 
-- Two sparse seed Notes provide the initial read-only baseline.
-- Their blog names (`nightreader`, `smallhours`) and exact wording are project-curated `CURATED/HOLD`, not historical claims.
+- One sparse seeded reblog Note provides the current read-only baseline after the approved unfinished-photo cleanup.
+- Its blog name (`smallhours`) and exact wording are project-curated `CURATED/HOLD`, not historical claims.
 - Like creates/removes one stable `user-like:<sourcePostId>` Note.
 - Confirmed Reblog creates one stable `user-reblog:<sourcePostId>` Note.
 - Notes render in stored chronological action order; exact historical timestamp/writing presentation remains HOLD.

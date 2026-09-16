@@ -52,10 +52,11 @@ export function MobileSMSContainer({ state, dispatch, currentElapsedMs, currentD
 
   return <section className="mobilesms-container" aria-label="Messages" inert={cameraPickerActive}>
     <header className="mobilesms-navigation-bar">
-      {!conversationOpen && conversationSummaries.length > 0 && <span
+      {!conversationOpen && (conversationSummaries.length > 0 || state.editingConversations) && <button
         className="mobilesms-list-edit-control"
+        type="button" onClick={() => dispatch({ type: "TOGGLE_LIST_EDIT" })}
         data-control-evidence="PERIOD-EVIDENCE"
-      >Edit</span>}
+      >{state.editingConversations ? "Done" : "Edit"}</button>}
       {conversationOpen && <button
         className="mobilesms-back-button"
         onClick={() => dispatch({ type: "BACK_TO_LIST" })}
@@ -63,7 +64,7 @@ export function MobileSMSContainer({ state, dispatch, currentElapsedMs, currentD
       <strong>{conversationOpen ? contactName : "Messages"}</strong>
       {!conversationOpen && <span
         className="mobilesms-compose-control-hold"
-        aria-label="New message control artwork unavailable"
+        aria-hidden="true"
         data-provenance-status="HOLD"
       />}
     </header>
@@ -116,10 +117,12 @@ export function MobileSMSContainer({ state, dispatch, currentElapsedMs, currentD
         </div>
       </>
       : <div className="mobilesms-conversation-list">
-        {conversationSummaries.map(summary => <button
-          key={summary.conversationId}
+        {conversationSummaries.map(summary => <div key={summary.conversationId} className={`mobilesms-list-row${state.editingConversations ? " is-editing" : ""}`}>
+          {state.editingConversations && <button type="button" className="mobilesms-delete-minus" aria-label={`Delete conversation with ${summary.contactName}`} onClick={() => dispatch({type:"SELECT_DELETE_CONVERSATION",conversationId:summary.conversationId})}>−</button>}
+          <button
           type="button"
           className="mobilesms-conversation-row"
+          disabled={state.editingConversations}
           onClick={() => dispatch({ type: "OPEN_CONVERSATION", conversationId: summary.conversationId })}
         >
           <span className="mobilesms-conversation-copy">
@@ -127,7 +130,9 @@ export function MobileSMSContainer({ state, dispatch, currentElapsedMs, currentD
             <span>{summary.latestMessage.text || (summary.latestMessage.attachment ? "Photo" : "")}</span>
           </span>
           {summary.latestMessage.timestamp && <time>{summary.latestMessage.timestamp}</time>}
-        </button>)}
+        </button>
+          {state.editingConversations && state.deleteConversationId === summary.conversationId && <button type="button" className="mobilesms-delete-confirm" onClick={() => dispatch({type:"DELETE_CONVERSATION",conversationId:summary.conversationId})}>Delete</button>}
+        </div>)}
       </div>}
   </section>;
 }

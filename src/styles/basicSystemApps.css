@@ -1,0 +1,31 @@
+.system-calculator,.system-calendar,.system-maps { width:320px; height:460px; overflow:hidden; font-family:Helvetica,Arial,sans-serif; }
+.system-calculator { box-sizing:border-box; padding:16px 10px 10px; background:linear-gradient(#8d8d8d,#393939 30%,#111); display:flex; flex-direction:column; gap:16px; }
+.system-calculator output { box-sizing:border-box; display:block; height:86px; padding:12px 8px; border:3px inset #5b6052; border-radius:5px; background:linear-gradient(#c3c9ad,#e6e9d7); color:#10120d; text-align:right; font-size:32px; line-height:52px; letter-spacing:-1px; }
+.system-calculator-keys { flex:1; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(5,1fr); gap:8px; }
+.system-calculator button { border:1px solid #111; border-radius:8px; background:linear-gradient(#727272,#383838); box-shadow:inset 0 1px #aaa,0 2px 1px #080808; color:white; font-size:29px; text-shadow:0 -1px #111; }
+.system-calculator button.clear { grid-column:span 2; background:linear-gradient(#d4d4d4,#aaa); color:#111; text-shadow:0 1px #eee; }
+.system-calculator button.zero { grid-column:span 2; }
+.system-calculator button.equals { grid-column:4; grid-row:4 / span 2; background:linear-gradient(#d17d24,#ad530a); }
+.system-calculator button[aria-pressed="true"] { outline:2px solid white; outline-offset:-5px; }
+.system-calculator button:active { filter:brightness(.8); }
+.system-blue-bar { box-sizing:border-box; height:44px; background:linear-gradient(#b4c4d6,#849bb6 50%,#6c86a6 51%,#6e88a8); border-top:1px solid #d1dce8; border-bottom:1px solid #43576f; display:flex; align-items:center; justify-content:center; gap:12px; padding:5px 8px; color:white; text-shadow:0 -1px #50617a; }
+.system-blue-bar button { background:linear-gradient(#9bb0c8,#546f92); border:1px solid #465f7e; border-radius:5px; padding:5px 9px; color:white; font-size:13px; font-weight:bold; }
+.system-calendar { background:#fff; display:flex; flex-direction:column; color:#344253; }
+.system-calendar-month { display:flex; align-items:center; justify-content:space-between; height:34px; flex-shrink:0; background:linear-gradient(#f4f5f6,#ced3d9); }
+.system-calendar-month button { border:0; background:none; width:40px; height:34px; color:#344253; }
+.system-calendar-weekdays { display:grid; grid-template-columns:repeat(7,1fr); height:18px; background:#dce0e5; text-align:center; font-size:10px; }
+.system-calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); grid-auto-rows:39px; border-top:1px solid #9ca5b0; }
+.system-calendar-grid > * { background:linear-gradient(#edf0f3,#cdd3dc); border:0; border-right:1px solid #a4aebc; border-bottom:1px solid #a4aebc; color:#344253; font-size:22px; font-weight:bold; text-shadow:0 1px #fff; }
+.system-calendar-grid button[aria-current="date"] { color:#2762ac; }
+.system-calendar-grid button[aria-pressed="true"] { color:white; background:linear-gradient(#62a9ef,#1769c1); text-shadow:0 -1px #275a8b; box-shadow:inset 0 0 0 1px #145aa3; }
+.system-calendar-events { flex:1; min-height:0; text-align:center; border-top:1px solid #8993a0; padding-top:8px; font-size:13px; }
+.system-calendar-events p { color:#777; margin:8px; }
+.system-calendar footer { flex-shrink:0; justify-content:flex-start; }
+.system-calendar footer span { margin-left:65px; border:1px solid #526b8a; border-radius:4px; padding:5px 13px; background:#637f9f; font-size:13px; }
+.system-maps { background:#dce5d2; }
+.system-map-location { background:white; border:1px inset #8a98a4; border-radius:12px; width:100%; height:25px; line-height:25px; padding:0 8px; color:#555; text-shadow:none; font-size:14px; }
+.system-map-viewport { position:relative; width:320px; height:372px; }
+.system-map-pin-layer { position:absolute; inset:0; width:320px; height:372px; pointer-events:none; }
+.system-map-callout { position:absolute; top:112px; left:30px; right:30px; border:1px solid #333; border-radius:7px; padding:9px; background:linear-gradient(#606060,#222); color:white; text-align:center; font-size:15px; box-shadow:0 2px 3px #777; }
+.system-maps footer { justify-content:space-between; }
+.foursquare-open-system-map { width:100%; border:0; border-top:1px solid #aaa; background:linear-gradient(#fff,#e2e5e9); padding:10px; color:#294968; font-weight:bold; text-align:left; }

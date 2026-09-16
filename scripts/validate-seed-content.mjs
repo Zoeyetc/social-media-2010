@@ -1,3 +1,5 @@
+import { validatePageInputs } from "./validate-page-inputs.mjs";
+await validatePageInputs();
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -942,6 +944,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
     ["facebook-katie-jack-gossip-message", 155, "facebookKatieGossipMessage"],
     ["instagram-june-jack-accidental-delete", 200, "instagramJuneDelete"],
     ["instagram-june-replacement-photo", 210, "instagramJunePost"],
+    ["twitter-matt-mac-rumors", 220, "twitterBackgroundTweet"],
     ["facebook-june-message", 270, "facebookJuneMessage"],
     ["twitter-eva-school-tomorrow", 300, "twitterBackgroundTweet"],
     ["twitter-late-night-update", 390, "twitterBackgroundTweet"],
@@ -949,6 +952,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
     ["twitter-slang-fml", 540, "twitterBackgroundTweet"],
       ["tumblr-background-post", 630, "tumblrBackgroundPost"],
       ["twitter-nora-homework", 690, "twitterBackgroundTweet"],
+      ["twitter-jay-headphones", 760, "twitterBackgroundTweet"],
       ["facebook-sophie-june-instagram-comment-1", 780, "facebookSophieJuneComment"],
       ["facebook-sophie-june-instagram-comment-2", 795, "facebookSophieJuneComment"],
       ["twitter-terminal-goodnight-world", 890, "twitterBackgroundTweet"],
@@ -964,12 +968,12 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.deepEqual(scheduledTwice.map(event => event.id), expectedTimeline.map(([id]) => id));
   let catchUpQueue = scheduledTimeline;
   const caughtUpIds = [];
-  while (scheduler.nextDueDeviceEvent(catchUpQueue, 15 * 60 * 1_000)) {
-    const due = scheduler.nextDueDeviceEvent(catchUpQueue, 15 * 60 * 1_000);
+  while (scheduler.nextDueDeviceEvent(catchUpQueue, 15 * 60 * 1_000 - 1)) {
+    const due = scheduler.nextDueDeviceEvent(catchUpQueue, 15 * 60 * 1_000 - 1);
     caughtUpIds.push(due.id);
     catchUpQueue = scheduler.removeDeviceEvent(catchUpQueue, due.id);
   }
-  assert.deepEqual(caughtUpIds, expectedTimeline.map(([id]) => id), "elapsed-time catch-up must expose every event once without interaction");
+  assert.deepEqual(caughtUpIds, expectedTimeline.map(([id]) => id), "pre-terminal catch-up must expose every event once without interaction");
   assert.equal(scheduledTimeline.some(event => event.sourceApp === "flickr"), false, "Flickr seed photos must not have scheduler duplicates");
   assert.equal(scheduledTimeline.some(event => event.payload?.kind === "initial-sms" && event.payload.sender === "Dad"), false, "Dad seed must not be registered as an arrival");
 
@@ -1412,13 +1416,13 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(facebookPlayability.scrollPosition, 96, "Facebook playability mutations must preserve feed scroll state");
 
   const twitterSeed = seed.twitter;
-  assert.equal(twitterSeed.length, 14, "Twitter must start with the balanced fourteen-item seed timeline");
+  assert.equal(twitterSeed.length, 19, "Twitter must start with the approved nineteen-item seed timeline");
   const mattPartyTweet = twitterSeed.find(tweet => tweet.id === "matt-jacks-party");
   assert.deepEqual([mattPartyTweet?.friendId, mattPartyTweet?.displayName, mattPartyTweet?.text], ["matt", "Matt Ricci", "jack's party sounds exhausting lol"]);
   assert.equal(seed.facebook.feed.some(item => item.friendId === "matt" && item.text.includes("party")), false, "Matt's party reaction must remain Twitter-specific");
   assert.deepEqual(
-    twitterSeed.map(tweet => tweet.timestamp),
-    ["11:58 PM", "11:53 PM", "11:49 PM", "11:41 PM", "11:26 PM", "11:09 PM", "11:03 PM", "10:47 PM", "10:22 PM", "10:05 PM", "9:47 PM", "9:12 PM", "9:08 PM", "8:30 PM"],
+    twitter.sortTwitterTimeline(twitterSeed).map(tweet => tweet.timestamp),
+    ["11:58 PM", "11:53 PM", "11:49 PM", "11:41 PM", "11:26 PM", "11:23 PM", "11:16 PM", "11:09 PM", "11:03 PM", "10:47 PM", "10:47 PM", "10:22 PM", "10:21 PM", "10:05 PM", "9:47 PM", "9:38 PM", "9:12 PM", "9:08 PM", "8:30 PM"],
     "Twitter seed must remain newest-first",
   );
   assert.equal(twitterSeed.filter(tweet => tweet.contentType === "manual-retweet").length, 2);
@@ -1426,12 +1430,12 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(twitterSeed.filter(tweet => tweet.contentType === "ordinary").length, 4);
   assert.equal(twitterSeed.filter(tweet => tweet.contentType === "party-reaction").length, 1);
   assert.equal(twitterSeed.filter(tweet => tweet.contentType === "work-life").length, 5, "five work-life seed Tweets must rebalance the demographic tone");
-  assert.equal(twitterSeed.filter(tweet => tweet.contentType === "apple-reference").length, 1, "Twitter must retain exactly one Apple reference");
+  assert.equal(twitterSeed.filter(tweet => tweet.contentType === "apple-reference").length, 1, "Twitter preserves the original Apple-reference category");
   assert.equal(
     twitterSeed.filter(tweet => tweet.contentType === "apple-reference").length
       + timelineDefinitions.filter(event => event.sourceApp === "twitter" && /apple|back to the mac/i.test(event.payload?.post?.text ?? "")).length,
     1,
-    "seed plus live Twitter must contain exactly one Apple reference",
+    "original Apple-reference category remains unchanged",
   );
   assert.ok(twitterSeed.filter(tweet => tweet.contentType === "work-life").every(tweet => tweet.origin === "seed" && tweet.contentProvenance === "CURATED"));
   assert.ok(twitterSeed.every(tweet => tweet.origin === "seed" && tweet.timestampProvenance === "CURATED"));
@@ -1990,11 +1994,11 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   const scheduledTwitterPosts = timelineDefinitions
     .filter(event => event.payload?.kind === "twitter-post")
     .map(event => event.payload.post);
-  assert.equal(scheduledTwitterPosts.length, 6, "Twitter must be the most active social app with six live additions");
+  assert.equal(scheduledTwitterPosts.length, 8, "Twitter must be the most active social app with eight live additions");
   const liveCountsBySocialApp = timelineDefinitions
     .filter(event => event.sourceApp !== "messages")
     .reduce((counts, event) => ({ ...counts, [event.sourceApp]: (counts[event.sourceApp] ?? 0) + 1 }), {});
-  assert.equal(liveCountsBySocialApp.twitter, 6, "Twitter live volume must remain unchanged");
+  assert.equal(liveCountsBySocialApp.twitter, 8, "Twitter live volume must remain unchanged");
   assert.equal(liveCountsBySocialApp.facebook, 9, "Facebook includes the intentional T+135 standalone friend-of-friend gossip event and two late Sophie comments");
   assert.ok(Object.entries(liveCountsBySocialApp).every(([app, count]) => app === "twitter" || app === "facebook" || count < liveCountsBySocialApp.twitter), "Facebook has nine and Twitter six live events while every other social app remains sparser");
   const evaEvent = timelineDefinitions.find(event => event.id === "twitter-eva-school-tomorrow");
@@ -2061,7 +2065,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.ok(timelineDefinitions.filter(event => event.atElapsedSeconds <= 720).some(event => event.id === "twitter-slang-epic-fail"));
   assert.ok(timelineDefinitions.filter(event => event.atElapsedSeconds <= 720).some(event => event.id === "twitter-slang-fml"), "both slang events must be catch-up eligible by 12:14 AM");
   assert.ok(timelineDefinitions.filter(event => event.sourceApp === "twitter").every(event => event.deliveryPolicy === "internal"));
-  assert.equal([...twitterState.timeline, ...scheduledTwitterPosts].filter(tweet => /Apple/i.test(tweet.text)).length, 1, "Twitter seed plus live timeline may contain only one Apple-event reference");
+  assert.equal([...twitterState.timeline, ...scheduledTwitterPosts].filter(tweet => /Apple/i.test(tweet.text)).length, 2, "Twitter retains Sam and the approved Matt Apple-event references");
   assert.ok(scheduledTwitterPosts.every(post => !twitterState.timeline.some(tweet => tweet.id === post.id)), "no live Twitter post may exist in seed");
   assert.equal(twitterState.timeline.some(tweet => scheduledTwitterPosts.some(post => post.id === tweet.id)), false, "live Twitter content must not be seeded");
   let retweetOrderState = twitter.twitterStateTransition(twitter.createInitialTwitterState("Zoey"), {
@@ -2107,7 +2111,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   twitterState = twitter.twitterStateTransition(twitterState, { type: "BACK_TO_TIMELINE" });
   assert.equal(twitterState.replyDraft, "still here", "reply draft must survive navigation and suspension-equivalent retained state");
   twitterState = twitter.twitterStateTransition(twitterState, { type: "SUBMIT_REPLY", displayName: "Zoey" });
-  assert.deepEqual(twitterState.replies, [{ id: "twitter-reply-1", targetTweetId: "still-awake", displayName: "Zoey", text: "still here" }]);
+  assert.deepEqual(twitterState.replies, [...seed.twitterReplies, { id: "twitter-reply-2", targetTweetId: "still-awake", displayName: "Zoey", text: "still here" }]);
   twitterState = twitter.twitterStateTransition(twitterState, {
     type: "TOGGLE_RETWEET",
     tweetId: "still-awake",
@@ -2126,7 +2130,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(twitterState.timeline.find(tweet => tweet.id === "still-awake")?.displayName, "June");
   assert.equal(twitterState.timeline.find(tweet => tweet.id === "still-awake")?.timestamp, "11:58 PM");
   assert.deepEqual(twitterState.favoriteTweetIds, ["still-awake"]);
-  assert.equal(twitterState.replies.length, 1, "Reply, Retweet, and Favorite state must remain independent");
+  assert.equal(twitterState.replies.length, 2, "Reply, Retweet, and Favorite state must remain independent");
   twitterState = twitter.twitterStateTransition(twitterState, { type: "SET_SCROLL_POSITION", scrollPosition: 144 });
   scheduledTwitterPosts.forEach(post => {
     twitterState = twitter.twitterStateTransition(twitterState, { type: "DELIVER_TIMELINE_TWEET", tweet: post });
@@ -2136,8 +2140,8 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(twitterState.scrollPosition, 144, "live delivery must not force-reset the current Twitter scroll position");
   assert.equal(twitterState.timeline[0].id, "terminal-goodnight-world", "terminal live activity must sort above earlier live and seed items");
   assert.deepEqual(
-    twitterState.timeline.slice(0, 6).map(tweet => tweet.id),
-    ["terminal-goodnight-world", "nora-homework", "slang-fml", "late-night-line", "eva-school-tomorrow", "slang-epic-fail"],
+    twitterState.timeline.slice(0, 8).map(tweet => tweet.id),
+    ["terminal-goodnight-world", "jay-headphones-late", "nora-homework", "slang-fml", "late-night-line", "eva-school-tomorrow", "matt-mac-rumors", "slang-epic-fail"],
     "live Twitter activity must remain newest-first",
   );
   assert.ok(
@@ -2147,7 +2151,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.deepEqual(twitterState.retweetedTweetIds, ["still-awake"], "live delivery must preserve Retweet state");
   assert.equal(twitterState.retweetActivities.length, 1, "live delivery must preserve exactly one current-user Retweet activity");
   assert.deepEqual(twitterState.favoriteTweetIds, ["still-awake"], "live delivery must preserve Favorite state");
-  assert.equal(twitterState.replies.length, 1, "live delivery must preserve user replies");
+  assert.equal(twitterState.replies.length, 2, "live delivery must preserve user replies");
   twitterState = twitter.twitterStateTransition(twitterState, {
     type: "TOGGLE_RETWEET",
     tweetId: "still-awake",
@@ -2158,7 +2162,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.deepEqual(twitterState.retweetActivities, [], "unretweet must remove only the related session activity");
   assert.equal(twitterState.timeline.filter(tweet => tweet.id === "still-awake").length, 1, "unretweet must preserve the original tweet");
   assert.deepEqual(twitterState.favoriteTweetIds, ["still-awake"], "unretweet must preserve Favorite state");
-  assert.equal(twitterState.replies.length, 1, "unretweet must preserve replies");
+  assert.equal(twitterState.replies.length, 2, "unretweet must preserve replies");
   twitterState = twitter.twitterStateTransition(twitterState, {
     type: "TOGGLE_RETWEET",
     tweetId: "still-awake",
@@ -2171,7 +2175,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(twitterReset.favoriteTweetIds.length, 0);
   assert.equal(twitterReset.retweetedTweetIds.length, 0);
   assert.equal(twitterReset.retweetActivities.length, 0);
-  assert.equal(twitterReset.replies.length, 0);
+  assert.deepEqual(twitterReset.replies, seed.twitterReplies);
   assert.equal(twitterReset.replyComposerTweetId, null);
   assert.equal(twitterReset.replyDraft, "");
   assert.equal(twitterReset.newTweetDraft, "");
@@ -2180,7 +2184,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(twitterReset.currentView, "timeline");
   assert.equal(twitterReset.composerKind, null);
   assert.equal(twitterReset.revealedTweetId, null);
-  assert.equal(twitterReset.timeline.length, 14);
+  assert.equal(twitterReset.timeline.length, 19);
   assert.ok(scheduledTwitterPosts.every(post => !twitterReset.timeline.some(tweet => tweet.id === post.id)), "session reset must remove every live Twitter addition");
   assert.equal(twitterReset.timeline.find(tweet => tweet.id === "late-night-matt").displayName, "Matt Ricci");
 
@@ -2422,7 +2426,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
 
   let tumblrState = tumblr.createInitialTumblrState();
   assert.ok(tumblrState.posts.every(post => post.origin === "seed"));
-  assert.equal(tumblrState.notes.length, 2);
+  assert.equal(tumblrState.notes.length, 1);
   assert.ok(tumblrState.notes.every(note => note.origin === "seed" && tumblrState.posts.some(post => post.id === note.sourcePostId)), "Tumblr seed Notes must reference existing posts without mutating post objects");
   assert.equal(tumblrState.posts.some(post => post.id === "late-note"), false);
   const livePost = { id: "late-note", type: "text", blog: "latewatch", title: "After midnight", content: "Quiet.", timestamp: "2010-10-20 12:12 AM" };
@@ -2485,41 +2489,41 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   const flickrB = flickr.createInitialFlickrState();
   assert.notStrictEqual(flickrA.photos, flickrB.photos);
   assert.notStrictEqual(flickrA.photos[0], flickrB.photos[0]);
-  assert.ok(flickrA.photos.every(photo => photo.origin === "seed" && parseExplicitFlickrTimestamp(photo.timestamp) < facebookSessionStartMs));
-  assert.deepEqual(flickrA.commentsState.map(comment => [comment.text, comment.origin]), [["Nice shot", "seed"]], "existing Flickr comments must normalize into session-local seed records");
+  assert.ok(flickrA.photos.every(photo => photo.origin === "seed" && Date.parse(photo.uploadedAt) < facebookSessionStartMs));
+  assert.deepEqual(flickrA.commentsState.map(comment => [comment.text, comment.origin]), [], "canonical Flickr photos must not invent seeded comments");
   assert.ok(flickrA.sets.length <= 2 && flickrA.sets.every(set => set.photoIds.every(photoId => flickrA.photos.some(photo => photo.id === photoId))), "Flickr Sets must reference existing photo IDs without duplicate photo objects");
   flickrA = flickr.flickrStateTransition(flickrA, { type: "TOGGLE_FAVORITE", photoId: flickrA.photos[0].id });
   assert.equal(flickrA.favoritePhotoIds.length, 1);
   assert.equal(flickrB.favoritePhotoIds.length, 0, "Flickr Favorite state must remain session-local");
-  flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_PHOTO", photoId: "sunset-brooklyn", origin: { view: "photostream" }, photostreamScrollPosition: 91 });
+  flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_PHOTO", photoId: "flickr:jay-band-performance", origin: { view: "photostream" }, photostreamScrollPosition: 91 });
   flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_COMMENTS" });
   flickrA = flickr.flickrStateTransition(flickrA, { type: "EDIT_COMMENT", value: "Still beautiful." });
   flickrA = flickr.flickrStateTransition(flickrA, { type: "SUBMIT_COMMENT", author: "Zoey" });
   assert.deepEqual(flickrA.commentsState.at(-1), {
     id: "flickr-user-comment-1",
-    photoId: "sunset-brooklyn",
+    photoId: "flickr:jay-band-performance",
     author: "Zoey",
     text: "Still beautiful.",
     origin: "user",
   });
   assert.deepEqual(seed.flickr[0].comments, ["Nice shot"], "user comment must not mutate the Flickr seed definition");
-  assert.deepEqual(flickrA.favoritePhotoIds, ["sunset-brooklyn"], "commenting must not alter Favorite state");
+  assert.deepEqual(flickrA.favoritePhotoIds, ["flickr:jay-band-performance"], "commenting must not alter Favorite state");
   assert.equal(flickrA.photostreamScrollPosition, 91);
   flickrA = flickr.flickrStateTransition(flickrA, { type: "BACK_TO_PHOTO" });
   flickrA = flickr.flickrStateTransition(flickrA, { type: "BACK_FROM_PHOTO" });
   assert.equal(flickrA.currentView, "photostream");
   assert.equal(flickrA.photostreamScrollPosition, 91, "photo opened from Photostream must restore its scroll position");
   flickrA = flickr.flickrStateTransition(flickrA, { type: "SHOW_SETS" });
-  flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_SET", setId: "late-night" });
-  const setMembershipBeforePhoto = [...flickrA.sets.find(set => set.id === "late-night").photoIds];
-  flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_PHOTO", photoId: "platform", origin: { view: "set", setId: "late-night" } });
+  flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_SET", setId: "jay-music" });
+  const setMembershipBeforePhoto = [...flickrA.sets.find(set => set.id === "jay-music").photoIds];
+  flickrA = flickr.flickrStateTransition(flickrA, { type: "OPEN_PHOTO", photoId: "flickr:jay-guitar", origin: { view: "set", setId: "jay-music" } });
   assert.equal(flickrA.currentView, "photo");
-  assert.deepEqual(flickrA.photoNavigationOrigin, { view: "set", setId: "late-night" });
+  assert.deepEqual(flickrA.photoNavigationOrigin, { view: "set", setId: "jay-music" });
   flickrA = flickr.flickrStateTransition(flickrA, { type: "BACK_FROM_PHOTO" });
   assert.equal(flickrA.currentView, "set", "photo opened from a Set must return to that Set");
-  assert.equal(flickrA.currentSetId, "late-night");
-  assert.deepEqual(flickrA.sets.find(set => set.id === "late-night").photoIds, setMembershipBeforePhoto, "navigation and comments must not alter Set membership");
-  assert.deepEqual(flickrA.favoritePhotoIds, ["sunset-brooklyn"]);
+  assert.equal(flickrA.currentSetId, "jay-music");
+  assert.deepEqual(flickrA.sets.find(set => set.id === "jay-music").photoIds, setMembershipBeforePhoto, "navigation and comments must not alter Set membership");
+  assert.deepEqual(flickrA.favoritePhotoIds, ["flickr:jay-band-performance"]);
   assert.equal(flickrA.commentsState.filter(comment => comment.origin === "user").length, 1);
 
   let instagramState = instagram.createInitialInstagramState();
@@ -3030,12 +3034,15 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   );
   assert.equal(facebookAlex.feed.some(item => item.id === "owner-late" || item.author === "session-owner"), false, "Facebook seed must not contain pre-authored session-owner content");
   assert.deepEqual(flickrAlex.favoritePhotoIds, []);
-  assert.equal(flickrAlex.currentView, "photostream");
+  assert.equal(flickrAlex.currentView, "home");
   assert.equal(flickrAlex.selectedPhotoId, null);
   assert.equal(flickrAlex.currentSetId, null);
   assert.equal(flickrAlex.photostreamScrollPosition, 0);
   assert.equal(flickrAlex.commentsState.filter(comment => comment.origin === "user").length, 0);
-  assert.deepEqual(flickrAlex.commentsState.map(comment => [comment.text, comment.origin]), [["Nice shot", "seed"]]);
+  assert.deepEqual(flickrAlex.commentsState.map(comment => [comment.text, comment.origin]), []);
+  assert.equal(flickrAlex.pendingUpload, null);
+  assert.equal(flickrAlex.upload, null);
+  assert.deepEqual(flickrAlex.recentSearches, []);
   assert.deepEqual(tumblrAlex.likedPostIds, []);
   assert.deepEqual(tumblrAlex.rebloggedPostIds, []);
   assert.deepEqual(tumblrAlex.reblogs, []);
@@ -3044,7 +3051,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(tumblrAlex.selectedPostId, null);
   assert.equal(tumblrAlex.dashboardScrollPosition, 0);
   assert.equal(tumblrAlex.notes.filter(note => note.origin === "user").length, 0);
-  assert.equal(tumblrAlex.notes.filter(note => note.origin === "seed").length, 2);
+  assert.equal(tumblrAlex.notes.filter(note => note.origin === "seed").length, 1);
   assert.equal(tumblrAlex.posts.some(post => post.id === "late-note"), false, "new session must remove live Tumblr additions and restore seed Dashboard baseline");
   assert.deepEqual(foursquareAlex.checkIns, {});
   assert.deepEqual(foursquareAlex.shoutDrafts, {});
@@ -3242,7 +3249,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
     "LockScreenStatusPresentation", "StatusBar", "BootLogo", "LockScreen", "SpringBoard",
     "AppLaunchContainer", "IOS4KeyboardSystem", "CameraContainer", "PhotosContainer",
     "MobileSMSContainer", "TwitterContainer", "FacebookContainer",
-    "InstagramContainer", "FlickrContainer", "TumblrContainer", "FoursquareContainer",
+    "InstagramContainer", "FlickrContainer", "TumblrContainer", "SafariContainer", "YouTubeContainer", "ITunesContainer", "ClockContainer", "CompassContainer", "VoiceMemosContainer", "LegacyLoadingContainer", "CalculatorContainer", "CalendarContainer", "MapsContainer", "FoursquareContainer",
     "MediaSourceChooser", "PhotosContainer", "MultitaskingBar", "PowerOffConfirm", "LowBatteryAlert", "SMSAlertOverlay", "AppNotificationAlert",
   ], "screen-local components must preserve their original multiplicity and status/lock/app/overlay order");
   const keyboardSubtreeSource = screenPresentationSource.match(/<IOS4KeyboardSystem\s[\s\S]*?<\/IOS4KeyboardSystem>/)?.[0];
@@ -3250,7 +3257,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.deepEqual([...keyboardSubtreeSource.matchAll(/<([A-Z]\w*)\b/g)].map(match => match[1]), [
     "IOS4KeyboardSystem", "CameraContainer", "PhotosContainer", "MobileSMSContainer",
     "TwitterContainer", "FacebookContainer", "InstagramContainer",
-    "FlickrContainer", "TumblrContainer", "FoursquareContainer", "MediaSourceChooser", "PhotosContainer",
+    "FlickrContainer", "TumblrContainer", "SafariContainer", "YouTubeContainer", "ITunesContainer", "ClockContainer", "CompassContainer", "VoiceMemosContainer", "LegacyLoadingContainer", "CalculatorContainer", "CalendarContainer", "MapsContainer", "FoursquareContainer", "MediaSourceChooser", "PhotosContainer",
   ], "the keyboard must wrap exactly the same app and Camera picker presentation subtree");
   assert.match(screenPresentationSource, /<\/IOS4KeyboardSystem>\s+<\/AppLaunchContainer>\}\s+\{session\.phase === "app" && <MultitaskingBar/, "keyboard and app viewport must close before the screen-level multitasking overlay");
   assert.match(keyboardSubtreeSource, /\(appRuntime\.activeAppId === "camera" \|\| media\.cameraActive\) && cameraRuntime\.cameraApp\.phase !== "none" && <CameraContainer\s+owner="cameraApp"\s+mediaAttachment=\{media\.cameraActive\}\s+onCancel=\{media\.cameraActive \? cancelScreenCameraPicker : undefined\}\s+session=\{cameraRuntime\.cameraApp\}\s+previewCanvasRef=\{setCameraPreviewCanvas\}/, "standalone and attachment Camera must share exactly the same runtime and preview bridge");
@@ -3392,7 +3399,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(new Set(promotedSocialIds).size, promotedSocialIds.length, "promoted social app IDs must not be duplicated");
   const pageLaunchIds = [...`${pageOneSource}\n${pageTwoSource}`.matchAll(/launchId: "([^"]+)"/g)].map(match => match[1]);
   assert.equal(new Set(pageLaunchIds).size, pageLaunchIds.length, "SpringBoard page launch IDs must not be duplicated");
-  assert.deepEqual(pageLaunchIds, ["photos", "facebook", "twitter", "instagram", "foursquare", "flickr", "tumblr", "whatsapp", "skype"], "the approved Photos launcher, direct social launchers, and HOLD app shells must retain their stable IDs across both pages");
+  assert.deepEqual(pageLaunchIds, ["calendar", "photos", "maps", "itunes", "facebook", "twitter", "instagram", "foursquare", "flickr", "tumblr", "whatsapp", "skype"], "the approved Photos launcher, direct social launchers, and HOLD app shells must retain their stable IDs across both pages");
   assert.doesNotMatch(springBoardSource, /name: "Social"|folderId: "social"|const SOCIAL_APPS|activeFolderId/, "the retired Social folder instance and its SpringBoard-specific state must be absent");
   assert.doesNotMatch(springBoardSocialAppsSource, /SOCIAL_FOLDER_SLOTS/, "the retired Social folder's padded slot registry must remain removed");
   assert.match(deviceCssSource, /\.screen > \.springboard \{[^}]*DefaultWallpaper@2x~iphone\.png[^}]*320px 480px no-repeat;/, "the existing water-droplet wallpaper and crop must remain unchanged");
@@ -3533,6 +3540,16 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.match(deviceCssSource, /\.foursquare-venue-info > div \{[^}]*min-height: 48px;[^}]*grid-template-columns: 80px minmax\(0,1fr\);/, "F2b-2 Info must retain its reconstructed compact row geometry");
   assert.match(deviceCssSource, /\.foursquare-container \{[^}]*grid-template-rows: 44px minmax\(0,1fr\) 49px;/, "F1 must retain the reconstructed 44/content/49 shell geometry");
   assert.match(deviceCssSource, /\.foursquare-tab-bar \{[^}]*grid-template-columns: repeat\(5,64px\);/, "F1 tab bar must use five equal 64px cells");
+  const flickrContent = await vite.ssrLoadModule("/src/data/flickrContent.ts");
+  assert.equal(flickrContent.FLICKR_VERSION, "1.2");
+  assert.equal(flickrContent.FLICKR_VERSION_CONFIDENCE, "EVIDENCE-BACKED BEST FIT");
+  assert.equal((appSource.match(/useReducer\(flickrStateTransition,/g) ?? []).length, 1, "one App-owned Flickr reducer");
+  assert.match(appSource, /request.requester === "flickr"\) dispatchFlickr\(\{ type: "MEDIA_RETURN"/, "shared media returns explicitly to Flickr");
+  assert.match(appSource, /dispatchFlickr\(\{ type: "ADVANCE_UPLOAD", experienceSessionId: session.experienceSessionId, elapsedMs: elapsed/, "background upload uses shared clock/session");
+  assert.match(appSource, /dispatchFlickr\(\{ type: "RESET"/, "Flickr remains in reset inventory");
+  assert.match(deviceScreenSource, /flickrUploadCount=\{flickrState.upload \? 1 : 0\}/, "processing badge is independent of unread policy");
+  assert.doesNotMatch(flickrContainerSource, /<StatusBar|<IOS4KeyboardSystem|navigator.geolocation|Notification Center|Camera Filters|Auto Upload|Community|Albums|Explore/, "no duplicated device systems or later Flickr surfaces");
+  assert.doesNotMatch(flickrContainerSource, /fetch\(|XMLHttpRequest|localStorage|setInterval|setTimeout|Date.now/, "Flickr has no network, persistence or parallel clock");
   assert.match(flickrContainerSource, /<IOS4Textarea[\s\S]+keyboardInputId=\{`flickr-comment-[\s\S]+EDIT_COMMENT/, "Flickr comments must use the shared keyboard and existing event");
   assert.match(tumblrContainerSource, /<IOS4Textarea[\s\S]+keyboardInputId=\{`tumblr-reblog-[\s\S]+EDIT_REBLOG_TEXT/, "Tumblr optional reblog text must use the shared keyboard and existing event");
   const registeredEditableSources = `${facebookContainerSource}\n${mobileSmsContainerSource}\n${twitterContainerSource}\n${instagramContainerSource}\n${foursquareContainerSource}\n${flickrContainerSource}\n${tumblrContainerSource}`;
@@ -4254,7 +4271,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.match(foursquareMapOverlaySource, /<Shared2010Map[\s\S]*venueIds=\{\[\]\}/, "F7d-1 overlay must compose Shared2010Map without exposing neutral QA venue markers");
   assert.match(foursquareMapOverlaySource, /foursquare-venue-map-pin[\s\S]*<path[\s\S]*<circle/, "F7d-1 must provide one minimal Foursquare-specific reconstructed pin");
   assert.doesNotMatch(foursquareMapOverlaySource, /showPlayer|distance|address|label|callout|onClick|button|fetch\s*\(|navigator\.geolocation|Date\.now|Math\.random/i, "F7d-1 map must expose no player, distance, address, label, callout, interaction, network, location, host-time, or random behavior");
-  const f7dVenueInfoSource = foursquareContainerSourceForTodos.match(/\{state\.venueSubview === "info" && <section className="foursquare-venue-info"[\s\S]*?<FoursquareMapOverlay venueId=\{venue\.id\} \/><\/section>\}/)?.[0] ?? "";
+  const f7dVenueInfoSource = foursquareContainerSourceForTodos.match(/\{state\.venueSubview === "info" && <section className="foursquare-venue-info"[\s\S]*?<FoursquareMapOverlay venueId=\{venue\.id\} \/>[\s\S]*?<\/section>\}/)?.[0] ?? "";
   assert.match(f7dVenueInfoSource, /<FoursquareMapOverlay venueId=\{venue\.id\} \/>/, "F7d-1 map must exist only inside the current Venue Info branch");
   assert.equal((foursquareContainerSourceForTodos.match(/<FoursquareMapOverlay/g) ?? []).length, 1, "F7d-1 Foursquare UI must mount exactly one map integration point");
   const f7dNonInfoSource = foursquareContainerSourceForTodos.replace(f7dVenueInfoSource, "");
@@ -4328,7 +4345,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   const juneClockState = facebook.facebookStateTransition(facebook.createInitialFacebookState("Visitor"), { type: "DELIVER_JUNE_MESSAGE", timestamp: deviceMachine.simulatedClock(270000) });
   assert.equal(juneClockState.inboxThreads.find(item => item.id === "june-live-message").timestamp, "12:06 AM");
   assert.equal(juneClockState.threadMessages.find(item => item.id === "june-live-message-incoming").timestamp, "12:06 AM");
-  assert.deepEqual(sessionTimeline.SESSION_TIMELINE_EVENTS.map(event => [event.id, event.atElapsedSeconds]), [["initial-sms-mom-home-yet",60],["facebook-june-instagram-announcement",60],["twitter-slang-epic-fail",75],["facebook-june-jack-gossip-katie",120],["facebook-june-jack-gossip-ryan-standalone",135],["facebook-june-jack-gossip-chris",145],["facebook-jack-request",150],["facebook-katie-jack-gossip-message",155],["instagram-june-jack-accidental-delete",200],["instagram-june-replacement-photo",210],["facebook-june-message",270],["twitter-eva-school-tomorrow",300],["twitter-late-night-update",390],["foursquare-friend-checkin",510],["twitter-slang-fml",540],["tumblr-background-post",630],["twitter-nora-homework",690],["facebook-sophie-june-instagram-comment-1",780],["facebook-sophie-june-instagram-comment-2",795],["twitter-terminal-goodnight-world",890]], "v0.2 must preserve every scheduler id, offset, and order");
+  assert.deepEqual(sessionTimeline.SESSION_TIMELINE_EVENTS.map(event => [event.id, event.atElapsedSeconds]), [["initial-sms-mom-home-yet",60],["facebook-june-instagram-announcement",60],["twitter-slang-epic-fail",75],["facebook-june-jack-gossip-katie",120],["facebook-june-jack-gossip-ryan-standalone",135],["facebook-june-jack-gossip-chris",145],["facebook-jack-request",150],["facebook-katie-jack-gossip-message",155],["instagram-june-jack-accidental-delete",200],["instagram-june-replacement-photo",210],["twitter-matt-mac-rumors",220],["facebook-june-message",270],["twitter-eva-school-tomorrow",300],["twitter-late-night-update",390],["foursquare-friend-checkin",510],["twitter-slang-fml",540],["tumblr-background-post",630],["twitter-nora-homework",690],["twitter-jay-headphones",760],["facebook-sophie-june-instagram-comment-1",780],["facebook-sophie-june-instagram-comment-2",795],["twitter-terminal-goodnight-world",890]], "v0.2 must preserve every scheduler id, offset, and order");
   assert.deepEqual(sessionTimeline.buildSessionTimelineEvents().map(event => [event.id, event.dueElapsedMs]), sessionTimeline.SESSION_TIMELINE_EVENTS.map(event => [event.id, event.atElapsedSeconds * 1000]));
   const liveFoursquareUi = await vite.ssrLoadModule("/src/device/FoursquareContainer.tsx");
   assert.equal(liveFoursquareUi.formatRelativeActivityTime("2010-10-20T00:10:30-07:00", deviceMachine.simulatedDeviceDateTime(510000).getTime()), "0 min ago");

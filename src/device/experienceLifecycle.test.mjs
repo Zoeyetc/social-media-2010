@@ -51,6 +51,11 @@ globalThis.clearInterval = window.clearInterval;
 globalThis.cancelAnimationFrame = window.cancelAnimationFrame;
 globalThis.requestAnimationFrame = window.requestAnimationFrame.bind(window);
 globalThis.document = { hidden: false, body: { style: {} } };
+const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+let microphoneRequests = 0;
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: {
+  mediaDevices: { getUserMedia() { microphoneRequests++; throw Error("lifecycle harness must never request a microphone"); } },
+} });
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom", logLevel: "silent", plugins: [{
   name: "lifecycle-controller-host", enforce: "pre",
   resolveId(id) {
@@ -61,13 +66,16 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
     if (id === "\0lifecycle-persistence") return Object.keys(persistence).map(key => `export const ${key}=globalThis.__lifecyclePersistence.${key};`).join("\n");
   },
   transform(code, id) {
-    if (id.endsWith("/src/device/App.tsx")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
+    // Imported device hooks share App's deterministic hook slots and effects.
+    // Keep their real implementations; only substitute the React hook host.
+    if (/\/src\/device\/(?:App|use[A-Z]\w*)\.tsx?$/.test(id)) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
     if (id.endsWith("/src/world/cameraVideoScenes.ts")) return code.replace("  const random = options.random ?? Math.random;", "  globalThis.__sceneSelected();\n  const random = options.random ?? Math.random;");
   },
 }] });
 try {
   const { App } = await server.ssrLoadModule("/src/device/App.tsx");
   const device = await server.ssrLoadModule("/src/state/deviceMachine.ts");
+  const { initialVoiceMemoState } = await server.ssrLoadModule("/src/state/voiceMemoRecorder.ts");
   const { createMockPublicTwitterSubmissionRepository } = await server.ssrLoadModule("/src/data/mockPublicTwitterSubmissionRepository.ts");
   const world = createMockPublicTwitterSubmissionRepository();
   const draft = { publicHandle: "visitor", body: "hello", simulated2010CreatedAt: device.SESSION_START_ISO, simulatedElapsedMs: 0, idempotencyKey: "preserve" };
@@ -86,10 +94,12 @@ try {
     await flush();
   };
   await flush();
+  assert.equal(microphoneRequests, 0, "mounting the real hook must not request microphone permission");
   const baselineTimers = timers.size;
   const ids = [];
   for (let run = 0; run < 2; run++) {
     assert.equal(view.lifecycle.phase, "identity");
+    assert.deepEqual(view.screen.props.apps.voiceMemos.state, initialVoiceMemoState(), "each Hero run starts with clean Voice Memos state");
     view.startExperience({ name: `Visitor ${run}` });
     view.startExperience({ name: "duplicate" });
     await flush();
@@ -123,6 +133,13 @@ try {
     view.screen.props.navigation.dispatchAppRuntime({ type: "ANIMATION_COMPLETE" }); await flush();
     assert.equal(view.screen.props.camera.cameraRuntime.cameraApp.phase, "previewing");
     assert.equal(sceneSelections, run + 1, "Camera open does not reroll");
+    const memos = view.screen.props.apps.voiceMemos.controller;
+    await memos.record(true); await flush();
+    memos.stop(); await flush();
+    assert.equal(view.screen.props.apps.voiceMemos.state.recordings.length, 1);
+    await memos.record(true); await flush();
+    assert.equal(view.screen.props.apps.voiceMemos.state.phase, "recording", "leave transient recording active through lifecycle reset");
+    assert.equal(microphoneRequests, 0, "simulation must not request a real microphone");
     view.screen.props.apps.dispatchMessages({ type: "EDIT_DRAFT", value: "session-only" }); await flush();
     view.powerControl.begin(); view.powerControl.end(); await flush();
     assert.equal(view.powerControl.state, "asleep");
@@ -182,6 +199,8 @@ try {
     assert.equal(view.lifecycle.phase, "identity");
     assert.equal(view.lifecycle.resetGeneration, run + 1);
     assert.equal(view.lifecycleDiagnostics.experienceSessionId, null);
+    assert.deepEqual(view.screen.props.apps.voiceMemos.state, initialVoiceMemoState(), "canonical reset clears active recording and prior memos");
+    assert.deepEqual(memos.getState(), initialVoiceMemoState(), "controller resources reset with the hook state");
     assert.equal(view.screen.props.apps.messagesState.draft, "");
     assert.equal(view.screen.props.navigation.appRuntime.phase, "none");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);
@@ -196,5 +215,10 @@ try {
   assert.equal(eraseCount, 2); assert.equal(initializeCount, 2);
   slots.forEach(slot => slot?.cleanup?.());
   assert.equal(timers.size, 0); assert.equal(listeners.size, 0);
+  assert.equal(microphoneRequests, 0);
   console.log("PASS: actual App two-run lifecycle, unique IDs, T0 handoff, terminal once, sleep/wake continuity, per-session Camera Roll bootstrap, timer cleanup; resource/world persistence checks.");
-} finally { Date.now = realDateNow; performance.now = realPerformanceNow; await server.close(); }
+} finally {
+  if (originalNavigator) Object.defineProperty(globalThis, "navigator", originalNavigator);
+  else delete globalThis.navigator;
+  Date.now = realDateNow; performance.now = realPerformanceNow; await server.close();
+}

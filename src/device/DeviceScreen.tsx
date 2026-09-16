@@ -1,3 +1,4 @@
+import { SafariContainer, YouTubeContainer, ITunesContainer, type ITunesProps } from "./FinalDecorativeApps";
 import type { ComponentProps } from "react";
 import type { DevicePresenter } from "./DevicePresentation";
 import { useDeviceScreenDiagnostics } from "./useDeviceScreenDiagnostics";
@@ -8,6 +9,9 @@ import lowBatterySrc from "../assets/device/low-battery-iphone4.png";
 import { LockScreen } from "./LockScreen";
 import { CameraContainer } from "./CameraContainer";
 import { FacebookContainer } from "./FacebookContainer";
+import { ClockContainer, CompassContainer, VoiceMemosContainer, LegacyLoadingContainer, type RemainingAppsProps } from "./RemainingBasicApps";
+import type { useVoiceMemos } from "./useVoiceMemos";
+import { CalculatorContainer, CalendarContainer, MapsContainer, type BasicSystemAppsProps } from "./BasicSystemApps";
 import { FoursquareContainer } from "./FoursquareContainer";
 import { InstagramContainer } from "./InstagramContainer";
 import { FlickrContainer } from "./FlickrContainer";
@@ -40,7 +44,7 @@ export type DeviceScreenProps = {
   };
   presentation: { presenter: DevicePresenter; experienceSessionId: string | null };
   display: {
-    session: Pick<Session, "phase" | "returnToHeroPending" | "activeWarning">;
+    session: Pick<Session, "phase" | "returnToHeroPending" | "activeWarning" | "experienceSessionId">;
     powerProgress: number;
     lockScreenModel: ComponentProps<typeof LockScreen>["model"];
     statusBarState: ComponentProps<typeof StatusBar>["state"];
@@ -64,6 +68,16 @@ export type DeviceScreenProps = {
     dispatchMultitaskingBar: ComponentProps<typeof MultitaskingBar>["dispatch"];
   };
   apps: {
+    iTunesPreview: ITunesProps["preview"];
+    iTunesState: ITunesProps["state"];
+    dispatchITunes: ITunesProps["dispatch"];
+    remainingBasicApps: RemainingAppsProps["state"];
+    dispatchRemainingBasicApps: RemainingAppsProps["dispatch"];
+    monotonicNow: number;
+    voiceMemos: ReturnType<typeof useVoiceMemos>;
+    basicSystemApps: BasicSystemAppsProps["state"];
+    dispatchBasicSystemApps: BasicSystemAppsProps["dispatch"];
+    openSystemMap: (venueId: string) => void;
     photosState: PhotosBrowseProps["state"];
     dispatchPhotos: PhotosBrowseProps["dispatch"];
     messagesState: ComponentProps<typeof MobileSMSContainer>["state"];
@@ -78,6 +92,7 @@ export type DeviceScreenProps = {
     dispatchInstagram: ComponentProps<typeof InstagramContainer>["dispatch"];
     flickrState: ComponentProps<typeof FlickrContainer>["state"];
     dispatchFlickr: ComponentProps<typeof FlickrContainer>["dispatch"];
+    flickrMail: ComponentProps<typeof FlickrContainer>["mail"];
     tumblrState: ComponentProps<typeof TumblrContainer>["state"];
     dispatchTumblr: ComponentProps<typeof TumblrContainer>["dispatch"];
     foursquareState: ComponentProps<typeof FoursquareContainer>["state"];
@@ -158,6 +173,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
     dispatchInstagram,
     flickrState,
     dispatchFlickr,
+    flickrMail,
     tumblrState,
     dispatchTumblr,
     foursquareState,
@@ -224,6 +240,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       onActiveFolderSlotChange={setActiveFolderSlotIndex}
       messagesBadgeCount={messagesBadgeCount}
       notificationBadgeCounts={notificationBadgeCounts}
+      flickrUploadCount={flickrState.upload ? 1 : 0}
       onLaunchApp={launchSpringBoardApp}
     />}
     {session.phase === "app" && <AppLaunchContainer
@@ -293,17 +310,36 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       {appRuntime.activeAppId === "flickr" && <FlickrContainer
         state={flickrState}
         dispatch={dispatchFlickr}
+        mail={flickrMail}
+        elapsedMs={elapsed}
+        experienceSessionId={session.experienceSessionId}
+        mediaAttachmentActive={media.visible && media.request?.requester === "flickr"}
+        onRequestMedia={source => media.requestAttachment({ requester: "flickr", mode: "photo", source, contextId: "upload" })}
       />}
       {appRuntime.activeAppId === "tumblr" && <TumblrContainer
         state={tumblrState}
         dispatch={dispatchTumblr}
+        currentElapsedMs={elapsed}
+        mediaAttachmentActive={media.visible && media.request?.requester === "tumblr"}
+        onRequestMedia={contextId => media.requestAttachment({ requester: "tumblr", mode: "photo", source: "camera-or-library", contextId })}
       />}
+      {appRuntime.activeAppId === "safari" && <SafariContainer />}
+      {appRuntime.activeAppId === "youtube" && <YouTubeContainer />}
+      {appRuntime.activeAppId === "itunes" && <ITunesContainer state={apps.iTunesState} dispatch={apps.dispatchITunes} preview={apps.iTunesPreview} />}
+      {appRuntime.activeAppId === "clock" && <ClockContainer state={apps.remainingBasicApps} dispatch={apps.dispatchRemainingBasicApps} now={apps.monotonicNow} worldTime={deviceStatusTime} />}
+      {appRuntime.activeAppId === "compass" && <CompassContainer state={apps.remainingBasicApps} dispatch={apps.dispatchRemainingBasicApps} />}
+      {appRuntime.activeAppId === "voice-memos" && <VoiceMemosContainer memos={apps.voiceMemos} now={apps.monotonicNow} />}
+      {(appRuntime.activeAppId === "whatsapp" || appRuntime.activeAppId === "skype") && <LegacyLoadingContainer appId={appRuntime.activeAppId} />}
+      {appRuntime.activeAppId === "calculator" && <CalculatorContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
+      {appRuntime.activeAppId === "calendar" && <CalendarContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
+      {appRuntime.activeAppId === "maps" && <MapsContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
       {appRuntime.activeAppId === "foursquare" && <FoursquareContainer
+        onOpenMap={apps.openSystemMap}
         state={foursquareState}
         dispatch={dispatchFoursquare}
         currentDeviceDateTime={deviceDateTime}
       />}
-      {media.visible && media.request?.stage === "source" && <MediaSourceChooser onSource={media.chooseSource} onCancel={cancelScreenCameraPicker} />}
+      {media.visible && media.request?.stage === "source" && <MediaSourceChooser requester={media.request.requester} onSource={media.chooseSource} onCancel={cancelScreenCameraPicker} />}
       {media.visible && media.request?.stage === "library" && <div className="media-library-picker"><PhotosContainer mode="picker" cameraRoll={cameraRoll} onPickerCancel={cancelScreenCameraPicker} onPickerSelect={media.selectPhoto} /></div>}
       </IOS4KeyboardSystem>
     </AppLaunchContainer>}
@@ -349,5 +385,5 @@ function BootLogo() {
 }
 
 function PowerOffConfirm({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
-  return <div className="modal-shade"><div className="battery-alert"><strong>Power Off</strong><p>Power-off UI artwork: HOLD.</p><button onClick={onConfirm}>Confirm power off</button><button onClick={onCancel}>Cancel</button></div></div>;
+  return <div className="modal-shade"><div className="battery-alert"><strong>Power Off</strong><button onClick={onConfirm}>Confirm power off</button><button onClick={onCancel}>Cancel</button></div></div>;
 }

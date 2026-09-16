@@ -3,3 +3,8 @@ dist
 .DS_Store
 *.tsbuildinfo
 tmp/firmware/
+
+# Server-only mail credentials; never bundle with VITE_* variables.
+.env
+.env.*
+!.env.mail.example

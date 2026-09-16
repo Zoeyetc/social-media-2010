@@ -205,6 +205,7 @@ export function CameraContainer({
           }}
         />
         <img className="camera-runtime-shutter-icon" src={cameraIconSrc} alt="" />
+        {!onCancel && <>
         <img className="camera-runtime-mode-background" src={switchWellBackgroundSrc} alt="" />
         <img className="camera-runtime-mode-well" src={switchWellSrc} alt="" />
         <img
@@ -215,6 +216,7 @@ export function CameraContainer({
         />
         <img className="camera-runtime-mode-icon is-photo" src={cameraModeIconSrc} alt="" />
         <img className="camera-runtime-mode-icon is-video" src={videoModeIconSrc} alt="" />
+        </>}
       </div>
     </>}
     {onCancel && <button

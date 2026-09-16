@@ -1,6 +1,101 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createServer } from "vite";
+import { parseSync } from "rolldown/utils";
+
+function assertSchedulerDeliveryGuard(source) {
+  const parsed = parseSync("App.tsx", source);
+  assert.deepEqual(parsed.errors, [], "scheduler source must parse successfully");
+  const parents = new WeakMap(), calls = [];
+  function visit(node, parent) {
+    if (!node || typeof node !== "object" || typeof node.type !== "string") return;
+    if (parent) parents.set(node, parent);
+    if (node.type === "CallExpression" && node.callee.type === "Identifier"
+      && node.callee.name === "nextDueDeviceEvent") calls.push(node);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach(child => visit(child, node));
+      else visit(value, node);
+    }
+  }
+  visit(parsed.program);
+  assert.equal(calls.length, 1, "one scheduler delivery consumer must remain");
+  let statement = calls[0];
+  while (parents.has(statement) && parents.get(statement).type !== "BlockStatement") statement = parents.get(statement);
+  const block = parents.get(statement), effect = block && parents.get(block);
+  const owner = effect && parents.get(effect);
+  assert.ok(block?.type === "BlockStatement" && effect?.type === "ArrowFunctionExpression"
+    && owner?.type === "CallExpression" && owner.callee.type === "Identifier"
+    && owner.callee.name === "useEffect" && owner.arguments[0] === effect,
+  "scheduler consumer must belong directly to the delivery effect");
+  const guard = block.body[0];
+  assert.ok(guard?.type === "IfStatement" && !guard.alternate && block.body[1] === statement,
+    "blocking guard must dominate scheduler lookup, before any delivery-effect work");
+  assert.ok(statement.type === "VariableDeclaration" && statement.declarations.length === 1
+    && statement.declarations[0].init === calls[0], "lookup must be the guarded event declaration");
+  const exits = guard.consequent.type === "BlockStatement" ? guard.consequent.body : [guard.consequent];
+  assert.ok(exits.length === 1 && exits[0].type === "ReturnStatement" && !exits[0].argument,
+    "blocked delivery must unconditionally return from the effect");
+
+  // Interpret only this pure predicate, never execute application source. Checking
+  // its truth table permits regrouping/formatting without accepting dead checks,
+  // incorrect operators, or a guard that allows a blocked state to fall through.
+  function compile(node) {
+    if (node.type === "ParenthesizedExpression") return compile(node.expression);
+    if (node.type === "Literal") return () => node.value;
+    if (node.type === "Identifier" || node.type === "MemberExpression") {
+      function path(n) {
+        if (n.type === "Identifier") return n.name;
+        assert.ok(n.type === "MemberExpression" && !n.computed && !n.optional
+          && n.property.type === "Identifier", "guard must read direct runtime fields");
+        return path(n.object) + "." + n.property.name;
+      }
+      const key = path(node);
+      assert.ok(["session.phase", "elapsed", "SESSION_DURATION_MS", "presenter", "lifecycleRef.current.phase"].includes(key),
+        "unexpected scheduler predicate input: " + key);
+      return values => values[key];
+    }
+    if (node.type === "UnaryExpression" && node.operator === "!") {
+      const value = compile(node.argument); return values => !value(values);
+    }
+    const operations = {
+      "||": (a, b) => a || b, "&&": (a, b) => a && b,
+      "===": (a, b) => a === b, "!==": (a, b) => a !== b,
+      ">=": (a, b) => a >= b, ">": (a, b) => a > b,
+      "<": (a, b) => a < b, "<=": (a, b) => a <= b,
+    };
+    assert.ok(["LogicalExpression", "BinaryExpression"].includes(node.type)
+      && Object.hasOwn(operations, node.operator), "unsupported scheduler predicate operation");
+    const left = compile(node.left), right = compile(node.right);
+    return values => operations[node.operator](left(values), right(values));
+  }
+  const blocks = compile(guard.test);
+  for (const phase of ["shutdown", "app", "sleeping", "locked", "springboard"])
+    for (const elapsed of [0, 899999, 900000, 900001, 1200000])
+      for (const presenter of ["hero", "legacy"])
+        for (const lifecycle of ["experience", "identity", "resetting", "power-loss", "returning", "booting"])
+          assert.equal(Boolean(blocks({"session.phase":phase, elapsed, SESSION_DURATION_MS:900000,
+            presenter, "lifecycleRef.current.phase":lifecycle})),
+          phase === "shutdown" || elapsed >= 900000 || (presenter === "hero" && lifecycle !== "experience"),
+          `scheduler guard semantics: ${JSON.stringify({phase, elapsed, presenter, lifecycle})}`);
+}
+
+// Rejection checks keep dominance and predicate validation meaningful.
+const guardFixture = 'if (session.phase === "shutdown" || elapsed >= SESSION_DURATION_MS || (presenter === "hero" && lifecycleRef.current.phase !== "experience")) return;';
+const lookupFixture = 'const event = nextDueDeviceEvent(session.deviceEvents, elapsed);';
+const effectFixture = body => `useEffect(() => { ${body} });`;
+assertSchedulerDeliveryGuard(effectFixture(guardFixture + lookupFixture));
+assertSchedulerDeliveryGuard(effectFixture(guardFixture.replace('return;', '{ return; }') + lookupFixture));
+for (const body of [
+  lookupFixture + guardFixture,
+  'consumeEvent();' + guardFixture + lookupFixture,
+  guardFixture.replace('elapsed >= SESSION_DURATION_MS || ', '') + lookupFixture,
+  guardFixture.replace(' || (presenter === "hero" && lifecycleRef.current.phase !== "experience")', '') + lookupFixture,
+  guardFixture.replace('session.phase === "shutdown" || ', '') + lookupFixture,
+  guardFixture.replace('elapsed >=', 'elapsed >') + lookupFixture,
+  guardFixture.replace(' || ', ' && ') + lookupFixture,
+  guardFixture.replace('return;', 'if (other) return;') + lookupFixture,
+]) assert.throws(() => assertSchedulerDeliveryGuard(effectFixture(body)), /./,
+  "incorrect or non-dominating guard must fail validation");
 
 const vite = await createServer({ server: { middlewareMode: true }, appType: "custom", logLevel: "silent" });
 
@@ -199,7 +294,7 @@ try {
 
   const appSource = readFileSync(new URL("../src/device/App.tsx", import.meta.url), "utf8");
   assert.match(appSource, /session\.shutdownReason !== "battery"[\s\S]+performCanonicalShutdownReset/, "manual shutdown must use canonical reset without outro");
-  assert.match(appSource, /session\.phase === "shutdown"\) return;[\s\S]+nextDueDeviceEvent/, "scheduler delivery must freeze during shutdown/outro");
+  assertSchedulerDeliveryGuard(appSource);
   assert.match(appSource, /performCanonicalShutdownReset\(session\.shutdownReason\)/, "outro completion must converge on canonical reset");
   const twitterContainerSource = readFileSync(new URL("../src/device/TwitterContainer.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(twitterContainerSource, /PublicTwitterOutro|Leave a Tweet for other visitors/, "P1d must not modify or enter historical Twitter UI");

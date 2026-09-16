@@ -445,6 +445,11 @@ Object.freeze({ id: "jack-profile-picture-update", friendId: CORE_SOCIAL_CHARACT
     ]),
   }),
   twitter: Object.freeze([
+    Object.freeze({ id: "matt-back-to-the-mac", friendId: CORE_SOCIAL_CHARACTERS.matt.id, displayName: CORE_SOCIAL_CHARACTERS.matt.displayName, text: "really curious what apple means by “back to the mac”", timestamp: "10:47 PM", timestampProvenance: "CURATED" as const, contentType: "character-content" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
+    Object.freeze({ id: "matt-phone-battery", friendId: CORE_SOCIAL_CHARACTERS.matt.id, displayName: CORE_SOCIAL_CHARACTERS.matt.displayName, text: "my phone battery is somehow worse when i actually need it", timestamp: "11:16 PM", timestampProvenance: "CURATED" as const, contentType: "character-content" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
+    Object.freeze({ id: "jay-halcyon-digest", friendId: CORE_SOCIAL_CHARACTERS.jay.id, displayName: CORE_SOCIAL_CHARACTERS.jay.displayName, text: "halcyon digest sounds way better with headphones", timestamp: "9:38 PM", timestampProvenance: "CURATED" as const, contentType: "character-content" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
+    Object.freeze({ id: "jay-new-sufjan-record", friendId: CORE_SOCIAL_CHARACTERS.jay.id, displayName: CORE_SOCIAL_CHARACTERS.jay.displayName, text: "the new sufjan record is completely insane", timestamp: "10:21 PM", timestampProvenance: "CURATED" as const, contentType: "character-content" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
+    Object.freeze({ id: "jay-cmj-bands", friendId: CORE_SOCIAL_CHARACTERS.jay.id, displayName: CORE_SOCIAL_CHARACTERS.jay.displayName, text: "spent an hour looking up bands playing cmj and now i want to be in new york", timestamp: "11:23 PM", timestampProvenance: "CURATED" as const, contentType: "character-content" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({ id: "still-awake", displayName: "June", text: "anyone still awake?", timestamp: "11:58 PM", timestampProvenance: "CURATED" as const, contentType: "ordinary" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({
       id: "manual-rt-kanye-album-cover",
@@ -468,7 +473,7 @@ Object.freeze({ id: "jack-profile-picture-update", friendId: CORE_SOCIAL_CHARACT
       origin: "seed" as const,
     }),
     Object.freeze({ id: "dana-office-deck", displayName: "Dana", text: "still at the office. this deck is never going to end", timestamp: "11:49 PM", timestampProvenance: "CURATED" as const, contentType: "work-life" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
-    Object.freeze({ id: "late-night-matt", friendId: CORE_SOCIAL_CHARACTERS.matt.id, displayName: CORE_SOCIAL_CHARACTERS.matt.displayName, text: "can't sleep", timestamp: "11:41 PM", timestampProvenance: "CURATED" as const, contentType: "ordinary" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
+    Object.freeze({ id: "late-night-matt", friendId: CORE_SOCIAL_CHARACTERS.matt.id, displayName: CORE_SOCIAL_CHARACTERS.matt.displayName, text: "one missing semicolon and suddenly nothing works", timestamp: "11:41 PM", timestampProvenance: "CURATED" as const, contentType: "ordinary" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({ id: "kanye-discussion", displayName: "Mia", text: "why is everyone talking about Kanye tonight", timestamp: "11:26 PM", timestampProvenance: "CURATED" as const, contentType: "celebrity-discussion" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({ id: "marcus-client-approved", displayName: "Marcus", text: "client approved the first version. honestly kind of suspicious", timestamp: "11:09 PM", timestampProvenance: "CURATED" as const, contentType: "work-life" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({
@@ -499,6 +504,9 @@ Object.freeze({ id: "jack-profile-picture-update", friendId: CORE_SOCIAL_CHARACT
     Object.freeze({ id: "rain-stopped", displayName: "June", text: "The rain finally stopped.", timestamp: "9:12 PM", timestampProvenance: "CURATED" as const, contentType: "ordinary" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({ id: "ben-home-from-work", displayName: "Ben", text: "home from work. not opening my laptop again tonight", timestamp: "9:08 PM", timestampProvenance: "CURATED" as const, contentType: "work-life" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
     Object.freeze({ id: "matt-jacks-party", friendId: CORE_SOCIAL_CHARACTERS.matt.id, displayName: CORE_SOCIAL_CHARACTERS.matt.displayName, text: "jack's party sounds exhausting lol", timestamp: "8:30 PM", timestampProvenance: "CURATED" as const, contentType: "party-reaction" as const, contentProvenance: "CURATED" as const, origin: "seed" as const }),
+  ]),
+  twitterReplies: Object.freeze([
+    Object.freeze({ id: "jay-reply-matt-nerd", targetTweetId: "matt-back-to-the-mac", friendId: CORE_SOCIAL_CHARACTERS.jay.id, displayName: CORE_SOCIAL_CHARACTERS.jay.displayName, text: "nerd", timestamp: "2010-10-19T22:51:00-07:00", origin: "seed" as const }),
   ]),
   twitterMentions: Object.freeze([
     Object.freeze({ id: "mention-alex-conan", friendId: CORE_SOCIAL_FRIENDS.alex.id, sender: CORE_SOCIAL_FRIENDS.alex.displayName, textTemplate: "@{handle} look at this lol", timestamp: "11:54 PM", unread: true, linkedTweetId: "historical-conan-jackass-3d", origin: "seed" as const, provenance: "CURATED" as const }),
@@ -541,7 +549,6 @@ Object.freeze({ id: "jack-profile-picture-update", friendId: CORE_SOCIAL_CHARACT
   ]),
   tumblr: Object.freeze([
     Object.freeze({ id: "sunset-note", type: "text" as const, blog: "dayonejournal", title: "Evening walk", content: "The lights on the avenue feel older than we used to remember.", timestamp: "2010-10-19 11:51 PM", origin: "seed" as const }),
-    Object.freeze({ id: "corner-photo", type: "photo" as const, blog: "streetlog", title: "Corner shot", content: "Photo post (placeholder, no fixture image in v0.1).", timestamp: "2010-10-19 11:36 PM", origin: "seed" as const }),
     Object.freeze({ id: "quote-post", type: "quote" as const, blog: "tinyquotes", title: "Quote", content: "“The long night begins with one silent decision.”", timestamp: "2010-10-19 11:18 PM", origin: "seed" as const }),
   ]),
   instagram: Object.freeze({

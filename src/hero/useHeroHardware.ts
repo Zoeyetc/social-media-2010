@@ -32,7 +32,10 @@ function roundedSide(width: number, height: number, depth: number, radius: numbe
 export function useHeroHardware(root: Object3D | null, enabled: boolean, onPowerPress: () => void, onHomePress?: () => void, runtimePower?: RuntimePowerControl, resetGeneration = 0) {
   const { invalidate } = useThree();
   const state = useRef<HardwareState>({ pressed: null, volume: 8, muteMode: "ringer" });
-  useEffect(() => DeviceAudio.bindHardwareMuteMode(() => state.current.muteMode), []);
+  useEffect(() => {
+    DeviceAudio.setVolume(state.current.volume / 16);
+    return DeviceAudio.bindHardwareMuteMode(() => state.current.muteMode);
+  }, []);
   const assemblies = useRef(new Map<Control, Assembly>());
   const powerHitHelper = useRef<Mesh | null>(null);
   const mute = useRef<{ slider: Mesh; indicator: Mesh } | null>(null);
@@ -48,6 +51,7 @@ export function useHeroHardware(root: Object3D | null, enabled: boolean, onPower
       mute.current.indicator.visible = false;
     }
     DeviceAudio.hardwareMuteChanged();
+    DeviceAudio.setVolume(state.current.volume / 16);
     invalidate();
   }, [resetGeneration, invalidate]);
   const activePointer = useRef<number | null>(null);
@@ -284,20 +288,22 @@ export function useHeroHardware(root: Object3D | null, enabled: boolean, onPower
       DeviceAudio.hardwareMuteChanged();
       return;
     }
-    if (!enabled) return;
-    if (control === "VolumeUp") state.current.volume = Math.min(16, state.current.volume + 1);
-    if (control === "VolumeDown") state.current.volume = Math.max(0, state.current.volume - 1);
+    if ((control === "VolumeUp" || control === "VolumeDown")
+      && (enabled || (onHomePress && runtimePower?.state === "awake"))) {
+      state.current.volume = Math.max(0, Math.min(16, state.current.volume + (control === "VolumeUp" ? 1 : -1)));
+      DeviceAudio.setVolume(state.current.volume / 16);
+    }
   };
   return {
     onPointerOver(event: ThreeEvent<PointerEvent>) {
       const control = identify(event.object);
-      if (!control || (!enabled && !(control === "PowerButton" && runtimePower) && !((control === "HomeButton" || control === "MuteSwitch") && onHomePress))) return;
+      if (!control || (!enabled && !(control === "PowerButton" && runtimePower) && !((control === "HomeButton" || control === "MuteSwitch") && onHomePress) && !((control === "VolumeUp" || control === "VolumeDown") && onHomePress && runtimePower?.state === "awake"))) return;
       event.stopPropagation(); document.body.style.cursor = "pointer";
     },
     onPointerOut() { document.body.style.cursor = ""; },
     onPointerDown(event: ThreeEvent<PointerEvent>) {
       const control = identify(event.object);
-      if (!control || (!enabled && !(control === "PowerButton" && runtimePower) && !((control === "HomeButton" || control === "MuteSwitch") && onHomePress))) return;
+      if (!control || (!enabled && !(control === "PowerButton" && runtimePower) && !((control === "HomeButton" || control === "MuteSwitch") && onHomePress) && !((control === "VolumeUp" || control === "VolumeDown") && onHomePress && runtimePower?.state === "awake"))) return;
       event.stopPropagation();
       if ((powerFired.current && !runtimePower) || activePointer.current !== null || event.button !== 0) return;
       activePointer.current = event.pointerId;

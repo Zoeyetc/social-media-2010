@@ -1,3 +1,4 @@
+import { ITUNES_TRACKS, initialITunesState, iTunesTransition } from "../state/finalDecorativeApps";
 import { FormEvent, PointerEvent, useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { DevicePresenter, HeroDevicePresentation } from "./DevicePresentation";
 import { HERO_BOOT_DURATION_MS, heroTransition, initialHeroState, type HeroAction } from "../hero/HeroController";
@@ -23,6 +24,9 @@ import { batteryPercent, BOOT_DURATION_MS, createExperienceSessionId, currentWar
 import { folderStateTransition } from "../state/folderState";
 import { createInitialFacebookState, deterministicFacebookPartyInviteDelayMs, FACEBOOK_PARTY_INVITE_EVENT_ID, facebookStateTransition } from "../state/facebookState";
 import type { FacebookEvent } from "../state/facebookState";
+import { createInitialRemainingBasicApps, remainingBasicAppsTransition } from "../state/remainingBasicApps";
+import { useVoiceMemos } from "./useVoiceMemos";
+import { createInitialBasicSystemApps, basicSystemAppsTransition, resolveSystemMapVenue } from "../state/basicSystemApps";
 import { createInitialFoursquareState, foursquareStateTransition } from "../state/foursquareState";
 import { createInitialInstagramState, instagramStateTransition } from "../state/instagramState";
 import { multitaskingBarStateTransition } from "../state/multitaskingBarState";
@@ -44,6 +48,7 @@ import { createMockPublicTwitterRepository } from "../data/mockPublicTwitterRepo
 import { createMockPublicTwitterSubmissionRepository } from "../data/mockPublicTwitterSubmissionRepository";
 import { initialPublicTwitterOutroState, publicTwitterOutroTransition, selectEligibleLocalTweetIds } from "../state/publicTwitterOutroState";
 import { smsMessageReceived } from "../system/smsNotification";
+import { FlickrMailController } from "../mail/flickrMailController";
 import { createInitialFlickrState, flickrStateTransition } from "../state/flickrState";
 import { createInitialTumblrState, tumblrStateTransition } from "../state/tumblrState";
 import { DeviceScreen, type DeviceScreenProps } from "./DeviceScreen";
@@ -62,8 +67,9 @@ const TERMINAL_POWERED_OFF_MS = 500;
 const MOM_REPLY_SMS = { id: "mom-sleep-early", sender: "Mom", message: "Good. Sleep early." } as const;
 const MOM_LOVE_REPLY_SMS = { id: "mom-love-you-too", sender: "Mom", message: "I love you too." } as const;
 const DAD_LOVE_REPLY_SMS = { id: "dad-sleep-early", sender: "Dad", message: "Sleep early." } as const;
-const publicTwitterRepository = createMockPublicTwitterRepository();
-const publicTwitterSubmissionRepository = createMockPublicTwitterSubmissionRepository();
+const publicTwitterPreviewEnabled = import.meta.env.DEV;
+const publicTwitterRepository = publicTwitterPreviewEnabled ? createMockPublicTwitterRepository() : null;
+const publicTwitterSubmissionRepository = publicTwitterPreviewEnabled ? createMockPublicTwitterSubmissionRepository() : null;
 const cameraVideoQuery = import.meta.env.DEV
   ? new URLSearchParams(window.location.search)
   : new URLSearchParams();
@@ -196,8 +202,27 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     createInitialFacebookState,
   );
   const [instagramState, dispatchInstagram] = useReducer(instagramStateTransition, undefined, createInitialInstagramState);
+  const [iTunesState, dispatchITunesState] = useReducer(iTunesTransition, undefined, initialITunesState);
+  const [iTunesPreview, setITunesPreview] = useState(DeviceAudio.getPreviewState);
+  useEffect(() => DeviceAudio.subscribePreview(setITunesPreview), []);
+  useEffect(() => { if (["sleeping", "poweredOff", "shutdown", "hero"].includes(session.phase)) DeviceAudio.pausePreview(); }, [session.phase]);
+  useEffect(() => () => DeviceAudio.resetPreview(), []);
+  const dispatchITunes = (event: Parameters<typeof iTunesTransition>[1]) => {
+    if (event.type === "RESET") DeviceAudio.resetPreview();
+    else if (event.type === "PAUSE") DeviceAudio.pausePreview();
+    else if (event.type === "PLAY" && iTunesState.selectedIndex !== null) void DeviceAudio.playPreview(ITUNES_TRACKS[iTunesState.selectedIndex]);
+    else if (iTunesTransition(iTunesState, event).selectedIndex !== iTunesState.selectedIndex) DeviceAudio.stopPreview();
+    dispatchITunesState(event);
+  };
+  const voiceMemos = useVoiceMemos();
+  const [remainingBasicApps, dispatchRemainingBasicApps] = useReducer(remainingBasicAppsTransition, undefined, createInitialRemainingBasicApps);
+  const [basicSystemApps, dispatchBasicSystemApps] = useReducer(basicSystemAppsTransition, undefined, createInitialBasicSystemApps);
   const [foursquareState, dispatchFoursquare] = useReducer(foursquareStateTransition, undefined, createInitialFoursquareState);
   const [flickrState, dispatchFlickr] = useReducer(flickrStateTransition, undefined, createInitialFlickrState);
+  const [flickrMail] = useState(() => new FlickrMailController());
+  const [, refreshFlickrMail] = useReducer((revision: number) => revision + 1, 0);
+  useEffect(() => flickrMail.subscribe(refreshFlickrMail), [flickrMail]);
+  useEffect(() => () => flickrMail.reset(), [flickrMail]);
   const [tumblrState, dispatchTumblr] = useReducer(tumblrStateTransition, undefined, createInitialTumblrState);
   const [twitterState, dispatchTwitter] = useReducer(
     twitterStateTransition,
@@ -227,6 +252,9 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const shutdownResetStarted = useRef(false);
   const elapsed = Math.min(SESSION_DURATION_MS, elapsedMs(session, now));
   const deviceDateTime = simulatedDeviceDateTime(elapsed);
+  useEffect(() => {
+    dispatchFlickr({ type: "ADVANCE_UPLOAD", experienceSessionId: session.experienceSessionId, elapsedMs: elapsed });
+  }, [elapsed, session.experienceSessionId]);
   const deviceStatusTime = formatDeviceTime(deviceDateTime);
   const lockScreenTime = formatLockScreenTime(deviceDateTime);
   const deviceDate = formatDeviceDate(deviceDateTime);
@@ -251,7 +279,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     let cancelled = false;
     localTweetSnapshotsRef.current.clear();
     dispatchPublicTwitterEvent({ type: "RESET_PUBLIC_SESSION" });
-    if (!experienceSessionId) return () => { cancelled = true; };
+    if (!experienceSessionId || !publicTwitterRepository) return () => { cancelled = true; };
     dispatchPublicTwitterEvent({ type: "LOAD_STARTED" });
     void publicTwitterRepository.listApprovedPosts().then(posts => {
       if (cancelled || experienceSessionId !== activeExperienceSessionIdRef.current) return;
@@ -264,7 +292,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   }, [dispatchPublicTwitterEvent, session.experienceSessionId]);
 
   useEffect(() => {
-    if (!import.meta.env.DEV) return;
+    if (!import.meta.env.DEV || !publicTwitterSubmissionRepository) return;
     const qaWindow = window as PublicTwitterQaWindow;
     const submitPending = async () => {
       const current = publicTwitterStateRef.current;
@@ -331,6 +359,11 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     dispatchFacebook({ type: "RESET" });
     dispatchInstagram({ type: "RESET" });
     dispatchFoursquare({ type: "RESET" });
+    dispatchBasicSystemApps({ type: "RESET" });
+    dispatchRemainingBasicApps({ type: "RESET" });
+    dispatchITunes({ type: "RESET" });
+    voiceMemos.controller.reset();
+    flickrMail.reset();
     dispatchFlickr({ type: "RESET" });
     dispatchTumblr({ type: "RESET" });
     dispatchTwitter({ type: "RESET" });
@@ -353,6 +386,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     setHomePressed(false);
     setPowerProgress(0);
     cameraCaptureNamespace.current += 1;
+    cameraCaptureInFlight.current = false;
     failNextCameraCapture.current = false;
     devAutoOpenConsumed.current = false;
   }, []);
@@ -439,7 +473,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         dispatchCameraRuntime({ type: "CAPTURE_FAILED", owner: "cameraApp" });
       }
     } finally {
-      cameraCaptureInFlight.current = false;
+      if (namespace === cameraCaptureNamespace.current) cameraCaptureInFlight.current = false;
     }
   };
 
@@ -504,7 +538,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (lifecycle.phase !== "resetting") return;
     // Preserve the existing optional public-submission outro, including retries.
     // It may hold the connected reset boundary, never the active narrative clock.
-    if (session.shutdownReason === "battery" && publicTwitterOutro.phase !== "complete"
+    if (publicTwitterPreviewEnabled && session.shutdownReason === "battery" && publicTwitterOutro.phase !== "complete"
       && (publicTwitterOutro.phase !== "idle" || selectEligibleLocalTweetIds(twitterState.timeline).length > 0)) return;
     resetExperienceSession();
   }, [lifecycle.phase, session.shutdownReason, publicTwitterOutro.phase, twitterState.timeline, resetExperienceSession]);
@@ -847,7 +881,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     }
     if (publicTwitterOutro.phase !== "idle") return;
     const eligibleTweetIds = selectEligibleLocalTweetIds(twitterState.timeline);
-    if (eligibleTweetIds.length === 0) {
+    if (!publicTwitterPreviewEnabled || eligibleTweetIds.length === 0) {
       performCanonicalShutdownReset(session.shutdownReason);
       return;
     }
@@ -1035,7 +1069,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   };
   const submitPublicTwitterOutro = async (retry = false) => {
     const current = publicTwitterStateRef.current;
-    if (!current.pendingSubmission || !current.publicHandle) return;
+    if (!publicTwitterSubmissionRepository || !current.pendingSubmission || !current.publicHandle) return;
     dispatchPublicTwitterOutro({ type: retry ? "RETRY" : "SUBMIT" });
     dispatchPublicTwitterEvent({ type: "SUBMISSION_STARTED" });
     try {
@@ -1056,7 +1090,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     }
   };
   const withdrawPublicTwitterOutro = async () => {
-    if (!publicTwitterOutro.submissionId) return;
+    if (!publicTwitterSubmissionRepository || !publicTwitterOutro.submissionId) return;
     await publicTwitterSubmissionRepository.withdraw(publicTwitterOutro.submissionId);
     dispatchPublicTwitterOutro({ type: "WITHDRAW" });
   };
@@ -1209,10 +1243,9 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (session.phase !== "app" || appRuntime.activeAppId !== request.requester || !session.experienceSessionId) return;
     const previousRequest = mediaRequestRef.current;
     if (previousRequest?.requester === request.requester) return;
-    // Flickr/Tumblr are reserved contract values, not invented upload surfaces.
-    if (request.requester === "flickr" || request.requester === "tumblr") return;
+    // All supported requesters share this same Camera / Camera Roll transaction.
     const contextId = request.contextId ?? (request.requester === "messages" ? messagesState.activeConversationId
-      : request.requester === "twitter" ? twitterState.composerKind === "reply" ? twitterState.replyComposerTweetId : "new" : "status");
+      : request.requester === "twitter" ? twitterState.composerKind === "reply" ? twitterState.replyComposerTweetId : "new" : request.requester === "flickr" ? "upload" : "status");
     if (!contextId) return;
     // Only an explicit new foreground media action supersedes a background flow.
     // Home/sleep alone still retain it; drafts and pending images are untouched.
@@ -1228,6 +1261,9 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   };
   const returnMediaToRequester = useCallback((request: ActiveMediaRequest, attachment?: MediaAttachment) => {
     if (request.requester === "messages" && request.contextId) dispatchMessages({ type: "MEDIA_RETURN", contextId: request.contextId, attachment });
+    if (request.requester === "flickr") dispatchFlickr({ type: "MEDIA_RETURN", attachment,
+      takenAt: cameraRollRef.current.records.find(photo => photo.id === attachment?.id)?.createdAt });
+    if (request.requester === "tumblr" && request.contextId) dispatchTumblr({ type: "MEDIA_RETURN", contextId: request.contextId, attachment });
     if (request.requester === "facebook") dispatchFacebook({ type: "MEDIA_RETURN", attachment });
     if (request.requester === "twitter" && request.contextId) dispatchTwitter({ type: "MEDIA_RETURN", contextId: request.contextId, attachment });
     dispatchMediaRequest({ type: "CANCEL", id: request.id });
@@ -1383,8 +1419,24 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           dispatchInstagram,
           flickrState,
           dispatchFlickr,
+          flickrMail,
           tumblrState,
           dispatchTumblr,
+          iTunesPreview,
+          iTunesState,
+          dispatchITunes,
+          remainingBasicApps,
+          dispatchRemainingBasicApps,
+          voiceMemos,
+          monotonicNow: performance.now(),
+          basicSystemApps,
+          dispatchBasicSystemApps,
+          openSystemMap: (venueId: string) => {
+            if (!resolveSystemMapVenue(venueId) || appRuntime.activeAppId !== "foursquare" || appRuntime.phase !== "running") return;
+            dispatchBasicSystemApps({ type: "MAP_VENUE", venueId });
+            dispatchAppRuntime({ type: "SUSPEND" });
+            dispatchAppRuntime({ type: "LAUNCH", appId: "maps" });
+          },
           foursquareState,
           dispatchFoursquare,
         }}

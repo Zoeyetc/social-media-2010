@@ -75,7 +75,7 @@ button, input { font: inherit; }
 .battery-fill-well { position: absolute; z-index: 0; left: 1.5px; top: 0; width: 17px; height: 20px; overflow: hidden; }
 .battery-fill { height: 20px; display: block; background-position: left top; background-repeat: repeat-x; background-size: 3px 20px; }
 .battery-frame { position: absolute; z-index: 1; inset: 0; width: 21px; height: 20px; display: block; }
-.lockscreen { position: relative; height: 100%; padding-top: 20px; background: #000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.png") center / 320px 480px no-repeat; }
+.lockscreen { position: relative; height: 100%; padding-top: 20px; background: #000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.browser.png") center / 320px 480px no-repeat; }
 .lockscreen::before { content: ""; position: absolute; z-index: 0; inset: 0; background: rgba(0,0,0,.08); pointer-events: none; }
 .locktime { position: relative; z-index: 1; height: 96px; padding: 1px 0 0; text-align: center; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; color: #fff; border-bottom: 1px solid rgba(255,255,255,.22); background: rgba(0,0,0,.22); }
 .lock-clock-slot, .lock-date-slot { display: block; }
@@ -301,7 +301,7 @@ button, input { font: inherit; }
 .mobilesms-container { width: 320px; height: 460px; display: flex; flex-direction: column; overflow: hidden; color: #111; background: #e9e9e9; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
 .mobilesms-navigation-bar { position: relative; flex: 0 0 44px; height: 44px; display: grid; place-items: center; padding: 0 8px; color: #fff; border-top: 1px solid #b7c3d1; border-bottom: 1px solid #263a54; background: linear-gradient(#9aadc1 0%,#7188a2 48%,#526d8c 51%,#587492 100%); box-shadow: inset 0 1px rgba(255,255,255,.38), inset 0 -1px rgba(0,0,0,.18); text-shadow: 0 -1px 1px rgba(0,0,0,.72); }
 .mobilesms-navigation-bar > strong { color: #fff; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 20px; font-weight: bold; line-height: 44px; }
-.mobilesms-list-edit-control { position: absolute; left: 10px; top: 0; height: 44px; color: #fff; font-size: 13px; font-weight: bold; line-height: 44px; text-shadow: 0 -1px 1px #26384e; }
+.mobilesms-list-edit-control { cursor: pointer; padding: 0; border: 0; background: transparent; position: absolute; left: 10px; top: 0; height: 44px; color: #fff; font-size: 13px; font-weight: bold; line-height: 44px; text-shadow: 0 -1px 1px #26384e; }
 .mobilesms-compose-control-hold { position: absolute; right: 8px; top: 7px; width: 30px; height: 30px; }
 .mobilesms-back-button { position: absolute; z-index: 1; left: 14px; top: 7px; height: 30px; padding: 0 10px 0 8px; color: #fff; border: 1px solid #29425f; border-left: 0; border-radius: 0 5px 5px 0; background: linear-gradient(#849bb4 0%,#617c9b 49%,#3f6083 52%,#4e6d8e 100%); box-shadow: inset 0 1px rgba(255,255,255,.4), inset 0 -1px rgba(0,0,0,.16); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 28px; text-shadow: 0 -1px 1px #26384e; }
 .mobilesms-back-button::before { content: ""; position: absolute; z-index: -1; left: -8px; top: 4px; width: 20px; height: 20px; transform: rotate(45deg); border: 1px solid #29425f; border-right: 0; border-top: 0; border-radius: 3px 0 3px 0; background: linear-gradient(135deg,#8299b2 0%,#597694 52%,#426486 100%); box-shadow: inset 1px 1px rgba(255,255,255,.24); }
@@ -858,36 +858,6 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .foursquare-result-rank { color: #53646b; font-size: 13px; line-height: 16px; text-align: center; }
 .foursquare-result-player-name { overflow: hidden; color: #286b87; font-size: 15px; line-height: 18px; text-overflow: ellipsis; white-space: nowrap; }
 .foursquare-result-score { min-width: 20px; color: #343a3d; font-size: 15px; line-height: 18px; text-align: right; }
-.flickr-container { width: 320px; height: 460px; display: flex; flex-direction: column; overflow: hidden; color: #1a1a1a; background: #dfded8; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; }
-.flickr-navigation-bar { flex: 0 0 44px; height: 44px; position: relative; display: grid; align-items: center; justify-items: center; color: #fff; border-bottom: 1px solid #3f3f3f; background: #676767; text-shadow: 0 -1px rgba(0,0,0,.6); }
-.flickr-navigation-bar > strong { font-size: 18px; line-height: 44px; }
-.flickr-navigation-bar > span { position: absolute; right: 10px; top: 0; color: #fff; font-size: 11px; line-height: 44px; opacity: .95; }
-.flickr-navigation-bar > button { position: absolute; left: 7px; top: 7px; height: 30px; padding: 0 8px; color: #fff; border: 1px solid #454545; border-radius: 4px; background: #737373; font-size: 12px; font-weight: bold; }
-.flickr-section-strip { flex: 0 0 36px; height: 36px; display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #aaa; background: #ddd; }
-.flickr-section-strip button { padding: 0; color: #444; border: 0; border-right: 1px solid #aaa; background: #eee; font-size: 12px; font-weight: bold; }
-.flickr-section-strip button:last-child { border-right: 0; }
-.flickr-section-strip button[aria-current="page"] { color: #fff; background: #777; }
-.flickr-photo-stream { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
-.flickr-photo-row { width: 100%; min-height: 82px; padding: 9px 12px; display: grid; grid-template-columns: 80px 1fr auto; align-items: center; gap: 10px; color: #1f1f1f; border: 0; border-bottom: 1px solid #c8c8c8; background: #fff; text-align: left; }
-.flickr-photo-row strong { font-size: 15px; }
-.flickr-photo-row small { color: #666; font-size: 11px; }
-.flickr-photo-placeholder { width: 80px; height: 60px; border: 1px solid #c5c5c5; background: repeating-linear-gradient(45deg, #ddd, #ddd 2px, #efefef 2px, #efefef 4px); }
-.flickr-empty-state { margin: 0; display: grid; place-items: center; min-height: 280px; color: #8a8a8a; }
-.flickr-photo-detail { flex: 1 1 auto; min-height: 0; padding: 12px; display: grid; gap: 10px; overflow-y: auto; background: #fff; }
-.flickr-photo-frame { width: 100%; height: 220px; border: 1px solid #bcbcbc; background: repeating-linear-gradient(30deg, #e2e2e2, #e2e2e2 3px, #f5f5f5 3px, #f5f5f5 6px); }
-.flickr-photo-detail > header > strong { display: block; font-size: 18px; color: #222; }
-.flickr-photo-detail > header > p { margin: 4px 0 0; color: #666; font-size: 12px; }
-.flickr-photo-detail dl { margin: 0; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #bcbcbc; border-bottom: 1px solid #bcbcbc; }
-.flickr-photo-detail dl div { padding: 8px 0; }
-.flickr-photo-detail dt { color: #767676; font-size: 10px; text-transform: uppercase; }
-.flickr-photo-detail dd { margin: 2px 0 0; color: #262626; font-size: 14px; }
-.flickr-favorite,.flickr-comments-button { height: 36px; border: 1px solid #5a5a5a; border-radius: 5px; background: #6d6d6d; color: #fff; font-weight: bold; }
-.flickr-back { height: 34px; border: 1px solid #5b5b5b; border-radius: 5px; background: #f2f2f2; font-weight: bold; }
-.flickr-set-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
-.flickr-set-list > button { width: 100%; min-height: 58px; padding: 9px 13px; display: grid; gap: 4px; color: #222; border: 0; border-bottom: 1px solid #bbb; background: #fff; text-align: left; }
-.flickr-set-list strong { font-size: 15px; }
-.flickr-set-list span { color: #777; font-size: 11px; }
-.flickr-comments { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; background: #fff; }
 
 /* Facebook 2009–2010 shared micro-chrome. Reconstructed from period captures; no screenshot pixels are shipped. */
 .facebook-avatar-image,.facebook-avatar-hold,.facebook-comment-avatar,.facebook-friend-avatar,.facebook-comments-story-avatar,.facebook-comments-story-avatar img { border-radius: var(--facebook-avatar-radius); }
@@ -949,35 +919,103 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .facebook-friends-segments button[aria-current="page"] { color: #fff; background: linear-gradient(#435f8f,#294978 52%,#203b66); box-shadow: inset 0 2px 3px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.12); text-shadow: 0 -1px rgba(0,0,0,.7); }
 
 
-.flickr-comment-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.flickr-comment-list > p { margin: 0; padding: 24px 12px; color: #777; text-align: center; }
-.flickr-comment-list article { padding: 9px 12px; border-bottom: 1px solid #bbb; }
-.flickr-comment-list strong { color: #555; font-size: 13px; }
-.flickr-comment-list article p { margin: 4px 0 0; font-size: 13px; line-height: 17px; }
-.flickr-comment-composer { flex: 0 0 auto; padding: 7px; display: grid; grid-template-columns: 1fr auto; gap: 6px; border-top: 1px solid #aaa; background: #ddd; }
-.flickr-comment-composer textarea { box-sizing: border-box; min-height: 42px; padding: 5px; resize: none; border: 1px solid #999; border-radius: 3px; background: #fff; font: 13px/16px "Helvetica Neue",Helvetica,Arial,sans-serif; }
-.flickr-comment-composer button { min-width: 54px; color: #fff; border: 1px solid #555; border-radius: 4px; background: #707070; font-size: 12px; font-weight: bold; }
-.flickr-comment-composer button:disabled { color: #999; border-color: #aaa; background: #ccc; }
-.tumblr-container { width: 320px; height: 460px; display: flex; flex-direction: column; overflow: hidden; color: #202020; background: #f3f3f1; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; }
-.tumblr-navigation-bar { position: relative; flex: 0 0 44px; height: 44px; display: grid; place-items: center; color: #fff; border-bottom: 1px solid #2e3f50; background: #4d7184; text-shadow: 0 -1px rgba(0,0,0,.55); }
-.tumblr-navigation-bar > strong { max-width: 220px; overflow: hidden; font-size: 18px; line-height: 44px; text-overflow: ellipsis; white-space: nowrap; }
-.tumblr-navigation-bar > span { position: absolute; right: 9px; top: 0; color: #fff; font-size: 11px; line-height: 44px; opacity: .95; }
-.tumblr-navigation-bar > button { position: absolute; left: 7px; top: 7px; height: 30px; padding: 0 8px; color: #fff; border: 1px solid #304858; border-radius: 4px; background: #5b7d8f; font-size: 12px; font-weight: bold; }
+/* Tumblr v0.2: locked 2010 structures; exact artwork and color values reconstructed. */
+.tumblr-container { width: 320px; height: 460px; display: flex; flex-direction: column; overflow: hidden; color: #202020; background: #fff; font-family: Helvetica,Arial,sans-serif; }
+.tumblr-container button { font-family: inherit; }
+.tumblr-navigation-bar { position: relative; flex: 0 0 44px; height: 44px; display: grid; place-items: center; color: #fff; border-top: 1px solid #a5b4c4; border-bottom: 1px solid #263b51; background: linear-gradient(#849bb3,#587694 50%,#486988 51%,#3f607f); text-shadow: 0 -1px rgba(0,0,0,.6); }
+.tumblr-navigation-bar > strong { max-width: 160px; overflow: hidden; font-size: 20px; line-height: 42px; text-overflow: ellipsis; white-space: nowrap; }
+.tumblr-navigation-bar > button { position: absolute; top: 6px; height: 30px; padding: 0 8px; color: #fff; border: 1px solid #2b435e; border-radius: 5px; background: linear-gradient(#8da2b8,#526e8c 49%,#3c5978 51%,#496784); box-shadow: inset 0 1px #b2bfcc,0 1px #8198ae; font-size: 12px; font-weight: bold; text-shadow: 0 -1px #34485d; }
+.tumblr-navigation-bar > .tumblr-nav-left { left: 6px; }
+.tumblr-navigation-bar > .tumblr-nav-right { right: 6px; }
+.tumblr-navigation-bar > .tumblr-nav-icon { width: 36px; padding: 5px 7px; }
+.tumblr-navigation-bar > button:disabled { color: #b8c4d0; }
+.tumblr-icon { display: block; width: 28px; height: 28px; flex-shrink: 0; }
+.tumblr-nav-icon .tumblr-icon { width: 20px; height: 20px; }
+.tumblr-dashboard-segments { display: flex; flex: 0 0 40px; padding: 5px 8px 6px; border-bottom: 1px solid #3d526a; background: linear-gradient(#7790aa,#4a6886); }
+.tumblr-dashboard-segments button { flex: 1; padding: 0 7px; border: 1px solid #2d435d; border-right: 0; color: #e3e9f0; background: linear-gradient(#7991ab,#4e6b89); font-size: 12px; font-weight: bold; text-shadow: 0 -1px #3b5069; }
+.tumblr-dashboard-segments button:first-child { border-radius: 5px 0 0 5px; }
+.tumblr-dashboard-segments button:last-child { border-right: 1px solid #2d435d; border-radius: 0 5px 5px 0; }
+.tumblr-dashboard-segments button[aria-pressed="true"] { background: linear-gradient(#244366,#46688e); color: #fff; box-shadow: inset 0 1px 3px #1d3752; }
+.tumblr-dashboard-segments button:disabled { color: #c3cfdb; }
 .tumblr-dashboard { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
-.tumblr-post-row { width: 100%; min-height: 90px; padding: 10px 12px; display: grid; gap: 4px; color: #1f1f1f; border: 0; border-bottom: 1px solid #cacaca; background: #fff; text-align: left; }
-.tumblr-post-row small { color: #7b7b7b; font-size: 10px; letter-spacing: .04em; }
-.tumblr-post-row strong { font-size: 15px; }
-.tumblr-post-row p { margin: 0; color: #555; font-size: 13px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tumblr-post-row span { color: #7a7a7a; font-size: 11px; }
-.tumblr-post-detail { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px; display: grid; gap: 11px; background: #fff; }
-.tumblr-post-author > strong { display: block; color: #2f5f7a; font-size: 18px; }
-.tumblr-post-author > p { margin: 4px 0 0; color: #777; font-size: 12px; }
-.tumblr-post-body { border-top: 1px solid #d5d5d5; border-bottom: 1px solid #d5d5d5; padding: 12px 0; }
+.tumblr-post-type-selector { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; background: #bdbdbd; }
+.tumblr-post-type-selector > button { flex: 1 0 48px; width: 100%; display: flex; align-items: center; gap: 20px; padding: 0 23px; text-align: left; border: 0; border-top: 1px solid #ededed; border-bottom: 1px solid #969696; border-radius: 0; color: #343434; background: linear-gradient(#e0e0e0,#c4c4c4 52%,#b7b7b7); font-size: 23px; font-weight: bold; text-shadow: 0 1px #eee; }
+.tumblr-post-type-selector .tumblr-icon { width: 32px; height: 32px; filter: drop-shadow(0 1px 0 #eee); }
+.tumblr-post-type-selector > button:disabled { color: #626262; opacity: 1; }
+.tumblr-post-type-selector > button:active:not(:disabled) { background: linear-gradient(#b6b6b6,#d0d0d0); }
+.tumblr-tab-bar { flex: 0 0 49px; height: 49px; display: flex; padding: 2px 3px 0; border-top: 1px solid #070707; background: linear-gradient(#474747,#252525 48%,#090909 50%,#000); box-shadow: inset 0 1px #777; }
+.tumblr-tab-bar > button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 1px 0 2px; border: 0; border-radius: 3px 3px 0 0; color: #999; background: transparent; font-size: 10px; font-weight: bold; text-shadow: 0 -1px #000; }
+.tumblr-tab-bar > button[aria-current="page"] { color: #d4e9f7; background: linear-gradient(#666,#383838 48%,#202020 50%,#191919); box-shadow: inset 0 1px #7c7c7c; }
+.tumblr-tab-bar > button[aria-current="page"] .tumblr-icon { color: #66c3f3; filter: drop-shadow(0 1px 1px #102632); }
+.tumblr-tab-bar .tumblr-icon { width: 27px; height: 27px; }
+.tumblr-post-row { width: 100%; padding: 10px 12px 12px; display: block; color: #202020; border: 0; border-bottom: 1px solid #aab3bb; background: #fff; text-align: left; }
+.tumblr-feed-byline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; color: #56758d; font-size: 13px; font-weight: bold; }
+.tumblr-feed-byline .tumblr-icon { width: 17px; height: 17px; color: #a4adb5; }
+.tumblr-post-row > strong { display: block; margin-bottom: 5px; font-size: 18px; line-height: 21px; }
+.tumblr-post-row .tumblr-feed-body { margin: 0 0 9px; font-size: 14px; line-height: 19px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tumblr-feed-body.is-quote { padding-left: 10px; border-left: 3px solid #b8c3cc; }
+.tumblr-feed-meta { color: #788b99; font-size: 11px; line-height: 15px; }
+.tumblr-post-detail { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px; background: #fff; }
+.tumblr-post-author > strong { display: block; color: #56758d; font-size: 14px; }
+.tumblr-post-author > p { margin: 4px 0 8px; color: #788b99; font-size: 11px; }
+.tumblr-post-body { padding: 8px 0 12px; }
 .tumblr-post-body h2 { margin: 0 0 6px; font-size: 18px; }
-.tumblr-post-body p { margin: 0; color: #2d2d2d; line-height: 21px; }
-.tumblr-post-body.is-photo p { color: #4d4d4d; font-style: italic; }
-.tumblr-actions { display: grid; gap: 8px; }
-.tumblr-actions > button { height: 34px; border: 1px solid #4a6074; border-radius: 5px; background: #f5f5f5; font-weight: bold; }
+.tumblr-post-body p { margin: 0; color: #2d2d2d; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tumblr-actions { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 8px; border-top: 1px solid #b8c3cc; }
+.tumblr-actions > button { padding: 4px 6px; border: 1px solid #a8b3bd; border-radius: 3px; color: #42627b; background: linear-gradient(#fff,#dbe1e6); font-size: 12px; font-weight: bold; }
+.tumblr-composer { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
+.tumblr-composer form { min-height: 100%; display: flex; flex-direction: column; }
+.tumblr-composer input { box-sizing: border-box; flex: 0 0 43px; width: 100%; height: 43px; padding: 10px 12px; border: 0; border-bottom: 1px solid #c3c3c3; border-radius: 0; background: #fff; color: #222; font: 16px/22px Helvetica,Arial,sans-serif; }
+.tumblr-composer textarea { box-sizing: border-box; flex: 1 0 145px; width: 100%; min-height: 145px; padding: 10px 12px; resize: none; border: 0; border-radius: 0; background: #fff; color: #222; font: 16px/22px Helvetica,Arial,sans-serif; }
+.tumblr-settings { flex: 1 1 auto; min-height: 0; background: #e2e5e9; }
+.tumblr-settings { overflow-y: auto; padding: 14px 10px; background: repeating-linear-gradient(90deg,#dce1e8 0 2px,#e2e6ec 2px 7px); }
+.tumblr-settings h2 { margin: 0 8px 7px; color: #53667d; font-size: 17px; text-shadow: 0 1px #fff; }
+.tumblr-settings dl { margin: 0; border: 1px solid #a5adb7; border-radius: 8px; background: #fff; }
+.tumblr-settings dl > div { display: flex; gap: 12px; padding: 12px 10px; font-size: 16px; }
+.tumblr-settings dt { font-weight: bold; }
+.tumblr-settings dd { margin: 0 0 0 auto; color: #526987; overflow-wrap: anywhere; }
+.tumblr-empty { padding: 12px; color: #697887; font-size: 13px; }
+.tumblr-reblog-attribution { display: block; margin-bottom: 5px; color: #526b80; font-size: 12px; }
+.tumblr-reblog-caption { margin: 0 0 6px; font-size: 13px; white-space: pre-wrap; }
+.tumblr-notes-heading { margin: 0; padding: 9px 12px; border-bottom: 1px solid #aebac5; background: #e7edf1; color: #52687e; font-size: 13px; }
+
+/* v0.3: inspected 2010 archive structure; exact tile artwork reconstructed. */
+.tumblr-navigation-bar { border-top-color: #ccd5df; background: linear-gradient(#b2bece,#8c9fb6 49%,#7c92ad 51%,#69839f); }
+.tumblr-navigation-bar > button { border-color: #57718f; box-shadow: inset 0 1px #b7c9db,0 1px #a8b7c8; background: linear-gradient(#8da7c3,#607f9f 48%,#4b7098 51%,#6282a4); }
+.tumblr-navigation-bar > .tumblr-nav-icon { width: 34px; height: 31px; }
+.tumblr-search-bar { flex: 0 0 40px; position: relative; padding: 5px 7px; background: linear-gradient(#a8b8ca,#889fb6); border-bottom: 1px solid #6c829a; }
+.tumblr-search-bar > .tumblr-icon { position: absolute; left: 14px; top: 12px; width: 15px; height: 15px; color: #92999e; z-index: 1; }
+.tumblr-search-bar input { appearance: none; width: 100%; height: 28px; padding: 0 29px 0 27px; border: 1px solid #8d9eae; border-radius: 15px; box-shadow: inset 0 1px 2px #bbc4cc; background: #fff; color: #252525; font: 14px Helvetica,Arial,sans-serif; }
+.tumblr-search-bar button { position: absolute; right: 13px; top: 10px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; color: #fff; background: #a5a9ac; font: bold 19px/18px Helvetica,Arial,sans-serif; }
+.tumblr-dashboard-segments { padding: 6px; flex-basis: 41px; border-bottom-color: #a1acb6; background: linear-gradient(#c6d1dc,#a4b5c6); }
+.tumblr-dashboard-segments button { border-color: #8296ab; color: #4e6681; text-shadow: 0 1px #e0e5ea; background: linear-gradient(#d8e1ea,#a9bbce); box-shadow: inset 0 1px #e6edf3; }
+.tumblr-dashboard-segments button:last-child { border-right-color: #8296ab; }
+.tumblr-dashboard-segments button[aria-pressed="true"] { background: linear-gradient(#7b93ad,#536e8a); text-shadow: 0 -1px #53667e; box-shadow: inset 0 1px 3px #435c75; }
+.tumblr-dashboard-segments button:disabled { color: #536a82; }
+.tumblr-post-type-selector > button { gap: 9px; padding: 0 7px; font-size: 18px; color: #4b4b4b; background: linear-gradient(#e6e6e6,#cbcbcb 50%,#b7b7b7); border-top-color: #f5f5f5; border-bottom-color: #9e9e9e; }
+.tumblr-post-type-selector > button:disabled { color: #646464; }
+.tumblr-post-stamp { display: block; flex: 0 0 43px; width: 43px; height: 46px; filter: drop-shadow(0 1px 1px #858585); }
+.tumblr-tab-bar { padding: 2px 1px 0; background: linear-gradient(#363636,#191919 49%,#050505 51%,#000); box-shadow: inset 0 1px #828282; }
+.tumblr-tab-bar > button { gap: 0; font-size: 9px; color: #929292; }
+.tumblr-tab-bar .tumblr-icon { width: 30px; height: 30px; }
+.tumblr-tab-bar > button[aria-current="page"] { color: #cbd9e7; background: linear-gradient(#454545,#303030 49%,#252525 51%,#222); box-shadow: inset 0 1px #515151; }
+.tumblr-tab-bar > button[aria-current="page"] .tumblr-icon { color: #86c9f3; filter: drop-shadow(0 -1px 0 #d8eeff); }
+/* Post only: light archival silhouette; preserve the existing tab hit box. */
+.tumblr-tab-bar .tumblr-icon.is-post { width: 34px; height: 38px; margin: -4px 0; color: #b5b5b5; filter: none; }
+.tumblr-tab-bar > button[aria-current="page"] .tumblr-icon.is-post { color: #4ab7e8; filter: none; }
+
+.tumblr-advanced-row { display: block; width: 100%; height: 24px; border: 0; border-top: 1px solid #ddd; border-bottom: 1px solid #999; border-radius: 0; color: #565656; background: linear-gradient(#eee,#bcbcbc); font: bold 12px Helvetica,Arial,sans-serif; }
+.tumblr-photo-preview { padding: 8px; border-bottom: 1px solid #bcc6ce; }
+.tumblr-photo-preview img { display: block; max-width: 100%; max-height: 140px; margin: 0 auto 6px; }
+.tumblr-photo-preview button { padding: 4px 9px; border: 1px solid #8c9cad; border-radius: 4px; color: #36516e; background: linear-gradient(#f8fbff,#bfccda); font: bold 12px Helvetica,Arial,sans-serif; }
+.tumblr-dashboard,.tumblr-post-row { background: #e7edf1; }
+.tumblr-post-row { padding: 8px 10px; border-bottom-color: #aab7c2; }
+.tumblr-feed-byline { margin-bottom: 5px; color: #242b32; font-size: 13px; }
+.tumblr-feed-byline .tumblr-notes-count { font-size: 12px; font-weight: normal; color: #66717a; }
+.tumblr-post-row > strong { font-size: 14px; line-height: 17px; margin-bottom: 4px; }
+.tumblr-post-row .tumblr-feed-body { font-size: 13px; line-height: 18px; margin-bottom: 5px; }
+.tumblr-feed-meta { font-size: 10px; }
+.tumblr-published-photo { display: block; max-width: 100%; height: auto; margin: 5px 0; border-radius: 0; }
 .tumblr-reblog-summary { padding: 9px; border: 1px solid #bbc5ca; background: #edf1f3; }
 .tumblr-reblog-summary strong { color: #2f5f7a; font-size: 12px; }
 .tumblr-reblog-summary p { margin: 4px 0 0; font-size: 13px; }
@@ -1350,3 +1388,10 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .facebook-friends-segments button { color: #fff; border-right: 1px solid #294779; background: linear-gradient(#7188b1,#4f6da0 49%,#426090 51%,#365380); text-shadow: 0 -1px rgba(0,0,0,.58); }
 .facebook-friends-segments button:last-child { border-right: 0; }
 .facebook-friends-segments button[aria-current="page"] { color: #fff; background: linear-gradient(#435f8f,#294978 52%,#203b66); box-shadow: inset 0 2px 3px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.12); text-shadow: 0 -1px rgba(0,0,0,.7); }
+
+.mobilesms-list-row { display:flex; align-items:center; background:#fff; }
+.mobilesms-list-row .mobilesms-conversation-row { min-width:0; flex:1; }
+.mobilesms-list-row.is-editing { border-bottom:1px solid #b7b7b7; }
+.mobilesms-list-row.is-editing .mobilesms-conversation-row { border-bottom:0; }
+.mobilesms-delete-minus { flex:none; margin-left:10px; width:23px; height:23px; padding:0; border:1px solid #a51d20; border-radius:50%; background:linear-gradient(#f17b7b,#c52228); color:white; font:bold 24px/18px Helvetica,Arial,sans-serif; box-shadow:inset 0 1px #ffcaca; }
+.mobilesms-delete-confirm { flex:none; margin-right:8px; padding:5px 7px; border:1px solid #8b1d20; border-radius:5px; color:white; background:linear-gradient(#e57575,#ad2025); font:bold 13px Helvetica,Arial,sans-serif; text-shadow:0 -1px #7a2222; }

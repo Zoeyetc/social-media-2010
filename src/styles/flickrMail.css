@@ -1,0 +1,20 @@
+/* In-app Mail structure predates iOS 4 (WWDC 2009 MessageUI).
+   Exact Flickr handoff, geometry and Cancel discard are RECONSTRUCTED. */
+.flickr-mail { width:320px; height:100%; min-height:0; display:flex; flex-direction:column; background:#fff; color:#000; font-family:Helvetica,Arial,sans-serif; text-align:left; }
+.flickr-mail * { box-sizing:border-box; }
+.flickr-mail-nav { height:44px; flex:0 0 44px; padding:7px 6px; display:flex; align-items:center; justify-content:space-between; background:linear-gradient(#b0bdcd,#8b9db5 49%,#7d93af 50%,#6d85a5); border-bottom:1px solid #435a79; box-shadow:inset 0 1px #ffffff70; }
+.flickr-mail-nav strong { font-size:20px; color:#fff; text-shadow:0 -1px #4d627c; }
+.flickr-mail-nav button { min-width:49px; height:30px; padding:0 7px; border:1px solid #435a79; border-radius:5px; background:linear-gradient(#90a4bf,#577498); box-shadow:inset 0 1px #ffffff50; color:white; font:bold 12px Helvetica,Arial,sans-serif; text-shadow:0 -1px #3d5678; }
+.flickr-mail-nav button:last-child { background:linear-gradient(#78a5ef,#2864bf); border-color:#245296; }
+.flickr-mail-nav button:disabled { opacity:.5; }
+.flickr-mail-content { min-height:0; flex:1; overflow-y:auto; overscroll-behavior:contain; }
+.flickr-mail-row { display:flex; align-items:center; gap:8px; min-height:41px; margin:0 10px; border-bottom:1px solid #ccc; }
+.flickr-mail-row > span { flex:none; color:#777; font-size:16px; }
+.flickr-mail-row input { width:100%; min-width:0; padding:9px 0; border:0; border-radius:0; background:white; color:black; font:16px/21px Helvetica,Arial,sans-serif; }
+.flickr-mail-message { padding:8px 10px 12px; font-size:16px; line-height:21px; }
+.flickr-mail-message textarea { display:block; width:100%; min-height:66px; resize:none; border:0; border-radius:0; padding:0; background:white; color:black; font:16px/21px Helvetica,Arial,sans-serif; }
+.flickr-mail-attachment { display:block; max-width:100%; height:auto; max-height:240px; object-fit:contain; margin:8px 0; }
+.flickr-mail-message > p { margin:14px 0; }
+.flickr-mail-message .flickr-mail-note { color:#777; font-size:11px; line-height:15px; white-space:pre-line; }
+.flickr-mail-error,.flickr-mail-status { margin:8px 10px 12px; font:13px/17px Helvetica,Arial,sans-serif; color:#8a2626; }
+.flickr-mail-status { color:#666; }

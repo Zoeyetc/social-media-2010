@@ -11,7 +11,7 @@ const dependencies = ["useCallback", "useEffect", "useLayoutEffect", "useRef", "
 const factory = new Function(...dependencies, stripTypeScriptTypes(source).replaceAll("export ", "") + ";return useHeroHardware;");
 
 function fixture(enabled, runtimePower) {
-  const effects = [], timers = new Map(), listeners = new Map();
+  const effects = [], timers = new Map(), listeners = new Map(), volumeValues = [];
   let id = 0, boots = 0, capture = false;
   const win = {
     setTimeout(fn) { timers.set(++id, fn); return id; }, clearTimeout(n) { timers.delete(n); },
@@ -19,12 +19,13 @@ function fixture(enabled, runtimePower) {
   };
   const doc = { body: { style: {} }, hidden: false, addEventListener: win.addEventListener, removeEventListener: win.removeEventListener };
   const hook = factory(fn => fn, fn => effects.push(fn), fn => effects.push(fn), value => ({ current: value }), () => {}, () => ({ invalidate() {} }),
-    { bindHardwareMuteMode: () => () => {} }, win, doc, ...Object.values(THREE));
+    { bindHardwareMuteMode: () => () => {}, setVolume(value) { volumeValues.push(value); } }, win, doc, ...Object.values(THREE));
   const root = new THREE.Group();
   const button = new THREE.Mesh(new THREE.BoxGeometry(.0104, .0026, .0005), new THREE.MeshBasicMaterial());
   button.name = "PowerButton"; root.add(button);
   const handlers = hook(root, enabled, () => boots++, undefined, runtimePower);
   const cleanups = effects.map(fn => fn());
+  assert.deepEqual(volumeValues, [8 / 16], "initial hardware level must synchronize shared audio volume once");
   const hit = root.getObjectByName("HeroPowerButtonHitTarget");
   assert.ok(hit);
   assert.deepEqual(hit.position.toArray(), [0, .003, .006]);
