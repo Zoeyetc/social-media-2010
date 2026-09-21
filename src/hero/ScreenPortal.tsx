@@ -4,7 +4,7 @@ import bootLogoSrc from "../assets/historical/ios4.1/applelogo-iphone3,1-8B117.p
 import { heroBootOpacity } from "./HeroController";
 import { portalPointerEnabled, quadCorners, screenQuadMatrix, type ProjectedScreenQuad } from "./screenPortalMath";
 
-export type ScreenPortalState = "hidden" | "boot" | "qa" | "software";
+export type ScreenPortalState = "hidden" | "boot" | "qa" | "software" | "depleted";
 export type ScreenPortalHandle = { update: (quad: ProjectedScreenQuad | null) => void };
 
 /** The target and software child persist across phases. Only presentation changes. */

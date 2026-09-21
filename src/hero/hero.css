@@ -105,13 +105,13 @@ button, input { font: inherit; }
   pointer-events: none; opacity: 0; transition: opacity 240ms linear;
 }
 .hero-screen-portal[data-state="qa"] { opacity: var(--screen-facing-visibility, 0); }
-.hero-screen-portal[data-state="software"] { opacity: var(--screen-facing-visibility, 0); transition: none; }
+.hero-screen-portal[data-state="software"], .hero-screen-portal[data-state="depleted"] { opacity: var(--screen-facing-visibility, 0); transition: none; }
 .hero-device-screen-host {
   --iphone4-screen-left: 0px; --iphone4-screen-top: 0px;
   --iphone4-screen-width: 320px; --iphone4-screen-height: 480px;
   position: absolute; inset: 0; width: 320px; height: 480px;
 }
-.hero-screen-portal:not([data-state="software"]) .hero-device-screen-host { visibility: hidden; }
+.hero-screen-portal:not([data-state="software"]):not([data-state="depleted"]) .hero-device-screen-host { visibility: hidden; }
 .hero-screen-portal[data-state="software"] .hero-screen-dom-corner { pointer-events: none; }
 .hero-screen-portal[data-state="hidden"] { opacity: 0; transition: none; }
 .hero-screen-portal-grid {

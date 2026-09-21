@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState, type RefObject, typ
 import { ACESFilmicToneMapping, Color, Float32BufferAttribute, Mesh, MeshBasicMaterial, PlaneGeometry, PMREMGenerator, RectAreaLight, Scene } from "three";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { HeroCable } from "./HeroCable";
+import { heroSoftwareSurface, heroProjectionEnabled } from "./HeroController";
 import { HeroPhone } from "./HeroPhone";
 import { HeroHalo } from "./HeroHalo";
 import { HeroScreenSpill } from "./HeroScreenSpill";
@@ -198,7 +199,7 @@ function SceneContents(props: HeroSceneProps & { lightingPreset: HeroLightingPre
         returnAmount={props.phase === "returning" ? (cable.phase === "returning" ? cable.progress : 0) : undefined} />
       <HeroPhone {...props} bootStartedAt={props.portalEnabled ? null : props.bootStartedAt} softwareActive={Boolean(props.screen && props.bootComplete && props.phase === "experience")} onCableState={updateCable} />
     </Suspense>
-    {props.portalEnabled && <ScreenPortalProjection portal={props.portal} enabled={props.phase === "powering-on" || props.phase === "front-aligned" || props.phase === "experience"} />}
+    {props.portalEnabled && <ScreenPortalProjection portal={props.portal} enabled={heroProjectionEnabled(props.phase)} />}
     {chargerDiagnosticsEnabled && <HeroChargerDiagnostics phase={props.phase} anchor={cable.anchor} />}
   </>;
 }
@@ -212,7 +213,7 @@ export function HeroScene(props: HeroSceneProps) {
   useEffect(() => {
     if (!portalEnabled) return;
     if (props.screen) {
-      setPortalState(props.bootComplete && props.phase === "experience" && props.softwareReady ? "software" : "hidden");
+      setPortalState(heroSoftwareSurface(props.phase, props.bootComplete, Boolean(props.softwareReady)));
       return;
     }
     if (props.phase === "front-aligned") {
@@ -222,7 +223,7 @@ export function HeroScene(props: HeroSceneProps) {
     setPortalState(props.phase === "powering-on" ? "boot" : props.phase === "experience" ? "qa" : "hidden");
   }, [portalEnabled, props.phase, Boolean(props.screen), props.softwareReady, props.bootComplete]);
   const visiblePortalState = props.screen
-    ? props.bootComplete && props.phase === "experience" && props.softwareReady ? "software" : "hidden"
+    ? heroSoftwareSurface(props.phase, props.bootComplete, Boolean(props.softwareReady))
     : props.phase === "front-aligned" || props.phase === "experience" ? portalState : "hidden";
   // Accepted baseline; alternative rigs remain DEV-only comparisons.
   const [preset, setPreset] = useState<HeroLightingPreset>(() => {

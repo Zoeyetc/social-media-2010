@@ -1420,3 +1420,15 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .mobilesms-list-row.is-editing .mobilesms-conversation-row { border-bottom:0; }
 .mobilesms-delete-minus { flex:none; margin-left:10px; width:23px; height:23px; padding:0; border:1px solid #a51d20; border-radius:50%; background:linear-gradient(#f17b7b,#c52228); color:white; font:bold 24px/18px Helvetica,Arial,sans-serif; box-shadow:inset 0 1px #ffcaca; }
 .mobilesms-delete-confirm { flex:none; margin-right:8px; padding:5px 7px; border:1px solid #8b1d20; border-radius:5px; color:white; background:linear-gradient(#e57575,#ad2025); font:bold 13px Helvetica,Arial,sans-serif; text-shadow:0 -1px #7a2222; }
+
+/* Reconstructed temperature overlay; archival Weather artwork stays intact. */
+.weather-icon-temperature { position:absolute; z-index:1; left:10px; top:39px; width:40px; height:18px; background:linear-gradient(#2188e6,#0874d8); color:#fff; text-align:center; font:bold 20px/18px Helvetica,Arial,sans-serif; text-shadow:0 1px 1px #164c84; pointer-events:none; }
+
+/* Preserve the archival sun; replace the baked-in temperature across the lower
+   icon face, not with a text-sized badge. Scoped to SpringBoard only. */
+.springboard-weather-artwork { position:absolute; left:0; top:0; width:59px; height:60px; overflow:hidden; border-radius:11px; background:linear-gradient(to bottom,#2188e6 65%,#0874d8 96%,#0867c1); }
+.springboard-weather-artwork > img { clip-path:inset(0 0 18px 0); }
+.springboard-icon-slot[data-app-name="Weather"] > .weather-icon-temperature { left:0; top:43px; width:59px; height:13px; background:none; text-align:center; font:300 11px/13px "Helvetica Neue",Helvetica,Arial,sans-serif; letter-spacing:0; text-shadow:0 1px 0 rgba(0,0,0,.3); }
+
+.springboard-icon-slot[data-app-name="Weather"] .weather-icon-digits { position:absolute; left:50%; top:0; transform:translateX(-50%); white-space:nowrap; }
+.springboard-icon-slot[data-app-name="Weather"] .weather-icon-degree { position:absolute; left:100%; top:-1px; margin-left:.5px; font-size:8px; line-height:11px; font-weight:300; }

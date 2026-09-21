@@ -189,7 +189,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const notificationContext: NotificationContext = {
     phase: session.phase,
     foregroundApp: session.phase === "app" ? appRuntime.activeAppId : null,
-    terminal: session.returnToHeroPending || session.phase === "shutdown" || session.phase === "poweredOff" || session.phase === "hero" || session.phase === "booting",
+    terminal: lifecycle.terminalFired || session.returnToHeroPending || session.phase === "shutdown" || session.phase === "poweredOff" || session.phase === "hero" || session.phase === "booting",
     systemAlert: ((session.phase === "app" || session.phase === "springboard") && session.activeWarning !== null)
       || session.phase === "powerOffConfirm" || session.phase === "lowBatteryWarning",
     keyboard: session.phase === "app" && notificationKeyboardVisible,
@@ -416,10 +416,25 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (presenter !== "hero" || !current.experienceSessionId || lifecycleRef.current.phase !== "experience") return;
     if (reason === "battery-depleted" && !(import.meta.env.DEV && simulate) && !hasReachedSessionTerminal(current, Date.now())) return;
     // Synchronous reducer ref claims the terminal before another tick/callback.
-    advanceLifecycle({ type: "EXPERIENCE_ENDED" });
-    setSession(previous => ({ ...previous, phase: "shutdown", shutdownReason: reason === "battery-depleted" ? "battery" : "manual",
+    const depleted = reason === "battery-depleted" && (current.phase === "app" || current.phase === "springboard");
+    advanceLifecycle({ type: "EXPERIENCE_ENDED", depleted });
+    if (depleted) {
+      DeviceAudio.resetPreview();
+      voiceMemos.controller.reset();
+    }
+    setSession(previous => ({ ...previous, phase: depleted ? "lowBatteryWarning" : "shutdown", shutdownReason: reason === "battery-depleted" ? "battery" : "manual",
       activeWarning: null, batteryCriticalPending: false, batteryCriticalRevealAtMs: null }));
-  }, [presenter, advanceLifecycle]);
+  }, [presenter, advanceLifecycle, voiceMemos.controller]);
+
+  useEffect(() => {
+    if (presenter !== "hero" || lifecycle.phase !== "depleted") return;
+    const timer = window.setTimeout(() => {
+      if (lifecycleRef.current.phase !== "depleted") return;
+      advanceLifecycle({ type: "DEPLETION_COMPLETE" });
+      setSession(current => ({ ...current, phase: "shutdown" }));
+    }, TERMINAL_DEPLETED_DISPLAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [presenter, lifecycle.phase, advanceLifecycle]);
 
   useEffect(() => {
     if (presenter !== "hero" || lifecycle.phase !== "experience") return;
@@ -918,7 +933,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   }, [activityRevision, appRuntime.activeAppId, session.phase]);
   useEffect(() => {
     const appTemporarilyCoveredByPowerConfirmation = session.phase === "powerOffConfirm" && session.previousPhase === "app";
-    const runtimeMustReset = session.phase === "hero" || session.phase === "poweredOff" || session.phase === "booting" || session.phase === "shutdown";
+    const runtimeMustReset = (presenter === "hero" && lifecycle.phase === "depleted") || session.phase === "hero" || session.phase === "poweredOff" || session.phase === "booting" || session.phase === "shutdown";
     if (runtimeMustReset && !cameraCaptureResetActive.current) {
       cameraCaptureResetActive.current = true;
       cameraCaptureNamespace.current += 1;
@@ -942,7 +957,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
       window.clearTimeout(pendingAppHomePress.current);
       pendingAppHomePress.current = null;
     }
-  }, [appRuntime.phase, cameraRuntime.cameraApp.phase, cameraRuntime.cameraPicker.phase, multitaskingBar, session.phase, session.previousPhase]);
+  }, [appRuntime.phase, cameraRuntime.cameraApp.phase, cameraRuntime.cameraPicker.phase, multitaskingBar, session.phase, session.previousPhase, presenter, lifecycle.phase]);
 
   const recordInteraction = () => setActivityRevision(revision => revision + 1);
   const launchSpringBoardApp = (appId: string) => {
@@ -1569,11 +1584,11 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         softwarePhase: session.phase,
       },
       onHandoff: handoffHeroScreen,
-      powerControl: !session.returnToHeroPending && (session.phase === "locked" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping" || session.phase === "lowBatteryWarning")
+      powerControl: !lifecycle.terminalFired && !session.returnToHeroPending && (session.phase === "locked" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping" || session.phase === "lowBatteryWarning")
         ? { state: session.phase === "sleeping" ? "asleep" : "awake", begin: beginPower, end: endPower, cancel: cancelPower }
         : undefined,
-      onUserActivity: recordInteraction,
-      onHomePress: () => { recordInteraction(); if (homeEnabled) activateHome(); },
+      onUserActivity: () => { if (!lifecycleRef.current.terminalFired) recordInteraction(); },
+      onHomePress: () => { if (lifecycleRef.current.terminalFired) return; recordInteraction(); if (homeEnabled) activateHome(); },
     }) : <main className={`stage has-ambient-world`}>
       <section
       className={`device${displayIsLit ? " is-display-lit" : ""}`}

@@ -88,20 +88,20 @@ function assertStableDevicePresentation(sources) {
   assert.equal((portal.match(/\{software\}/g) ?? []).length, 1, "v0.3: portal must render software only once");
   assert.doesNotMatch(portal, /key=\{(?:state|host|software|.*experienceSessionId)/, "v0.3: portal target/content must not use phase/session keys");
   assert.match(portal, /aria-hidden=\{state !== "software"\} inert=\{state !== "software"\}/, "v0.3: hidden software must not receive focus or pointer input");
-  assert.match(css, /\.hero-screen-portal\[data-state="software"\] \{ opacity: var\(--screen-facing-visibility, 0\); transition: none; \}/, "v0.3: software visibility must respect physical facing without changing mounting");
+  assert.match(css, /\.hero-screen-portal\[data-state="software"\], \.hero-screen-portal\[data-state="depleted"\] \{ opacity: var\(--screen-facing-visibility, 0\); transition: none; \}/, "software and depleted visibility must respect physical facing without changing mounting");
   assert.match(portal, /const pointerEnabled = portalPointerEnabled\(state, bootActive, facing\);[\s\S]*?element\.style\.pointerEvents = pointerEnabled \? "auto" : "none";\s+element\.inert = !pointerEnabled;/, "v0.3: input handoff must share the phase/boot/facing gate independently of mounting");
   assert.match(source("src/hero/screenPortalMath.ts"), /return state === "software" && !bootActive && visibility === 1;/, "v0.3: only fully front-facing software may own portal input");
   assert.match(portal, /const width=320, height=software \? 480 : width\/quad\.aspectRatio;/, "v0.3: real software must retain 320x480 logical coordinates");
   assert.match(portal, /!software && !bootActive && <div className="hero-screen-portal-grid"/, "v0.3: QA grid must not cover real software or Hero boot");
-  assert.match(scene, /setPortalState\(props\.bootComplete && props\.phase === "experience" && props\.softwareReady \? "software" : "hidden"\)/, "v0.3: software stays hidden through Hero Apple boot");
+  assert.match(scene, /setPortalState\(heroSoftwareSurface\(props\.phase, props\.bootComplete, Boolean\(props\.softwareReady\)\)\)/, "v0.3: software stays hidden through Hero Apple boot");
   assert.match(app, /softwareReady: session\.phase !== "hero" && session\.phase !== "poweredOff" && session\.phase !== "booting"/, "v0.3: legacy boot/off content must not be shown at Hero handoff");
   assert.match(screen, /session\.phase === "booting" && <div className="boot"><BootLogo \/><\/div>/, "v0.3: legacy Apple boot must remain intact");
   assert.match(phone, /bootAmount=\{softwareActive \? 0 : bootAmount\}/, "v0.3: Hero Apple must be suppressed when software is active");
   assert.match(scene, /softwareActive=\{Boolean\(props\.screen && props\.bootComplete && props\.phase === "experience"\)\}/, "v0.3: runtime sleep/shutdown must not restart Hero Apple boot");
   assert.match(hero, /handoff\.current\(\);\s+dispatch\(\{ type: "BOOT_COMPLETE", now: performance\.now\(\) \}\);/, "Hero boot completion owns the explicit software handoff");
-  assert.match(scene, /const visiblePortalState = props\.screen\s+\? props\.bootComplete && props\.phase === "experience" && props\.softwareReady \? "software" : "hidden"/, "actual software visibility must require completed boot and ready software");
+  assert.match(scene, /const visiblePortalState = props\.screen\s+\? heroSoftwareSurface\(props\.phase, props\.bootComplete, Boolean\(props\.softwareReady\)\)/, "actual software visibility must require completed boot and ready software");
   assert.match(hero, /const remaining = HERO_BOOT_DURATION_MS - \(performance\.now\(\) - startedAt\);[\s\S]*?if \(remaining > 0\)/, "Hero must wait for the full boot interval");
-  assert.match(app, /onUserActivity: recordInteraction,/, "v0.3: Hero activity must use the same controller callback");
+  assert.match(app, /onUserActivity: \(\) => \{ if \(!lifecycleRef\.current\.terminalFired\) recordInteraction\(\); \},/, "v0.3: Hero activity must use the same controller callback");
   assert.match(hero, /onPointerDownCapture=\{presentation\.onUserActivity\}[\s\S]+onPointerMoveCapture=\{event => \{ if \(event\.buttons !== 0\) presentation\.onUserActivity\(\); \}\}/, "v0.3: projected software and physical hardware must refresh existing activity ownership");
   for (const [pattern, expected, label] of [
     [/useState<Session>\(/g, 1, "session controller"],
@@ -124,7 +124,7 @@ function assertStableDevicePresentation(sources) {
   assert.match(hero, /const state = presentation\.lifecycle;\s+const dispatch = presentation\.onLifecycleAction;/, "v0.4: presenter consumes App's lifecycle, not a second reducer");
   assert.match(app, /const startExperience = [\s\S]*?lifecycleRef\.current\.phase !== "identity" \|\| activeExperienceSessionIdRef\.current[\s\S]*?startNamedSession\(name\.trim\(\)[^)]*\)/, "v0.4: new runs require reset-complete identity and no active ID");
   assert.equal((app.match(/createExperienceSessionId\(\)/g) ?? []).length, 1, "v0.4: one ID creation path per accepted run");
-  assert.match(app, /const finishExperience = [\s\S]*?lifecycleRef\.current\.phase !== "experience"\) return;[\s\S]*?advanceLifecycle\(\{ type: "EXPERIENCE_ENDED" \}\)/, "v0.4: synchronous phase claim prevents duplicate terminal events");
+  assert.match(app, /const finishExperience = [\s\S]*?lifecycleRef\.current\.phase !== "experience"\) return;[\s\S]*?advanceLifecycle\(\{ type: "EXPERIENCE_ENDED", depleted \}\)/, "v0.4: synchronous phase claim prevents duplicate terminal events");
   assert.match(app, /elapsed >= SESSION_DURATION_MS \|\| \(presenter === "hero" && lifecycleRef\.current\.phase !== "experience"\)/, "v0.4: scheduler stops at terminal, including delayed callbacks");
   const resetBoundary = app.slice(app.indexOf("const resetExperienceSession ="), app.indexOf("const eraseCurrentCameraRollForDevelopment ="));
   assert.match(resetBoundary, /lifecycleRef\.current\.phase !== "resetting"[\s\S]*?resetClaim\.current === id[\s\S]*?setSession\(\{ \.\.\.initialSession \}\)[\s\S]*?RESET_COMPLETE/, "v0.4: only connected reset boundary clears the previous session");
@@ -138,6 +138,14 @@ try {
   const messages = await vite.ssrLoadModule("/src/state/messagesState.ts");
   const messagesBadge = await vite.ssrLoadModule("/src/state/messagesBadgeState.ts");
   const facebook = await vite.ssrLoadModule("/src/state/facebookState.ts");
+  const { heroSoftwareSurface } = await vite.ssrLoadModule("/src/hero/HeroController.ts");
+  for (const phase of ["identity", "inspect", "powering-on", "front-aligned", "experience", "depleted", "power-loss", "returning"]) {
+    for (const bootComplete of [false, true]) for (const ready of [false, true]) {
+      const expected = bootComplete && ready && phase === "experience" ? "software"
+        : bootComplete && ready && phase === "depleted" ? "depleted" : "hidden";
+      assert.equal(heroSoftwareSurface(phase, bootComplete, ready), expected, `${phase}: real surface policy must enforce boot/readiness`);
+    }
+  }
   const twitter = await vite.ssrLoadModule("/src/state/twitterState.ts");
   const twitterTimelineComposition = await vite.ssrLoadModule("/src/state/twitterTimelineComposition.ts");
   const foursquare = await vite.ssrLoadModule("/src/state/foursquareState.ts");
@@ -450,7 +458,7 @@ assert.deepEqual(seed.facebook.comments.filter(comment => comment.itemId === "ja
   ["jack-car-matt-2009-comment-jack-2", "jack", "yeah bro"],
 ], "Jack's 2009 car/Matt thread must preserve exact IDs, actors, copy, and chronological order");
 assert.deepEqual(seed.facebook.comments.filter(comment => comment.itemId === "jack-matt-2008-photo").map(comment => [comment.author.characterId, comment.text]), [["matt", "that's why you keep showing up"]], "2008 Jack/Matt comments must share the canonical story ID");
-assert.deepEqual(seed.facebook.comments.filter(comment => comment.itemId === "jack-matt-2010-photo").map(comment => [comment.author.characterId, comment.text]), [["matt", "cazzo, delete it"], ["jack", "拒絕"], ["matt", "Du bist unmöglich."]], "2010 Jack/Matt comments must preserve canonical order");
+assert.deepEqual(seed.facebook.comments.filter(comment => comment.itemId === "jack-matt-2010-photo").map(comment => [comment.author.characterId, comment.text]), [["matt", "cazzo, delete it"], ["jack", "Nope."], ["matt", "Du bist unmöglich."]], "2010 Jack/Matt comments must preserve canonical order");
 for (const [storyId, likeCount, commentCount] of [["jack-football-game-photo", 28, 6], ["jack-summer-photos", 34, 7], ["jack-car-matt-2009-photos", 9, 5], ["jack-practice-brutal", 8, 2]]) {
   assert.equal(seed.facebook.likes.filter(like => like.itemId === storyId).length, likeCount, `${storyId} Like baseline must be deterministic`);
   assert.equal(seed.facebook.comments.filter(comment => comment.itemId === storyId).length, commentCount, `${storyId} comment baseline must be deterministic`);
@@ -485,7 +493,10 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
       assert.equal(story.author, album.ownerActor.displayName, `${canonicalStoryId} author must equal the canonical media owner`);
       assert.equal(photo.timestamp, story.createdAt, `${photo.storyId} Wall and Photo Detail must share one underlying timestamp`);
       assert.equal(story.kind === "album" ? story.mediaIds.includes(photo.mediaId) : story.mediaId === photo.mediaId, true, `${canonicalStoryId} must resolve the same canonical media from Feed and Album`);
-      assert.equal(facebook.selectFacebookProfileWall(facebook.createInitialFacebookState("Visitor"), album.ownerActor.displayName).some(item => item.id === canonicalStoryId), true, `${canonicalStoryId} must resolve on its owner Wall`);
+      const visibleOnOwnerWall = album.ownerActor.displayName !== "Jack Keller"
+        || ["everyone", "friends-of-friends"].includes(story.visibility)
+        || (story.visibility === "custom" && story.customAudienceIncludesUser === true);
+      assert.equal(facebook.selectFacebookProfileWall(facebook.createInitialFacebookState("Visitor"), album.ownerActor.displayName).some(item => item.id === canonicalStoryId), visibleOnOwnerWall, `${canonicalStoryId} owner Wall must respect Jack audience before friendship`);
     }
   }
   for (const story of seed.facebook.feed.filter(story => story.kind === "album")) {
@@ -2843,7 +2854,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.deepEqual(facebook.selectFacebookVisibleFeed(reversedFeedState).map(item => item.id), facebook.selectFacebookVisibleFeed(interactionFacebook).map(item => item.id), "seed declaration order must not determine News Feed chronology");
   assert.deepEqual(interactionFacebook.feed.map(item => item.id), canonicalFeedIdsBeforeSort, "News Feed sorting must not mutate canonical state order");
   assert.equal(feedAtSessionStart.some(item => ["jack-car-matt-2009-photos", "jack-owned-j-2009-photo", "jack-matt-2008-photo", "jack-matt-family-2007-photo"].includes(item.id)), false, "all pre-2010 Jack stories must fail the News Feed year gate");
-  assert.equal(facebook.selectFacebookProfileWall(interactionFacebook, "Jack Keller").some(item => item.id === "jack-car-matt-2009-photos"), true, "the 2009 Jack story must remain on Jack Wall");
+  assert.equal(facebook.selectFacebookProfileWall(interactionFacebook, "Jack Keller").some(item => item.id === "jack-car-matt-2009-photos"), false, "custom-excluded Jack history must remain hidden on his Wall");
   assert.equal(feedAtSessionStart.some(item => item.id === "alex-dog-golden-2007"), false, "Alex's 2007 dog photo must fail the News Feed year gate");
   assert.equal(facebookAlbums.getFacebookAlbum("alex-dogs")?.mediaIds.includes("alex-dog-golden-2007"), true, "Alex's 2007 dog photo must remain in Photos");
   assert.equal(feedAtSessionStart.some(item => item.id === "matt-photo-2007"), false, "Matt's 2007 photo must fail the News Feed year gate");
@@ -3225,7 +3236,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
     ["second Camera Roll bootstrap", "src/hero/HeroSandbox.tsx", text => text.replace("const handoff =", "initializeCameraRollPersistence(sessionId); const handoff ="), /must not duplicate persistence/],
     ["double boot ownership", "src/hero/HeroPhone.tsx", text => text.replace("bootAmount={softwareActive ? 0 : bootAmount}", "bootAmount={bootAmount}"), /Hero Apple must be suppressed/],
     ["phase-mounted portal", "src/hero/HeroScene.tsx", text => text.replace("{portalEnabled && portalHost && <ScreenPortal", '{props.phase === "experience" && portalEnabled && portalHost && <ScreenPortal'), /screen portal must persist/],
-    ["unready software visible", "src/hero/HeroScene.tsx", text => text.replace('props.bootComplete && props.phase === "experience" && props.softwareReady ? "software" : "hidden"', '"software"'), /software stays hidden/],
+    ["unready software visible", "src/hero/HeroScene.tsx", text => text.replace('heroSoftwareSurface(props.phase, props.bootComplete, Boolean(props.softwareReady))', '"software"'), /software stays hidden/],
     ["duplicate Camera runtime", "src/hero/HeroSandbox.tsx", text => text.replace("const handoff =", "useReducer(cameraRuntimeTransition, bootstrapCameraRuntimeState); const handoff ="), /one Camera runtime/],
   ];
   for (const [name, path, mutate, expected] of presentationMutations) {
@@ -3249,7 +3260,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
     "LockScreenStatusPresentation", "StatusBar", "BootLogo", "LockScreen", "PasscodeScreen", "SpringBoard",
     "AppLaunchContainer", "IOS4KeyboardSystem", "CameraContainer", "PhotosContainer",
     "MobileSMSContainer", "TwitterContainer", "FacebookContainer",
-    "InstagramContainer", "FlickrContainer", "TumblrContainer", "SafariContainer", "YouTubeContainer", "ITunesContainer", "ClockContainer", "CompassContainer", "VoiceMemosContainer", "LegacyLoadingContainer", "CalculatorContainer", "CalendarContainer", "MapsContainer", "FoursquareContainer",
+    "InstagramContainer", "FlickrContainer", "TumblrContainer", "WeatherContainer", "NotesContainer", "AppleAccountGate", "SafariContainer", "YouTubeContainer", "ITunesContainer", "ClockContainer", "CompassContainer", "VoiceMemosContainer", "LegacyLoadingContainer", "CalculatorContainer", "CalendarContainer", "MapsContainer", "FoursquareContainer",
     "MediaSourceChooser", "PhotosContainer", "MultitaskingBar", "PowerOffConfirm", "LowBatteryAlert", "SMSAlertOverlay", "AppNotificationAlert",
   ], "screen-local components must preserve their original multiplicity and status/lock/app/overlay order");
   const keyboardSubtreeSource = screenPresentationSource.match(/<IOS4KeyboardSystem\s[\s\S]*?<\/IOS4KeyboardSystem>/)?.[0];
@@ -3257,7 +3268,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.deepEqual([...keyboardSubtreeSource.matchAll(/<([A-Z]\w*)\b/g)].map(match => match[1]), [
     "IOS4KeyboardSystem", "CameraContainer", "PhotosContainer", "MobileSMSContainer",
     "TwitterContainer", "FacebookContainer", "InstagramContainer",
-    "FlickrContainer", "TumblrContainer", "SafariContainer", "YouTubeContainer", "ITunesContainer", "ClockContainer", "CompassContainer", "VoiceMemosContainer", "LegacyLoadingContainer", "CalculatorContainer", "CalendarContainer", "MapsContainer", "FoursquareContainer", "MediaSourceChooser", "PhotosContainer",
+    "FlickrContainer", "TumblrContainer", "WeatherContainer", "NotesContainer", "AppleAccountGate", "SafariContainer", "YouTubeContainer", "ITunesContainer", "ClockContainer", "CompassContainer", "VoiceMemosContainer", "LegacyLoadingContainer", "CalculatorContainer", "CalendarContainer", "MapsContainer", "FoursquareContainer", "MediaSourceChooser", "PhotosContainer",
   ], "the keyboard must wrap exactly the same app and Camera picker presentation subtree");
   assert.match(screenPresentationSource, /<\/IOS4KeyboardSystem>\s+<\/AppLaunchContainer>\}\s+\{session\.phase === "app" && <MultitaskingBar/, "keyboard and app viewport must close before the screen-level multitasking overlay");
   assert.match(keyboardSubtreeSource, /\(appRuntime\.activeAppId === "camera" \|\| media\.cameraActive\) && cameraRuntime\.cameraApp\.phase !== "none" && <CameraContainer\s+owner="cameraApp"\s+mediaAttachment=\{media\.cameraActive\}\s+onCancel=\{media\.cameraActive \? cancelScreenCameraPicker : undefined\}\s+session=\{cameraRuntime\.cameraApp\}\s+previewCanvasRef=\{setCameraPreviewCanvas\}/, "standalone and attachment Camera must share exactly the same runtime and preview bridge");
@@ -3399,7 +3410,7 @@ assert.deepEqual(seed.facebook.feed.filter(story => ["jack-birthday-june-post", 
   assert.equal(new Set(promotedSocialIds).size, promotedSocialIds.length, "promoted social app IDs must not be duplicated");
   const pageLaunchIds = [...`${pageOneSource}\n${pageTwoSource}`.matchAll(/launchId: "([^"]+)"/g)].map(match => match[1]);
   assert.equal(new Set(pageLaunchIds).size, pageLaunchIds.length, "SpringBoard page launch IDs must not be duplicated");
-  assert.deepEqual(pageLaunchIds, ["calendar", "photos", "maps", "itunes", "facebook", "twitter", "instagram", "foursquare", "flickr", "tumblr", "whatsapp", "skype"], "the approved Photos launcher, direct social launchers, and HOLD app shells must retain their stable IDs across both pages");
+  assert.deepEqual(pageLaunchIds, ["calendar", "photos", "maps", "weather", "notes", "itunes", "app-store", "game-center", "facebook", "twitter", "instagram", "foursquare", "flickr", "tumblr", "whatsapp", "skype"], "the approved Photos launcher, direct social launchers, and HOLD app shells must retain their stable IDs across both pages");
   assert.doesNotMatch(springBoardSource, /name: "Social"|folderId: "social"|const SOCIAL_APPS|activeFolderId/, "the retired Social folder instance and its SpringBoard-specific state must be absent");
   assert.doesNotMatch(springBoardSocialAppsSource, /SOCIAL_FOLDER_SLOTS/, "the retired Social folder's padded slot registry must remain removed");
   assert.match(deviceCssSource, /\.screen > \.springboard \{[^}]*DefaultWallpaper@2x~iphone\.png[^}]*320px 480px no-repeat;/, "the existing water-droplet wallpaper and crop must remain unchanged");

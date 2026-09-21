@@ -74,6 +74,18 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
 }] });
 try {
   const { App } = await server.ssrLoadModule("/src/device/App.tsx");
+  const { heroSoftwareSurface, heroProjectionEnabled } = await server.ssrLoadModule("/src/hero/HeroController.ts");
+  const { portalPointerEnabled } = await server.ssrLoadModule("/src/hero/screenPortalMath.ts");
+  const depletionTest = process.argv.includes("--depletion");
+  const hasDepletedSurface = () => {
+    // Render the real DeviceScreen branch in isolated diagnostic-hook slots.
+    const saved = { slots, cursor, pending };
+    slots = []; cursor = 0; pending = [];
+    try {
+      const walk = n => !n || typeof n !== "object" ? [] : Array.isArray(n) ? n.flatMap(walk) : [n, ...walk(n.props?.children)];
+      return walk(view.screen.type(view.screen.props)).some(n => n.type === "img" && n.props.className === "low-battery-screen");
+    } finally { ({ slots, cursor, pending } = saved); }
+  };
   const device = await server.ssrLoadModule("/src/state/deviceMachine.ts");
   const { initialVoiceMemoState } = await server.ssrLoadModule("/src/state/voiceMemoRecorder.ts");
   const { createMockPublicTwitterSubmissionRepository } = await server.ssrLoadModule("/src/data/mockPublicTwitterSubmissionRepository.ts");
@@ -204,7 +216,47 @@ try {
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "sleeping");
     view.powerControl.begin(); view.powerControl.end(); await flush();
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "foursquare-friend-checkin");
-    await tick(390000);
+    if (depletionTest) {
+      view.screen.props.actions.completeScreenUnlock(); await flush();
+      view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
+      while (view.lifecycleDiagnostics.elapsedMs < 899750) {
+        view.onUserActivity(); await flush();
+        await tick(Math.min(50000, 899750 - view.lifecycleDiagnostics.elapsedMs));
+      }
+      assert.equal(view.lifecycle.phase, "experience");
+      // Inject a due-at-terminal SMS fixture to prove the actual delivery guard,
+      // rather than merely observing a quiet queue after the final seed event.
+      view.screen.props.display.session.deviceEvents.push({
+        id: "audit-terminal-sms", type: "initialSMS", dueElapsedMs: 900000,
+        sourceApp: "messages", deliveryPolicy: "notification",
+        payload: { kind: "initial-sms", id: "audit-terminal-sms", sender: "Mom", message: "Must not deliver", timestamp: "12:17" },
+      });
+      await tick(249);
+      assert.equal(view.lifecycle.phase, "experience");
+      await tick(1);
+      assert.equal(view.lifecycle.phase, "depleted");
+      assert.equal(view.lifecycle.terminalFired, true);
+      assert.equal(view.screen.props.display.session.phase, "lowBatteryWarning", "existing battery renderer selected");
+      assert.equal(hasDepletedSurface(), true, "real renderer includes existing depleted image");
+      assert.equal(view.screen.props.apps.messagesState.messages.some(m => m.id === "audit-terminal-sms"), false);
+      const screenType = view.screen.type, screenKey = view.screen.key;
+      const messages = view.screen.props.apps.messagesState.messages;
+      const surface = () => heroSoftwareSurface(view.lifecycle.phase, view.lifecycle.bootComplete, view.softwareReady);
+      assert.equal(surface(), "depleted");
+      assert.equal(heroProjectionEnabled(view.lifecycle.phase), true);
+      assert.equal(portalPointerEnabled(surface(), false, 1), false, "visible terminal surface owns no input");
+      assert.equal(view.powerControl, undefined);
+      view.onHomePress(); view.onUserActivity(); view.simulateExperienceEnd(); await flush();
+      await tick(1499);
+      assert.equal(view.lifecycle.phase, "depleted", "repeated terminal calls do not restart interval");
+      assert.equal(view.screen.props.display.session.phase, "lowBatteryWarning");
+      assert.deepEqual(view.screen.props.apps.messagesState.messages, messages, "no late scheduler deliveries");
+      assert.equal(view.screen.type, screenType); assert.equal(view.screen.key, screenKey, "same DeviceScreen");
+      await tick(1);
+      assert.equal(surface(), "hidden");
+      assert.equal(view.screen.props.display.session.phase, "shutdown");
+      assert.equal(hasDepletedSurface(), false);
+    } else await tick(390000);
     assert.equal(view.lifecycle.phase, "power-loss");
     assert.equal(view.lifecycle.terminalFired, true);
     view.simulateExperienceEnd(); view.simulateExperienceEnd(); await flush();

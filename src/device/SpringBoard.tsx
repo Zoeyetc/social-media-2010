@@ -1,3 +1,4 @@
+import { WEATHER } from "../state/smallApps";
 import { CSSProperties, Dispatch, PointerEvent as ReactPointerEvent, useRef, useState } from "react";
 import appStoreIconSrc from "../assets/historical/ios4.1/springboard/apps/AppStore@2x.browser.png";
 import calculatorIconSrc from "../assets/historical/ios4.1/springboard/apps/Calculator@2x.browser.png";
@@ -383,7 +384,10 @@ function SpringBoardIcon({ name, iconSrc, iconPresentation, kind, folderApps, so
       ? <SpringBoardFolderIcon iconSrc={iconSrc} miniatures={folderApps ?? []} />
       : socialAppId
         ? <SpringBoardSocialIcon appId={socialAppId} />
-        : iconSrc && <img className={`springboard-system-icon${iconPresentation === "app-store-artwork" ? " is-app-store-artwork" : ""}`} src={iconSrc} alt={name ?? ""} />}
+        : name === "Weather" && iconSrc
+          ? <span className="springboard-weather-artwork"><img className="springboard-system-icon" src={iconSrc} alt="Weather" /></span>
+          : iconSrc && <img className={`springboard-system-icon${iconPresentation === "app-store-artwork" ? " is-app-store-artwork" : ""}`} src={iconSrc} alt={name ?? ""} />}
+    {name === "Weather" && <span className="weather-icon-temperature" aria-label={`${WEATHER.temperature} degrees Fahrenheit`}><span className="weather-icon-digits" aria-hidden="true">{WEATHER.temperature}<span className="weather-icon-degree">°</span></span></span>}
     {calendarDay && <span className="springboard-calendar-date" aria-hidden="true"><small>Wednesday</small><b>{calendarDay}</b></span>}
     {(iconSrc || socialAppId) && name && <span className="springboard-icon-label">{name}</span>}
     {!!badgeCount && <SpringBoardBadge count={badgeCount} />}

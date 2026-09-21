@@ -1,10 +1,11 @@
 import type { RuntimePowerControl } from "../device/DevicePresentation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { Group, MathUtils, Quaternion, Vector3 } from "three";
 import { heroBootOpacity, HERO_DETACH_DURATION_SECONDS, HERO_POWER_DURATION_SECONDS, HERO_POWER_LOSS_SECONDS, HERO_RETURN_SECONDS, HERO_RECHARGE_SECONDS, restrainedEase } from "./HeroController";
 import { measureHeroScreenGeometry } from "./heroScreenGeometry";
 import { useHeroInspectSheen } from "./useHeroInspectSheen";
+import { captureBootReturn, bootReturnPose } from "./heroBootReturn";
 import { heroPresentationReady } from "./heroPresentationReady";
 import {
   ProductionIPhone4Model,
@@ -77,7 +78,8 @@ export function HeroPhone({
   const roles = useRef<IPhone4MeshRoles | null>(null);
   const phaseElapsed = useRef(0);
   const rotation = useRef({ x: START_ROTATION_X, y: START_ROTATION_Y });
-  const powerStartOrientation = useRef(new Quaternion());
+  const displayedInspect = useRef({ x: START_ROTATION_X, y: START_ROTATION_Y });
+  const powerReturn = useRef(captureBootReturn(displayedInspect.current));
   const bootOrientation = useRef(new Quaternion());
   useHeroInspectSheen(phase, roles);
   const drag = useRef<DragState | null>(null);
@@ -107,7 +109,7 @@ export function HeroPhone({
     console.info("[HeroPhone] model integration report", diagnostics);
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     phaseElapsed.current = 0;
     boundsReported.current = false;
     if (phase === "identity" || phase === "recharging") {
@@ -115,8 +117,8 @@ export function HeroPhone({
 
     }
     if (phase === "powering-on" && group.current) {
-      // Capture the displayed pose, not the accumulated multi-turn Euler yaw.
-      powerStartOrientation.current.copy(group.current.quaternion).normalize();
+      // Capture the last rendered inspect angles, not a pending pointer delta.
+      powerReturn.current = captureBootReturn(displayedInspect.current);
     }
     if (phase !== "inspect" && drag.current) {
       const active = drag.current;
@@ -160,7 +162,7 @@ export function HeroPhone({
       y = 0;
       scale = narrow ? 0.92 : 1.04;
 
-    } else if (phase === "powering-on" || phase === "front-aligned" || phase === "experience" || phase === "power-loss") {
+    } else if (phase === "powering-on" || phase === "front-aligned" || phase === "experience" || phase === "depleted" || phase === "power-loss") {
       x = 0;
       y = 0;
       const progress = phase !== "powering-on" ? 1 : Math.min(1, phaseElapsed.current / HERO_POWER_DURATION_SECONDS);
@@ -212,8 +214,10 @@ export function HeroPhone({
       rotation.current.y + MathUtils.degToRad(2) * frontOffset.current, 0);
     if (phase === "powering-on") {
       const progress = Math.min(1, phaseElapsed.current / HERO_POWER_DURATION_SECONDS);
-      phone.quaternion.slerpQuaternions(powerStartOrientation.current, bootOrientation.current, restrainedEase(progress));
+      const pose = bootReturnPose(powerReturn.current, restrainedEase(progress));
+      phone.rotation.set(pose.x, pose.y, 0);
     }
+    if (phase === "inspect") displayedInspect.current = { x: phone.rotation.x, y: phone.rotation.y };
     phone.updateWorldMatrix(true, true);
     mountedModel.visible = heroPresentationReady(Boolean(roles.current?.screen), phone, camera, size);
     if (alignmentFinished && phone.quaternion.angleTo(bootOrientation.current) < BOOT_ORIENTATION_TOLERANCE) {

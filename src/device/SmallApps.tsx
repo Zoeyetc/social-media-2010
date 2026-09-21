@@ -1,9 +1,19 @@
 import { useEffect, useReducer, type Dispatch } from "react";
-import { accountGateTransition, initialAccountGate, type SmallAppsState, type SmallAppsEvent } from "../state/smallApps";
+import { useId } from "react";
+import { WEATHER_DAY_RANGE, WEATHER_FORECAST, weatherBoardForTime, accountGateTransition, initialAccountGate, type SmallAppsState, type SmallAppsEvent } from "../state/smallApps";
 import { IOS4Textarea } from "./IOS4KeyboardSystem";
 import "../styles/smallApps.css";
-export function WeatherContainer({ state }: { state: SmallAppsState }) {
-  return <section className="small-weather" aria-label="Weather" data-content-status="RECONSTRUCTED EXPERIENCE CONTENT"><h1>{state.weather.city}</h1><div className="small-weather-sun" aria-hidden="true"/><p>{state.weather.condition}</p><strong>{state.weather.temperature}°</strong><footer aria-label="Page 1 of 1">•</footer></section>;
+function WeatherRainGraphic({ rain = true }: { rain?: boolean }) {
+  const id = useId();
+  return <svg className="small-weather-rain" viewBox="0 0 100 85" aria-hidden="true"><defs><linearGradient id={id} x2="0" y2="1"><stop stopColor="#f4f6fb"/><stop offset=".55" stopColor="#c8cfdf"/><stop offset="1" stopColor="#7d89a5"/></linearGradient></defs><path fill={`url(#${id})`} stroke="#6b7692" d="M20 52C2 52 3 28 20 27C22 5 55 3 62 25C88 17 101 52 78 52Z"/>{rain && <path fill="#a8c7ef" stroke="#6386bd" strokeWidth=".6" d="M29 59q-9 12-5 14q6 2 5-14ZM50 59q-9 12-5 14q6 2 5-14ZM71 59q-9 12-5 14q6 2 5-14Z"/>}</svg>;
+}
+export function WeatherContainer({ state, simulatedTime }: { state: SmallAppsState; simulatedTime: Date }) {
+  const board = weatherBoardForTime(simulatedTime);
+  return <section className={`small-weather is-${board}`} aria-label="Weather" data-board={board} data-content-status="HISTORICALLY GROUNDED RECONSTRUCTION">
+    <header className="small-weather-current"><h1>{state.weather.city}</h1><p>{state.weather.condition}</p><div className="small-weather-summary"><WeatherRainGraphic/><strong aria-label={`${state.weather.temperature} degrees Fahrenheit`}>{state.weather.temperature}°</strong></div><div className="small-weather-range">H: {WEATHER_DAY_RANGE.high}° <span>L: {WEATHER_DAY_RANGE.low}°</span></div></header>
+    <ol className="small-weather-forecast" aria-label="Six-day forecast" data-content-status="HISTORICALLY GROUNDED RECONSTRUCTION">{WEATHER_FORECAST.map(day => <li key={day.day}><span>{day.day}</span><span className="small-weather-forecast-condition" aria-label={day.condition} data-content-status="RECONSTRUCTED"><WeatherRainGraphic rain={day.rain}/></span><b>{day.high}°</b><span>{day.low}°</span></li>)}</ol>
+    <footer><span aria-label="Page 1 of 1">•</span></footer>
+  </section>;
 }
 export function NotesContainer({ state, dispatch }: { state: SmallAppsState; dispatch: Dispatch<SmallAppsEvent> }) {
   const note = state.notes.find(item => item.id === state.selected);

@@ -24,7 +24,8 @@ export type HeroAction =
   | { type: "BOOT_COMPLETE"; now: number }
   | { type: "ALIGN_COMPLETE" }
   | { type: "ENTER_EXPERIENCE" }
-  | { type: "EXPERIENCE_ENDED" }
+  | { type: "EXPERIENCE_ENDED"; depleted?: boolean }
+  | { type: "DEPLETION_COMPLETE" }
   | { type: "RESET_COMPLETE" }
   | { type: "ADVANCE_RETURN"; from: HeroPhase }
   | { type: "JUMP_TO_PHASE"; phase: HeroPhase }
@@ -66,7 +67,9 @@ export function heroTransition(state: HeroState, action: HeroAction): HeroState 
     case "ENTER_EXPERIENCE":
       return state.phase === "front-aligned" && state.bootComplete ? { ...state, phase: "experience" } : state;
     case "EXPERIENCE_ENDED":
-      return state.phase === "experience" ? { ...state, phase: "power-loss", terminalFired: true } : state;
+      return state.phase === "experience" ? { ...state, phase: action.depleted ? "depleted" : "power-loss", terminalFired: true } : state;
+    case "DEPLETION_COMPLETE":
+      return state.phase === "depleted" ? { ...state, phase: "power-loss" } : state;
     case "ADVANCE_RETURN":
       if (state.phase !== action.from) return state;
       if (state.phase === "power-loss") return { ...state, phase: "returning" };
@@ -82,4 +85,13 @@ export function heroTransition(state: HeroState, action: HeroAction): HeroState 
 export function restrainedEase(progress: number): number {
   const t = Math.max(0, Math.min(1, progress));
   return t * t * (3 - 2 * t);
+}
+
+// Visibility and pointer ownership are separate during terminal depletion.
+export function heroSoftwareSurface(phase: HeroPhase, bootComplete: boolean, ready: boolean) {
+  if (!bootComplete || !ready) return "hidden";
+  return phase === "depleted" ? "depleted" : phase === "experience" ? "software" : "hidden";
+}
+export function heroProjectionEnabled(phase: HeroPhase) {
+  return phase === "powering-on" || phase === "front-aligned" || phase === "experience" || phase === "depleted";
 }

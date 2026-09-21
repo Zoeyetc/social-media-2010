@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 type HeroIdentityProps = Readonly<{
   active: boolean;
@@ -12,6 +12,29 @@ type HeroIdentityProps = Readonly<{
 export function HeroIdentity({ active, name, passcode, onNameChange, onRevealCode, onConfirm }: HeroIdentityProps) {
   const [invalid, setInvalid] = useState(false);
 
+  const proceeding = useRef(false);
+  const proceed = useCallback(() => {
+    if (!active || !passcode || !name.trim() || proceeding.current) return;
+    proceeding.current = true;
+    onConfirm();
+  }, [active, passcode, name, onConfirm]);
+
+  useEffect(() => {
+    if (!active || !passcode || proceeding.current) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter") return;
+      // Own Return even when focus has left the form; suppress its native submit.
+      event.preventDefault();
+      if (event.isComposing || event.keyCode === 229) return;
+      event.stopPropagation();
+      if (event.repeat || proceeding.current) return;
+      window.removeEventListener("keydown", onKeyDown, true);
+      proceed();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [active, passcode, proceed]);
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!active) return;
@@ -21,7 +44,7 @@ export function HeroIdentity({ active, name, passcode, onNameChange, onRevealCod
     }
     setInvalid(false);
     if (passcode) {
-      onConfirm();
+      proceed();
       return;
     }
     onRevealCode(name.trim());

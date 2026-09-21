@@ -1301,6 +1301,9 @@ export function selectFacebookProfileWall(state: FacebookState, profileName: str
   const visibleItemIds = new Set(state.feed.filter(item => isFacebookStoryVisibleToUser(state, item)).map(item => item.id));
   return state.feed.filter(item => {
     if (item.author !== profileName) return false;
+    // Jack's Wall eligibility/album ownership cannot override his audience.
+    // Other profiles retain their existing curated history policy in this RC pass.
+    if (profileName === CORE_SOCIAL_CHARACTERS.jack.displayName && !visibleItemIds.has(item.id)) return false;
     const owningAlbum = getFacebookAlbumByStoryId(item.id);
     return visibleItemIds.has(item.id) || item.profileWallEligible === true || owningAlbum?.ownerActor.displayName === profileName;
   });

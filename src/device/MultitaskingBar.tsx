@@ -1,3 +1,4 @@
+import { WEATHER } from "../state/smallApps";
 import gamecenterSmallIcon from "../assets/historical/ios4.1/springboard/apps/GameCenter@2x.browser.png";
 import appstoreSmallIcon from "../assets/historical/ios4.1/springboard/apps/AppStore@2x.browser.png";
 import notesSmallIcon from "../assets/historical/ios4.1/springboard/apps/Notes@2x.browser.png";
@@ -96,6 +97,7 @@ export function MultitaskingBar({ state, appRuntime, dispatch, onSelectApp }: Mu
         }}
       >
         <img className="multitasking-app-icon" src={app.iconSrc} alt={app.name} />
+        {app.id === "weather" && <span className="weather-icon-temperature" aria-label={`${WEATHER.temperature} degrees Fahrenheit`}>{WEATHER.temperature}°</span>}
         {state === "editing" && <button
           className="multitasking-delete-control"
           aria-label={`Remove ${app.name} from multitasking`}

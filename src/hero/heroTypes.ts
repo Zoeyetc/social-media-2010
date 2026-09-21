@@ -7,6 +7,7 @@ export type HeroPhase =
   | "powering-on"
   | "front-aligned"
   | "experience"
+  | "depleted"
   | "power-loss"
   | "returning"
   | "recharging"

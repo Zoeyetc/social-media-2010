@@ -338,7 +338,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
         mediaAttachmentActive={media.visible && media.request?.requester === "tumblr"}
         onRequestMedia={contextId => media.requestAttachment({ requester: "tumblr", mode: "photo", source: "camera-or-library", contextId })}
       />}
-      {appRuntime.activeAppId === "weather" && <WeatherContainer state={apps.smallApps} />}
+      {appRuntime.activeAppId === "weather" && <WeatherContainer state={apps.smallApps} simulatedTime={deviceDateTime} />}
       {appRuntime.activeAppId === "notes" && <NotesContainer state={apps.smallApps} dispatch={apps.dispatchSmallApps} />}
       {(appRuntime.activeAppId === "app-store" || appRuntime.activeAppId === "game-center") && <AppleAccountGate key={`${session.experienceSessionId}:${appRuntime.activeAppId}`} app={appRuntime.activeAppId} active={appRuntime.phase === "running" && multitaskingBar === "closed"} />}
       {appRuntime.activeAppId === "safari" && <SafariContainer />}
