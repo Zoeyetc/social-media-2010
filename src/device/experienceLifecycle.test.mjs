@@ -128,6 +128,22 @@ try {
     assert.equal(view.screen.props.overlays.activeLockNotification, null, "new user has no previous notification");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);
     view.screen.props.actions.completeScreenUnlock(); await flush();
+    assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode", "slide-to-unlock routes into the passcode gate");
+    const passcode = view.screen.props.display.session.passcode;
+    assert.match(passcode, /^\d{4}$/);
+    const wrongPasscode = passcode === "0000" ? "0001" : "0000";
+    view.screen.props.actions.attemptScreenPasscode(wrongPasscode); await flush();
+    assert.equal(view.screen.props.display.session.passcodeAttempts, 1);
+    await tick(1000);
+    assert.equal(view.lifecycleDiagnostics.elapsedMs, 1000, "passcode lockout leaves the world clock running");
+    view.powerControl.begin(); view.powerControl.end(); await flush();
+    assert.equal(view.powerControl.state, "asleep");
+    view.powerControl.begin(); view.powerControl.end(); await flush();
+    assert.equal(view.powerControl.state, "awake");
+    view.screen.props.actions.completeScreenUnlock(); await flush();
+    assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode", "wake returns through the lockscreen gate");
+    assert.equal(view.screen.props.display.session.passcodeAttempts, 1, "sleep/wake does not clear passcode access state");
+    view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "springboard");
     view.screen.props.navigation.launchSpringBoardApp("camera"); await flush();
     view.screen.props.navigation.dispatchAppRuntime({ type: "ANIMATION_COMPLETE" }); await flush();
@@ -159,6 +175,8 @@ try {
     // SMS stays first; social arrivals cannot replace it or overlap it.
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "mom-home-yet");
     view.screen.props.actions.openLockNotificationTarget(view.screen.props.overlays.activeLockNotification); await flush();
+    assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode");
+    view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "messages");
     assert.equal(view.screen.props.display.session.activeWarning, 20);
     assert.equal(view.screen.props.overlays.appNotification, null, "real low-battery warning has priority over the queued app alert");
@@ -176,7 +194,7 @@ try {
     assert.equal(view.screen.props.overlays.appNotification, null);
     // Keep awake so the June delivery tests same-app foreground suppression.
     for (const delay of [50000, 50000, 15000]) { view.onUserActivity(); await flush(); await tick(delay); }
-    assert.equal(view.lifecycleDiagnostics.elapsedMs, 270000);
+    assert.equal(view.lifecycleDiagnostics.elapsedMs, 271000, "the passcode access check advances canonical experience time");
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "facebook");
     assert.equal(view.screen.props.apps.facebookState.inboxThreads.some(thread => thread.id === "june-live-message"), true, "same-app delivery still updates app data");
     assert.equal(view.screen.props.overlays.appNotification, null);

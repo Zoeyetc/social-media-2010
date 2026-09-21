@@ -133,6 +133,7 @@ try {
     assert.equal(view.screen.props.overlays.activeLockNotification, null, "new user has no previous notification");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);
     view.screen.props.actions.completeScreenUnlock(); await flush();
+    view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.sessionDiagnostics.softwarePhase, "springboard");
     for (const key of ["2","+","3","="]) view.screen.props.apps.dispatchBasicSystemApps({type:"CALCULATOR_KEY",key});
     view.screen.props.apps.dispatchBasicSystemApps({type:"CALENDAR_MONTH",delta:1}); await flush();
@@ -219,6 +220,8 @@ try {
     // SMS stays first; social arrivals cannot replace it or overlap it.
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "mom-home-yet");
     view.screen.props.actions.openLockNotificationTarget(view.screen.props.overlays.activeLockNotification); await flush();
+    assert.equal(view.sessionDiagnostics.softwarePhase, "passcode");
+    view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "messages");
     assert.equal(view.screen.props.display.session.activeWarning, 20);
     assert.equal(view.screen.props.overlays.appNotification, null, "real low-battery warning has priority over the queued app alert");

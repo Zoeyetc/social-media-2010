@@ -7,6 +7,7 @@ import type { CameraRuntimeState } from "../state/cameraRuntime";
 import bootLogoSrc from "../assets/historical/ios4.1/applelogo-iphone3,1-8B117.png?inline";
 import lowBatterySrc from "../assets/device/low-battery-iphone4.png";
 import { LockScreen } from "./LockScreen";
+import { PasscodeScreen } from "./PasscodeScreen";
 import { CameraContainer } from "./CameraContainer";
 import { FacebookContainer } from "./FacebookContainer";
 import { ClockContainer, CompassContainer, VoiceMemosContainer, LegacyLoadingContainer, type RemainingAppsProps } from "./RemainingBasicApps";
@@ -44,7 +45,7 @@ export type DeviceScreenProps = {
   };
   presentation: { presenter: DevicePresenter; experienceSessionId: string | null };
   display: {
-    session: Pick<Session, "phase" | "returnToHeroPending" | "activeWarning" | "experienceSessionId">;
+    session: Pick<Session, "phase" | "returnToHeroPending" | "activeWarning" | "experienceSessionId" | "passcode" | "passcodeAttempts" | "passcodeLockoutUntilElapsedMs">;
     powerProgress: number;
     lockScreenModel: ComponentProps<typeof LockScreen>["model"];
     statusBarState: ComponentProps<typeof StatusBar>["state"];
@@ -114,6 +115,8 @@ export type DeviceScreenProps = {
   actions: {
     openLockNotificationTarget: ComponentProps<typeof LockScreen>["onViewNotification"];
     completeScreenUnlock: ComponentProps<typeof LockScreen>["onUnlock"];
+    attemptScreenPasscode: (candidate: string) => void;
+    cancelScreenPasscode: () => void;
     completeScreenAppClose: ComponentProps<typeof AppLaunchContainer>["onClosed"];
     openScreenCameraPicker: ComponentProps<typeof MobileSMSContainer>["onOpenCameraPicker"];
     scheduleScreenMomReply: ComponentProps<typeof MobileSMSContainer>["onScheduleMomReply"];
@@ -195,6 +198,8 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
   const {
     openLockNotificationTarget,
     completeScreenUnlock,
+    attemptScreenPasscode,
+    cancelScreenPasscode,
     completeScreenAppClose,
     openScreenCameraPicker,
     scheduleScreenMomReply,
@@ -213,11 +218,11 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
   } = actions;
 
   return <div className={`screen ${session.phase}`} data-media-camera={media.cameraActive || undefined}>
-    {(session.phase === "locked"
+    {(session.phase === "locked" || session.phase === "passcode"
       || session.phase === "springboard"
       || (session.phase === "app"
         && !((appRuntime.activeAppId === "camera" || media.cameraActive) && cameraRuntime.cameraApp.phase !== "none"))) && <div className="device-status-bar-layer">
-      {session.phase === "locked"
+      {(session.phase === "locked" || session.phase === "passcode")
         ? <LockScreenStatusPresentation model={lockScreenModel} />
         : <StatusBar state={statusBarState} />}
     </div>}
@@ -230,6 +235,13 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       activeLockNotification={activeLockNotification}
       onViewNotification={openLockNotificationTarget}
       onUnlock={completeScreenUnlock}
+    />}
+    {session.phase === "passcode" && <PasscodeScreen
+      lockedUntilElapsedMs={session.passcodeLockoutUntilElapsedMs}
+      elapsedMs={elapsed}
+      failedAttempts={session.passcodeAttempts}
+      onAttempt={attemptScreenPasscode}
+      onCancel={cancelScreenPasscode}
     />}
     {session.phase === "springboard" && <SpringBoard
       currentPage={springBoardPage}

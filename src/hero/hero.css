@@ -45,6 +45,16 @@ button, input { font: inherit; }
 }
 
 .hero-identity form { display: grid; gap: 22px; }
+.hero-note-copy { width:min(31vw, 360px); }
+.hero-note-copy form { gap:10px; padding:28px 30px 25px; color:#2f2b25; background:#e7ddc6; box-shadow:0 16px 28px rgba(0,0,0,.3); transform:rotate(-3deg); }
+.hero-note-copy label,.hero-note-copy .hero-code-label { color:#332f27; font-family:Arial,Helvetica,sans-serif; font-size:11px; font-weight:bold; letter-spacing:.14em; }
+.hero-note-copy input { color:#2f2b25; caret-color:#2f2b25; border-bottom-color:#6d665b; font:20px/26px Georgia,"Times New Roman",serif; }
+.hero-note-copy .hero-code { min-height:27px; color:#2f2b25; border-bottom:1px solid #6d665b; font:20px/26px Georgia,"Times New Roman",serif; letter-spacing:.13em; }
+.hero-note-reminder { color:#534d43; font:italic 14px/18px Georgia,"Times New Roman",serif; text-transform:none; letter-spacing:0; }
+.hero-note-continue { justify-self:start; margin-top:6px; padding:2px 0; color:#534d43; border:0; background:transparent; font:italic 14px/18px Georgia,"Times New Roman",serif; letter-spacing:0; text-transform:none; cursor:pointer; }
+.hero-note-continue:hover { text-decoration:underline; }
+.hero-note-continue:focus-visible { outline:1px solid #6d665b; outline-offset:4px; }
+.hero-note-copy .hero-enter,.hero-note-copy .hero-name-error { color:#625b50; }
 .hero-identity label {
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(40px, 5.6vw, 74px);
@@ -203,6 +213,7 @@ button, input { font: inherit; }
     width: calc(100% - 48px);
     transform: none;
   }
+  .hero-note-copy { width:calc(100% - 48px); }
   .hero-sandbox:not([data-phase="identity"]) .hero-identity { transform: translateY(-12px); }
   .hero-identity label { font-size: clamp(36px, 11vw, 56px); }
   .hero-debug { max-width: calc(100% - 20px); flex-wrap: wrap; }

@@ -10,6 +10,7 @@ import { HeroScreenSpill } from "./HeroScreenSpill";
 import { ScreenPortal, type ScreenPortalHandle, type ScreenPortalState } from "./ScreenPortal";
 import { ScreenPortalProjection } from "./ScreenPortalProjection";
 import { HeroChargerDiagnostics, chargerDiagnosticsEnabled } from "./HeroChargerDiagnostics";
+import { HeroNote } from "./HeroNote";
 import type { HeroCableAnchor, HeroPhase, HeroScreenGeometry } from "./heroTypes";
 
 type HeroSceneProps = Readonly<{
@@ -191,6 +192,7 @@ function SceneContents(props: HeroSceneProps & { lightingPreset: HeroLightingPre
     <HeroScreenSpill phase={props.phase} softwareVisible={Boolean(props.screen && props.softwareReady && props.bootComplete)}
       awake={props.runtimePower?.state === "awake"} bootStartedAt={props.frontScreenOff ? null : props.bootStartedAt} bootComplete={props.bootComplete} />
     <Suspense fallback={null}>
+      <HeroNote visible={props.phase === "identity"} />
       <HeroCable detachAmount={props.phase === "identity" || props.phase === "recharging" || props.phase === "resetting" ? 0 : cable.progress}
         rechargeAmount={props.phase === "recharging" ? (cable.phase === "recharging" ? cable.progress : 0) : undefined}
         returnAmount={props.phase === "returning" ? (cable.phase === "returning" ? cable.progress : 0) : undefined} />

@@ -4,6 +4,7 @@ import { ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { Group, MathUtils, Quaternion, Vector3 } from "three";
 import { heroBootOpacity, HERO_DETACH_DURATION_SECONDS, HERO_POWER_DURATION_SECONDS, HERO_POWER_LOSS_SECONDS, HERO_RETURN_SECONDS, HERO_RECHARGE_SECONDS, restrainedEase } from "./HeroController";
 import { measureHeroScreenGeometry } from "./heroScreenGeometry";
+import { useHeroInspectSheen } from "./useHeroInspectSheen";
 import { heroPresentationReady } from "./heroPresentationReady";
 import {
   ProductionIPhone4Model,
@@ -15,7 +16,11 @@ import {
 } from "./iphone4ModelContract";
 import type { HeroCableAnchor, HeroPhase, HeroScreenGeometry } from "./heroTypes";
 
-const MAX_ROTATE_X = MathUtils.degToRad(20);
+const MIN_INSPECT_X = MathUtils.degToRad(-45);
+const MAX_INSPECT_X = MathUtils.degToRad(45);
+const BOOT_ORIENTATION_TOLERANCE = MathUtils.degToRad(0.1);
+const INSPECT_X = MathUtils.degToRad(10);
+const INSPECT_Y = MathUtils.degToRad(-12);
 const START_ROTATION_X = MathUtils.degToRad(10);
 const START_ROTATION_Y = MathUtils.degToRad(-34);
 // Shared final presentation size; software and hardware inherit this transform.
@@ -45,6 +50,7 @@ type DragState = {
   pointerId: number;
   x: number;
   y: number;
+  target: HTMLElement | null;
 };
 
 export function HeroPhone({
@@ -71,8 +77,9 @@ export function HeroPhone({
   const roles = useRef<IPhone4MeshRoles | null>(null);
   const phaseElapsed = useRef(0);
   const rotation = useRef({ x: START_ROTATION_X, y: START_ROTATION_Y });
-  const powerStartRotation = useRef({ x: START_ROTATION_X, y: START_ROTATION_Y });
-  const velocity = useRef({ x: 0, y: 0 });
+  const powerStartOrientation = useRef(new Quaternion());
+  const bootOrientation = useRef(new Quaternion());
+  useHeroInspectSheen(phase, roles);
   const drag = useRef<DragState | null>(null);
   const boundsReported = useRef(false);
   const frontOffset = useRef(0);
@@ -105,10 +112,17 @@ export function HeroPhone({
     boundsReported.current = false;
     if (phase === "identity" || phase === "recharging") {
       rotation.current = { x: START_ROTATION_X, y: START_ROTATION_Y };
-      velocity.current = { x: 0, y: 0 };
+
     }
-    if (phase === "powering-on") powerStartRotation.current = { ...rotation.current };
-    if (phase !== "inspect") drag.current = null;
+    if (phase === "powering-on" && group.current) {
+      // Capture the displayed pose, not the accumulated multi-turn Euler yaw.
+      powerStartOrientation.current.copy(group.current.quaternion).normalize();
+    }
+    if (phase !== "inspect" && drag.current) {
+      const active = drag.current;
+      if (active.target?.hasPointerCapture?.(active.pointerId)) active.target.releasePointerCapture(active.pointerId);
+      drag.current = null;
+    }
     invalidate();
   }, [phase, invalidate]);
 
@@ -129,6 +143,7 @@ export function HeroPhone({
     const finalScale = narrow ? FINAL_PRESENTATION_SCALE.narrow : FINAL_PRESENTATION_SCALE.desktop;
     let detachProgress = phase === "identity" ? 0 : 1;
     let nextBootAmount = 0;
+    let alignmentFinished = false;
 
     if (phase === "detaching") {
       detachProgress = Math.min(1, phaseElapsed.current / HERO_DETACH_DURATION_SECONDS);
@@ -136,27 +151,22 @@ export function HeroPhone({
       x = MathUtils.lerp(initialX, 0, eased);
       y = MathUtils.lerp(initialY, 0, eased);
       scale = MathUtils.lerp(scale, narrow ? 0.92 : 1.04, eased);
+      rotation.current.x = MathUtils.lerp(START_ROTATION_X, INSPECT_X, eased);
+      rotation.current.y = MathUtils.lerp(START_ROTATION_Y, INSPECT_Y, eased);
       invalidate();
       if (detachProgress === 1) onDetachComplete();
     } else if (phase === "inspect") {
       x = 0;
       y = 0;
       scale = narrow ? 0.92 : 1.04;
-      if (!drag.current && (Math.abs(velocity.current.x) > 0.00008 || Math.abs(velocity.current.y) > 0.00008)) {
-        rotation.current.x = MathUtils.clamp(rotation.current.x + velocity.current.x, -MAX_ROTATE_X, MAX_ROTATE_X);
-        rotation.current.y += velocity.current.y;
-        velocity.current.x *= 0.88;
-        velocity.current.y *= 0.88;
-        invalidate();
-      }
+
     } else if (phase === "powering-on" || phase === "front-aligned" || phase === "experience" || phase === "power-loss") {
       x = 0;
       y = 0;
       const progress = phase !== "powering-on" ? 1 : Math.min(1, phaseElapsed.current / HERO_POWER_DURATION_SECONDS);
       const eased = restrainedEase(progress);
       scale = MathUtils.lerp(narrow ? 0.92 : 1.04, finalScale, eased);
-      rotation.current.x = phase === "front-aligned" ? 0 : MathUtils.lerp(powerStartRotation.current.x, 0, eased);
-      rotation.current.y = phase === "front-aligned" ? 0 : MathUtils.lerp(powerStartRotation.current.y, 0, eased);
+      if (phase !== "powering-on") rotation.current = { x: 0, y: 0 };
       if (bootStartedAt !== null && !bootComplete && (phase === "powering-on" || phase === "front-aligned")) {
         nextBootAmount = heroBootOpacity(performance.now() - bootStartedAt);
         invalidate();
@@ -168,7 +178,7 @@ export function HeroPhone({
       }
       if (phase === "powering-on") {
         invalidate();
-        if (progress === 1) onAlignmentComplete();
+        alignmentFinished = progress === 1;
       }
     } else if (phase === "returning") {
       const progress = Math.min(1, phaseElapsed.current / HERO_RETURN_SECONDS);
@@ -200,8 +210,16 @@ export function HeroPhone({
     else frontOffset.current = depthTarget;
     phone.rotation.set(rotation.current.x + MathUtils.degToRad(0.75) * frontOffset.current,
       rotation.current.y + MathUtils.degToRad(2) * frontOffset.current, 0);
+    if (phase === "powering-on") {
+      const progress = Math.min(1, phaseElapsed.current / HERO_POWER_DURATION_SECONDS);
+      phone.quaternion.slerpQuaternions(powerStartOrientation.current, bootOrientation.current, restrainedEase(progress));
+    }
     phone.updateWorldMatrix(true, true);
     mountedModel.visible = heroPresentationReady(Boolean(roles.current?.screen), phone, camera, size);
+    if (alignmentFinished && phone.quaternion.angleTo(bootOrientation.current) < BOOT_ORIENTATION_TOLERANCE) {
+      rotation.current = { x: 0, y: 0 };
+      onAlignmentComplete();
+    }
     if (import.meta.env.DEV && frontScreenOff && phase === "front-aligned") nextBootAmount = 0;
     setBootAmount((current) => Math.abs(current - nextBootAmount) > 0.015 ? nextBootAmount : current);
 
@@ -231,12 +249,11 @@ export function HeroPhone({
   }, -1); // Resolve phone/world matrices before the charger's frame update.
 
   const handlePointerDown = (event: ThreeEvent<PointerEvent>) => {
-    if (phase !== "inspect") return;
+    if (phase !== "inspect" || event.button !== 0 || drag.current) return;
     event.stopPropagation();
     const target = event.target as HTMLElement | null;
     target?.setPointerCapture?.(event.pointerId);
-    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
-    velocity.current = { x: 0, y: 0 };
+    drag.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, target };
   };
   const handlePointerMove = (event: ThreeEvent<PointerEvent>) => {
     const active = drag.current;
@@ -244,16 +261,17 @@ export function HeroPhone({
     event.stopPropagation();
     const dx = event.clientX - active.x;
     const dy = event.clientY - active.y;
-    rotation.current.x = MathUtils.clamp(rotation.current.x + dy * 0.006, -MAX_ROTATE_X, MAX_ROTATE_X);
-    rotation.current.y += dx * 0.007;
-    velocity.current = { x: dy * 0.0007, y: dx * 0.0008 };
+    rotation.current.x = MathUtils.clamp(rotation.current.x + dy * 0.0055, MIN_INSPECT_X, MAX_INSPECT_X);
+    rotation.current.y += dx * 0.004;
     active.x = event.clientX;
     active.y = event.clientY;
     invalidate();
   };
   const endDrag = (event: ThreeEvent<PointerEvent>) => {
     if (!drag.current || drag.current.pointerId !== event.pointerId) return;
+    const active = drag.current;
     drag.current = null;
+    if (active.target?.hasPointerCapture?.(active.pointerId)) active.target.releasePointerCapture(active.pointerId);
     invalidate();
   };
 

@@ -3,27 +3,34 @@ import { FormEvent, useState } from "react";
 type HeroIdentityProps = Readonly<{
   active: boolean;
   name: string;
+  passcode: string | null;
   onNameChange: (name: string) => void;
-  onConfirm: (name: string) => void;
+  onRevealCode: (name: string) => void;
+  onConfirm: () => void;
 }>;
 
-export function HeroIdentity({ active, name, onNameChange, onConfirm }: HeroIdentityProps) {
+export function HeroIdentity({ active, name, passcode, onNameChange, onRevealCode, onConfirm }: HeroIdentityProps) {
   const [invalid, setInvalid] = useState(false);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!active) return;
     if (!name.trim()) {
       setInvalid(true);
       return;
     }
     setInvalid(false);
-    onConfirm(name.trim());
+    if (passcode) {
+      onConfirm();
+      return;
+    }
+    onRevealCode(name.trim());
   };
 
   return (
-    <section className="hero-identity" aria-hidden={!active}>
+    <section className="hero-identity hero-note-copy" aria-hidden={!active} data-note-status="RECONSTRUCTED EXPERIENCE-LAYER OBJECT">
       <form onSubmit={submit}>
-        <label htmlFor="hero-name">What was your name?</label>
+        <label htmlFor="hero-name">NAME</label>
         <input
           id="hero-name"
           value={name}
@@ -31,13 +38,18 @@ export function HeroIdentity({ active, name, onNameChange, onConfirm }: HeroIden
             onNameChange(event.target.value);
             if (invalid) setInvalid(false);
           }}
-          autoFocus
+          autoFocus={!passcode}
           autoComplete="name"
+          readOnly={Boolean(passcode)}
+          disabled={!active}
           aria-invalid={invalid}
           aria-describedby={invalid ? "hero-name-error" : undefined}
           tabIndex={active ? 0 : -1}
         />
-        <span className="hero-enter">Press Enter</span>
+        <label className="hero-code-label">CODE</label>
+        <output className="hero-code" aria-live="polite">{passcode ?? ""}</output>
+        <span className="hero-note-reminder">don't lose this.</span>
+        {passcode && <button type="submit" className="hero-note-continue" disabled={!active}>enter →</button>}
         <span id="hero-name-error" className="hero-name-error" role="alert">
           {invalid ? "Enter a name to continue." : ""}
         </span>

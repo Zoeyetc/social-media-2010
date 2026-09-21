@@ -46,6 +46,7 @@ import type { PublicTwitterEvent, PublicTwitterPendingSubmission, PublicTwitterS
 import { selectPublicVisitorPostIds } from "../state/twitterTimelineComposition";
 import { createMockPublicTwitterRepository } from "../data/mockPublicTwitterRepository";
 import { createMockPublicTwitterSubmissionRepository } from "../data/mockPublicTwitterSubmissionRepository";
+import { evaluatePasscodeAttempt, passcodeForExperienceSession } from "../state/passcode";
 import { initialPublicTwitterOutroState, publicTwitterOutroTransition, selectEligibleLocalTweetIds } from "../state/publicTwitterOutroState";
 import { smsMessageReceived } from "../system/smsNotification";
 import { FlickrMailController } from "../mail/flickrMailController";
@@ -59,7 +60,7 @@ import { selectCameraVideoScene, type CameraVideoSceneSelection } from "../world
 
 const TERMINAL_DEPLETED_DISPLAY_MS = 1_500;
 const AUTO_SLEEP_DELAY_MS = 60_000;
-const AUTO_SLEEP_PHASES = new Set<Session["phase"]>(["locked", "springboard", "app"]);
+const AUTO_SLEEP_PHASES = new Set<Session["phase"]>(["locked", "passcode", "springboard", "app"]);
 const HOME_DOUBLE_PRESS_MS = 300;
 const MOM_REPLY_DELAY_MS = 30_000;
 const SHUTDOWN_BLACK_SCREEN_MS = 500;
@@ -243,6 +244,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const [homePressed, setHomePressed] = useState(false);
   const [activityRevision, setActivityRevision] = useState(0);
   const [unlockReturnAppId, setUnlockReturnAppId] = useState<string | null>(null);
+  // Navigation intent only; never persisted and never an authentication grant.
+  const pendingUnlockDestination = useRef<ActiveLockNotification | null>(null);
   const powerStarted = useRef<number | null>(null);
   const powerFrame = useRef<number | null>(null);
   const homePointer = useRef<number | null>(null);
@@ -349,6 +352,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const lockScreenModel = createLockScreenModel(lockScreenTime, deviceDate, statusBarState);
 
   const resetDisposableRuntime = useCallback(() => {
+    pendingUnlockDestination.current = null;
     if (shutdownResetStarted.current) return;
     shutdownResetStarted.current = true;
     deliveredEventClaims.current.clear();
@@ -662,7 +666,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (isTimelineEvent) deliveredEventClaims.current.add(event.id);
     const eventDateTime = simulatedDeviceDateTime(event.dueElapsedMs);
     const eventTime = formatDeviceTime(eventDateTime);
-    const source = session.phase === "sleeping" || session.phase === "locked" ? "lockscreen" : "foreground";
+    const source = session.phase === "sleeping" || session.phase === "locked" || session.phase === "passcode" ? "lockscreen" : "foreground";
     const displayingMomConversation = session.phase === "app"
       && appRuntime.activeAppId === "messages"
       && messagesState.view === "conversation"
@@ -829,7 +833,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
       });
       return;
     }
-    if (session.phase === "locked" || session.phase === "sleeping" || session.phase === "lowBatteryWarning" || session.phase === "powerOffConfirm") {
+    if (session.phase === "locked" || session.phase === "passcode" || session.phase === "sleeping" || session.phase === "lowBatteryWarning" || session.phase === "powerOffConfirm") {
       update({
         previousPhase: null,
         phase: "shutdown",
@@ -961,6 +965,15 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     update({ phase: "app" });
   };
   const openLockNotificationTarget = (notification: ActiveLockNotification) => {
+    if (!["locked", "passcode", "sleeping", "springboard", "app"].includes(session.phase)) return;
+    if (session.passcode && session.phase !== "app" && session.phase !== "springboard") {
+      pendingUnlockDestination.current = notification;
+      completeScreenUnlock();
+      return;
+    }
+    deliverUnlockDestination(notification);
+  };
+  const deliverUnlockDestination = (notification: ActiveLockNotification) => {
     dispatchNotifications({ type: "DISMISS", id: notification.id });
     if (notification.target.type === "messagesConversation") {
       openMessagesConversation(true, notification.target.conversationId);
@@ -1015,20 +1028,22 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     startNamedSession(String(data.get("name") || "").trim());
   };
 
-  const startNamedSession = (name: string) => {
+  const startNamedSession = (name: string, experienceSessionId?: string, passcode?: string) => {
     if (name) {
+      const resolvedSessionId = experienceSessionId ?? createExperienceSessionId();
+      const resolvedPasscode = passcode ?? passcodeForExperienceSession(resolvedSessionId);
       shutdownResetStarted.current = false;
       dispatchPublicTwitterOutro({ type: "RESET" });
-      const experienceSessionId = createExperienceSessionId();
       cameraCaptureNamespace.current += 1;
-      activeExperienceSessionIdRef.current = experienceSessionId;
+      activeExperienceSessionIdRef.current = resolvedSessionId;
       clearRuntimeCameraRoll("loading");
       dispatchFacebook({ type: "RESET", displayName: name });
       dispatchTwitter({ type: "RESET", displayName: name });
       setSession({
         ...initialSession,
         sessionIdentity: createSessionIdentity(name),
-        experienceSessionId,
+        experienceSessionId: resolvedSessionId,
+        passcode: resolvedPasscode,
         phase: "poweredOff",
         shutdownReason: null,
         returnToHeroPending: false,
@@ -1036,9 +1051,9 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     }
   };
 
-  const startExperience = ({ name }: { name: string }) => {
-    if (lifecycleRef.current.phase !== "identity" || activeExperienceSessionIdRef.current || !name.trim()) return;
-    startNamedSession(name.trim());
+  const startExperience = ({ name, experienceSessionId, passcode }: { name: string; experienceSessionId?: string; passcode?: string }) => {
+    if (lifecycleRef.current.phase !== "identity" || activeExperienceSessionIdRef.current || !name.trim() || (passcode !== undefined && !/^\d{4}$/.test(passcode))) return;
+    startNamedSession(name.trim(), experienceSessionId, passcode);
     advanceLifecycle({ type: "CONFIRM_IDENTITY", name });
   };
 
@@ -1148,7 +1163,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (session.phase === "poweredOff") setPowerProgress(0);
   };
 
-  const homeEnabled = session.phase === "locked" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping";
+  const homeEnabled = session.phase === "locked" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping";
   const displayIsLit = session.phase !== "sleeping" && session.phase !== "poweredOff" && session.phase !== "shutdown";
   const beginHomePress = (event: PointerEvent<HTMLButtonElement>) => {
     if (!homeEnabled) return;
@@ -1221,7 +1236,14 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   });
   const selectedOutroTweet = outroTweets.find(tweet => tweet.id === publicTwitterOutro.selectedTweetId) ?? null;
 
-  const completeScreenUnlock: DeviceScreenProps["actions"]["completeScreenUnlock"] = () => {
+  const finalizeScreenUnlock = () => {
+    const destination = pendingUnlockDestination.current;
+    pendingUnlockDestination.current = null;
+    if (destination) {
+      DeviceAudio.unlock();
+      deliverUnlockDestination(destination);
+      return;
+    }
     const canResume = unlockReturnAppId !== null
       && (appRuntime.activeAppId === unlockReturnAppId || appRuntime.suspendedAppIds.includes(unlockReturnAppId));
     if (canResume && unlockReturnAppId) {
@@ -1235,6 +1257,33 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
       batteryCriticalRevealAtMs: null,
     });
     setUnlockReturnAppId(null);
+  };
+
+  const completeScreenUnlock: DeviceScreenProps["actions"]["completeScreenUnlock"] = () => {
+    if (session.passcode) {
+      update({ phase: "passcode", batteryCriticalRevealAtMs: null });
+      return;
+    }
+    finalizeScreenUnlock();
+  };
+
+  const cancelScreenPasscode = () => {
+    pendingUnlockDestination.current = null;
+    update({ phase: "locked" });
+  };
+  const attemptScreenPasscode = (candidate: string) => {
+    if (!session.passcode || session.phase !== "passcode") return;
+    const result = evaluatePasscodeAttempt({ attempts: session.passcodeAttempts, lockoutUntilElapsedMs: session.passcodeLockoutUntilElapsedMs }, session.passcode, candidate, elapsed);
+    if (result.locked && session.passcodeLockoutUntilElapsedMs !== null && elapsed < session.passcodeLockoutUntilElapsedMs) return;
+    if (result.accepted) {
+      finalizeScreenUnlock();
+      update({ passcodeAttempts: 0, passcodeLockoutUntilElapsedMs: null });
+      return;
+    }
+    update({
+      passcodeAttempts: result.attempts,
+      passcodeLockoutUntilElapsedMs: result.lockoutUntilElapsedMs,
+    });
   };
 
   const completeScreenAppClose: DeviceScreenProps["actions"]["completeScreenAppClose"] = () => update({ phase: "springboard" });
@@ -1350,12 +1399,22 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (currentNotification) dispatchNotifications({ type: "DISMISS", id: currentNotification.id });
   };
 
-  const viewScreenSMSAlert: DeviceScreenProps["actions"]["viewScreenSMSAlert"] = () => openMessagesConversation(true,
-    currentNotification?.destination.type === "messagesConversation" ? currentNotification.destination.conversationId : undefined);
+  const viewScreenSMSAlert: DeviceScreenProps["actions"]["viewScreenSMSAlert"] = () => {
+    if (session.phase !== "app" && session.phase !== "springboard") {
+      const target = currentNotification && notificationLockPreview(currentNotification);
+      if (target) openLockNotificationTarget(target);
+      return;
+    }
+    openMessagesConversation(true, currentNotification?.destination.type === "messagesConversation" ? currentNotification.destination.conversationId : undefined);
+  };
   const viewScreenAppAlert = () => {
     if (!currentNotification) return;
     const target = notificationLockPreview(currentNotification);
     if (!target || target.target.type !== "app") return;
+    if (session.phase !== "app" && session.phase !== "springboard") {
+      openLockNotificationTarget(target);
+      return;
+    }
     // Existing app reducer owns suspension/navigation. Never mount another runtime.
     dispatchNotifications({ type: "OPEN_APP", app: currentNotification.app });
     openNotificationApp(target.target.appId);
@@ -1456,6 +1515,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         actions={{
           openLockNotificationTarget,
           completeScreenUnlock,
+          attemptScreenPasscode,
+          cancelScreenPasscode,
           completeScreenAppClose,
           openScreenCameraPicker,
           scheduleScreenMomReply,
@@ -1504,7 +1565,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         softwarePhase: session.phase,
       },
       onHandoff: handoffHeroScreen,
-      powerControl: !session.returnToHeroPending && (session.phase === "locked" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping" || session.phase === "lowBatteryWarning")
+      powerControl: !session.returnToHeroPending && (session.phase === "locked" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping" || session.phase === "lowBatteryWarning")
         ? { state: session.phase === "sleeping" ? "asleep" : "awake", begin: beginPower, end: endPower, cancel: cancelPower }
         : undefined,
       onUserActivity: recordInteraction,

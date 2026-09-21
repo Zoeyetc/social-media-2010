@@ -75,6 +75,7 @@ button, input { font: inherit; }
 .battery-fill-well { position: absolute; z-index: 0; left: 1.5px; top: 0; width: 17px; height: 20px; overflow: hidden; }
 .battery-fill { height: 20px; display: block; background-position: left top; background-repeat: repeat-x; background-size: 3px 20px; }
 .battery-frame { position: absolute; z-index: 1; inset: 0; width: 21px; height: 20px; display: block; }
+.lockscreen, .passcode-screen { background:#000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.browser.png") center / 320px 480px no-repeat; }
 .lockscreen { position: relative; height: 100%; padding-top: 20px; background: #000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.browser.png") center / 320px 480px no-repeat; }
 .lockscreen::before { content: ""; position: absolute; z-index: 0; inset: 0; background: rgba(0,0,0,.08); pointer-events: none; }
 .locktime { position: relative; z-index: 1; height: 96px; padding: 1px 0 0; text-align: center; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-weight: 300; color: #fff; border-bottom: 1px solid rgba(255,255,255,.22); background: rgba(0,0,0,.22); }
@@ -86,13 +87,37 @@ button, input { font: inherit; }
 .lockscreen-sms-alert-title { display: block; margin: 0 0 1px; color: #fff; font-size: 15px; font-weight: bold; line-height: 18px; text-align: center; }
 .lockscreen-sms-alert-sender { display: block; color: #fff; font-size: 13px; font-weight: bold; line-height: 16px; }
 .lockscreen-sms-alert-body { margin: 0; color: #fff; font-size: 13px; font-weight: normal; line-height: 16px; }
-.lockscreen-bottom-bar { position: absolute; z-index: 1; left: 0; bottom: 0; width: 320px; height: 96px; background: url("../assets/historical/ios4.1/lockscreen/BarBottomLock@2x.png") center / .5px 96px repeat-x; }
+.lockscreen-bottom-bar { position: absolute; z-index: 1; left: 0; bottom: 0; width: 320px; height: 96px; background: url("../assets/historical/ios4.1/lockscreen/BarBottomLock@2x.browser.png") center / .5px 96px repeat-x; }
+/* Reconstructed system chrome: the lock wallpaper is shared at identical geometry. */
+.passcode-screen { position:relative; width:320px; height:480px; padding-top:20px; overflow:hidden; color:#fff; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; text-shadow:0 1px 2px #000; }
+.passcode-title-band { position:relative; height:96px; display:grid; place-items:center; background:linear-gradient(rgba(70,78,85,.45),rgba(55,63,70,.48)); }
+.passcode-keypad-panel { position:absolute; left:0; right:0; bottom:0; height:284px; background:linear-gradient(rgba(68,70,72,.72),rgba(58,60,62,.76) 65%,rgba(48,50,52,.78)); border-top:1px solid rgba(255,255,255,.18); }
+.passcode-cell-row { height:80px; padding:16px 0 18px; }
+.passcode-title { position:relative; margin:0; text-align:center; font-size:28px; line-height:34px; font-weight:400; }
+.passcode-cells { position:relative; display:flex; justify-content:center; gap:14px; }
+.passcode-cells span { position:relative; isolation:isolate; display:grid; place-items:center; width:57px; height:46px; border:1px solid #494949; border-radius:1px; background:#aaa; box-shadow:0 1px 1px rgba(0,0,0,.22); color:#111; font-size:36px; line-height:46px; text-shadow:none; -webkit-text-stroke:.35px #111; }
+/* Narrow frame layers carry the depth; the center remains clean off-white. */
+.passcode-cells span::before { content:""; position:absolute; z-index:-2; inset:0; background:linear-gradient(to bottom,#8c8c8b,#b0b0ae 2px,#c8c8c5 calc(100% - 1px),#d5d5d2); pointer-events:none; }
+.passcode-cells span::after { content:""; position:absolute; z-index:-1; inset:2px; background:linear-gradient(to bottom,rgba(0,0,0,.2),rgba(0,0,0,.09) 1px,rgba(0,0,0,.025) 2px,transparent 4px),linear-gradient(to right,rgba(0,0,0,.12),rgba(0,0,0,.04) 1px,transparent 3px,transparent calc(100% - 3px),rgba(0,0,0,.04) calc(100% - 1px),rgba(0,0,0,.12)),linear-gradient(#fafaf9,#f7f7f5); border-bottom:1px solid #dedede; pointer-events:none; }
+
+.passcode-feedback { position:absolute; z-index:1; left:0; right:0; bottom:100%; height:20px; margin:0; text-align:center; font-size:13px; line-height:20px; pointer-events:none; }
+.passcode-keypad { position:absolute; left:0; right:0; bottom:0; height:204px; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(4,51px); border-top:1px solid rgba(0,0,0,.65); }
+.passcode-keypad button { appearance:none; min-width:0; padding:1px 0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; border:0; border-right:1px solid rgba(0,0,0,.22); border-bottom:1px solid rgba(0,0,0,.48); border-radius:0; box-shadow:inset 0 1px rgba(255,255,255,.1); background:linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.025) 40%,rgba(0,0,0,.1)); color:#fff; text-shadow:1px 1px 1px rgba(0,0,0,.8); cursor:pointer; }
+.passcode-keypad button:nth-child(3n) { border-right:0; }
+.passcode-keypad button:focus { outline:none; }
+.passcode-keypad button:active:not(:disabled):not([aria-disabled="true"]) { background:linear-gradient(rgba(126,131,137,.7),rgba(70,75,82,.78)); }
+.passcode-digit { font-size:30px; line-height:31px; font-weight:600; }
+.passcode-keypad small { height:11px; font-size:10px; line-height:11px; font-weight:500; letter-spacing:.2px; color:rgba(220,220,220,.84); text-shadow:0 1px 1px rgba(0,0,0,.75); }
+.passcode-keypad .passcode-keypad-action { font-size:13px; line-height:14px; font-weight:600; white-space:pre-line; text-align:center; }
+.passcode-keypad .passcode-keypad-action:last-child { align-items:center; justify-content:center; padding:1px 0; }
+.passcode-keypad button:disabled { color:rgba(255,255,255,.4); cursor:default; }
+.passcode-keypad button[aria-disabled="true"] { cursor:default; }
 .unlock-track { position: absolute; left: 20px; bottom: 21px; width: 280px; height: 52px; overflow: hidden; text-align: center; line-height: 52px; color: #ccc; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 23px; font-weight: 400; letter-spacing: 0; }
-.unlock-track-raster { position: absolute; z-index: 0; inset: 0; border: 13px solid transparent; border-image-source: url("../assets/historical/ios4.1/lockscreen/WellLock@2x.png"); border-image-slice: 26 fill; border-image-width: 13px; border-image-repeat: stretch; pointer-events: none; }
+.unlock-track-raster { position: absolute; z-index: 0; inset: 0; border: 13px solid transparent; border-image-source: url("../assets/historical/ios4.1/lockscreen/WellLock@2x.browser.png"); border-image-slice: 26 fill; border-image-width: 13px; border-image-repeat: stretch; pointer-events: none; }
 .unlock-track-label { position: absolute; z-index: 1; left: 75px; top: 0; width: 205px; height: 52px; display: block; color: rgba(255,255,255,.36); text-align: center; text-shadow: 0 -1px rgba(0,0,0,.62); }
-.unlock-track-highlight { position: absolute; z-index: 2; left: 75px; top: 0; width: 205px; height: 52px; color: #fff; text-align: center; -webkit-mask-image: url("../assets/historical/ios4.1/lockscreen/bottombarlocktextmask@2x.png"); mask-image: url("../assets/historical/ios4.1/lockscreen/bottombarlocktextmask@2x.png"); -webkit-mask-position: -80px center; mask-position: -80px center; -webkit-mask-size: 80px 32px; mask-size: 80px 32px; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; animation: slider-highlight 2.8s linear infinite; pointer-events: none; }
+.unlock-track-highlight { position: absolute; z-index: 2; left: 75px; top: 0; width: 205px; height: 52px; color: #fff; text-align: center; -webkit-mask-image: url("../assets/historical/ios4.1/lockscreen/bottombarlocktextmask@2x.browser.png"); mask-image: url("../assets/historical/ios4.1/lockscreen/bottombarlocktextmask@2x.browser.png"); -webkit-mask-position: -80px center; mask-position: -80px center; -webkit-mask-size: 80px 32px; mask-size: 80px 32px; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; animation: slider-highlight 2.8s linear infinite; pointer-events: none; }
 .unlock-track[data-slider-state="dragging"] .unlock-track-highlight, .unlock-track[data-slider-state="success"] .unlock-track-highlight, .unlock-track[data-slider-state="returning"] .unlock-track-highlight { animation-play-state: paused; opacity: 0; }
-.unlock-track button { position: absolute; z-index: 1; left: 3px; top: 4px; width: 71px; height: 47px; padding: 0; border: 0; background: transparent url("../assets/historical/ios4.1/lockscreen/bottombarknobgray@2x.png") center / 71px 47px no-repeat; touch-action: none; user-select: none; cursor: grab; }
+.unlock-track button { position: absolute; z-index: 1; left: 3px; top: 4px; width: 71px; height: 47px; padding: 0; border: 0; background: transparent url("../assets/historical/ios4.1/lockscreen/bottombarknobgray@2x.browser.png") center / 71px 47px no-repeat; touch-action: none; user-select: none; cursor: grab; }
 .unlock-track button:active { cursor: grabbing; }
 @keyframes slider-highlight { 0% { opacity: 0; -webkit-mask-position: -80px center; mask-position: -80px center; } 30% { opacity: .3; } 50% { opacity: .4; } 70% { opacity: 0; -webkit-mask-position: 205px center; mask-position: 205px center; } 100% { opacity: 0; -webkit-mask-position: 205px center; mask-position: 205px center; } }
 .screen > .springboard { position: relative; height: 100%; background: #000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.png") center / 320px 480px no-repeat; }

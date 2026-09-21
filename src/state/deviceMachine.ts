@@ -1,6 +1,7 @@
 import type { DeviceEvent } from "./deviceEventScheduler";
 import { emptySessionIdentity } from "./sessionIdentity";
 import type { SessionIdentity } from "./sessionIdentity";
+import { passcodeForExperienceSession } from "./passcode";
 
 export const BOOT_DURATION_MS = 30_000;
 export const POWER_HOLD_MS = 1_000;
@@ -11,12 +12,15 @@ export const SESSION_END_MS = Date.parse(SESSION_START_ISO) + SESSION_DURATION_M
 export const DEVICE_TIME_ZONE = "America/Los_Angeles";
 export const DEVICE_LOCALE = "en-US";
 
-export type DevicePhase = "hero" | "poweredOff" | "booting" | "locked" | "springboard" | "app" | "sleeping" | "powerOffConfirm" | "shutdown" | "lowBatteryWarning";
+export type DevicePhase = "hero" | "poweredOff" | "booting" | "locked" | "passcode" | "springboard" | "app" | "sleeping" | "powerOffConfirm" | "shutdown" | "lowBatteryWarning";
 export type WarningLevel = 20 | 10;
 export type ShutdownReason = "battery" | "manual" | null;
 export type Session = {
   sessionIdentity: SessionIdentity;
   experienceSessionId: string | null;
+  passcode: string | null;
+  passcodeAttempts: number;
+  passcodeLockoutUntilElapsedMs: number | null;
   phase: DevicePhase;
   shutdownReason: ShutdownReason;
   returnToHeroPending: boolean;
@@ -34,6 +38,9 @@ export type Session = {
 export const initialSession: Session = {
   sessionIdentity: emptySessionIdentity,
   experienceSessionId: null,
+  passcode: null,
+  passcodeAttempts: 0,
+  passcodeLockoutUntilElapsedMs: null,
   phase: "hero",
   shutdownReason: null,
   returnToHeroPending: false,
@@ -74,6 +81,7 @@ export function homeButtonTransition(session: Session): Partial<Session> | null 
     case "app":
       return { phase: "springboard" };
     case "locked":
+    case "passcode":
     case "springboard":
     case "booting":
     case "hero":
@@ -88,6 +96,7 @@ export function homeButtonTransition(session: Session): Partial<Session> | null 
 export function shortPowerTransition(session: Session): Partial<Session> | null {
   switch (session.phase) {
     case "locked":
+    case "passcode":
     case "springboard":
     case "app":
       return { phase: "sleeping" };
@@ -101,6 +110,7 @@ export function shortPowerTransition(session: Session): Partial<Session> | null 
 export function longPowerTransition(session: Session): Partial<Session> | null {
   switch (session.phase) {
     case "locked":
+    case "passcode":
     case "springboard":
     case "app":
     case "sleeping":
@@ -128,16 +138,20 @@ export function loadSession(): Session {
       && !parsed.returnToHeroPending;
     const experienceSessionId = resolveExperienceSessionId(parsed.experienceSessionId, activeExperience);
     const migratedExperienceSessionId = experienceSessionId !== null && parsed.experienceSessionId !== experienceSessionId;
+    const migratedPasscode = activeExperience && typeof parsed.passcode !== "string" && experienceSessionId
+      ? passcodeForExperienceSession(experienceSessionId)
+      : parsed.passcode ?? null;
     const session: Session = {
       ...initialSession,
       ...persistedSession,
       sessionIdentity,
       experienceSessionId,
+      passcode: migratedPasscode,
       sessionStartEpochMs: migratesUnlockBasedClock ? null : (parsed.sessionStartEpochMs ?? null),
       phase: sessionPhase,
     };
     if (session.phase === "lowBatteryWarning" && session.activeWarning === 1) {
-      const safePhase = session.previousPhase === "locked" || session.previousPhase === "springboard" || session.previousPhase === "app" || session.previousPhase === "sleeping"
+      const safePhase = session.previousPhase === "locked" || session.previousPhase === "passcode" || session.previousPhase === "springboard" || session.previousPhase === "app" || session.previousPhase === "sleeping"
         ? session.previousPhase
         : "locked";
       const recoveredSession: Session = {
@@ -148,10 +162,10 @@ export function loadSession(): Session {
         batteryCriticalPending: true,
         batteryCriticalRevealAtMs: null,
       };
-      if (migratedExperienceSessionId) saveSession(recoveredSession);
+      if (migratedExperienceSessionId || migratedPasscode !== parsed.passcode) saveSession(recoveredSession);
       return recoveredSession;
     }
-    if (migratedExperienceSessionId) saveSession(session);
+    if (migratedExperienceSessionId || migratedPasscode !== parsed.passcode) saveSession(session);
     return session;
   } catch { return initialSession; }
 }

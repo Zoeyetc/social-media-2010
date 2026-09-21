@@ -4,6 +4,8 @@ import { HeroDebug } from "./HeroDebug";
 import { HeroIdentity } from "./HeroIdentity";
 import { HeroScene } from "./HeroScene";
 import { HERO_BOOT_DURATION_MS, heroCanStartBoot } from "./HeroController";
+import { createExperienceSessionId } from "../state/deviceMachine";
+import { passcodeForExperienceSession } from "../state/passcode";
 import type { HeroScreenGeometry } from "./heroTypes";
 
 export function HeroSandbox(presentation: HeroDevicePresentation) {
@@ -17,6 +19,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
   const completedBoot = useRef<number | null>(null);
   const hardwareDebug = import.meta.env.DEV && new URLSearchParams(location.search).get("heroHardwareDebug") === "1";
   const [draftName, setDraftName] = useState("");
+  const [noteSession, setNoteSession] = useState<{ experienceSessionId: string; passcode: string } | null>(null);
   const [identityRevision, setIdentityRevision] = useState(0);
   const [screenGeometry, setScreenGeometry] = useState<HeroScreenGeometry | null>(null);
   const onScreenGeometry = useCallback((geometry: HeroScreenGeometry) => setScreenGeometry(geometry), []);
@@ -24,6 +27,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
   useEffect(() => {
     if (state.phase !== "identity") return;
     setDraftName("");
+    setNoteSession(null);
     setIdentityRevision(revision => revision + 1);
     setScreenGeometry(null);
   }, [state.phase]);
@@ -75,8 +79,18 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
         key={identityRevision}
         active={state.phase === "identity"}
         name={draftName}
+        passcode={noteSession?.passcode ?? null}
         onNameChange={setDraftName}
-        onConfirm={(name) => presentation.startExperience({ name })}
+        onRevealCode={(name) => {
+          if (!noteSession) {
+            const experienceSessionId = createExperienceSessionId();
+            setNoteSession({ experienceSessionId, passcode: passcodeForExperienceSession(experienceSessionId) });
+          }
+          setDraftName(name);
+        }}
+        onConfirm={() => {
+          if (noteSession && draftName.trim()) presentation.startExperience({ name: draftName.trim(), ...noteSession });
+        }}
       />
       <HeroScene
         screen={presentation.screen}

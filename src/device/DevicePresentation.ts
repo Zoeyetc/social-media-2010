@@ -15,7 +15,7 @@ export type HeroDevicePresentation = {
   powerControl?: RuntimePowerControl;
   lifecycle: HeroState;
   onLifecycleAction: (action: HeroAction) => void;
-  startExperience: (input: { name: string }) => void;
+  startExperience: (input: { name: string; experienceSessionId?: string; passcode?: string }) => void;
   simulateExperienceEnd: () => void;
   lifecycleDiagnostics: {
     experienceSessionId: string | null;
