@@ -241,7 +241,7 @@ const JACK_PROFILE_COMMENTS = Object.freeze([
     { author: juneCanonicalCommentAuthor("luca"), text: "brutal" },
   ]),
   ...createJuneStoryComments("jack-matt-2008-photo", "jack-matt-2008-comment", [{ author: juneCanonicalCommentAuthor("matt"), text: "that's why you keep showing up" }]),
-  ...createJuneStoryComments("jack-matt-2010-photo", "jack-matt-2010-comment", [{ author: juneCanonicalCommentAuthor("matt"), text: "cazzo, delete it" }, { author: juneCanonicalCommentAuthor("jack"), text: "拒絕" }, { author: juneCanonicalCommentAuthor("matt"), text: "Du bist unmöglich." }]),
+  ...createJuneStoryComments("jack-matt-2010-photo", "jack-matt-2010-comment", [{ author: juneCanonicalCommentAuthor("matt"), text: "cazzo, delete it" }, { author: juneCanonicalCommentAuthor("jack"), text: "Nope." }, { author: juneCanonicalCommentAuthor("matt"), text: "Du bist unmöglich." }]),
 ]);
 
 export const SESSION_SEED_CONTENT = Object.freeze({

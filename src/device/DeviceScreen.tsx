@@ -1,3 +1,4 @@
+import { WeatherContainer, NotesContainer, AppleAccountGate } from "./SmallApps";
 import { SafariContainer, YouTubeContainer, ITunesContainer, type ITunesProps } from "./FinalDecorativeApps";
 import type { ComponentProps } from "react";
 import type { DevicePresenter } from "./DevicePresentation";
@@ -76,6 +77,8 @@ export type DeviceScreenProps = {
     dispatchRemainingBasicApps: RemainingAppsProps["dispatch"];
     monotonicNow: number;
     voiceMemos: ReturnType<typeof useVoiceMemos>;
+    smallApps: ComponentProps<typeof NotesContainer>["state"];
+    dispatchSmallApps: ComponentProps<typeof NotesContainer>["dispatch"];
     basicSystemApps: BasicSystemAppsProps["state"];
     dispatchBasicSystemApps: BasicSystemAppsProps["dispatch"];
     openSystemMap: (venueId: string) => void;
@@ -335,6 +338,9 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
         mediaAttachmentActive={media.visible && media.request?.requester === "tumblr"}
         onRequestMedia={contextId => media.requestAttachment({ requester: "tumblr", mode: "photo", source: "camera-or-library", contextId })}
       />}
+      {appRuntime.activeAppId === "weather" && <WeatherContainer state={apps.smallApps} />}
+      {appRuntime.activeAppId === "notes" && <NotesContainer state={apps.smallApps} dispatch={apps.dispatchSmallApps} />}
+      {(appRuntime.activeAppId === "app-store" || appRuntime.activeAppId === "game-center") && <AppleAccountGate key={`${session.experienceSessionId}:${appRuntime.activeAppId}`} app={appRuntime.activeAppId} active={appRuntime.phase === "running" && multitaskingBar === "closed"} />}
       {appRuntime.activeAppId === "safari" && <SafariContainer />}
       {appRuntime.activeAppId === "youtube" && <YouTubeContainer />}
       {appRuntime.activeAppId === "itunes" && <ITunesContainer state={apps.iTunesState} dispatch={apps.dispatchITunes} preview={apps.iTunesPreview} />}

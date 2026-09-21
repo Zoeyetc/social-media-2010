@@ -1,3 +1,7 @@
+import gamecenterSmallIcon from "../assets/historical/ios4.1/springboard/apps/GameCenter@2x.browser.png";
+import appstoreSmallIcon from "../assets/historical/ios4.1/springboard/apps/AppStore@2x.browser.png";
+import notesSmallIcon from "../assets/historical/ios4.1/springboard/apps/Notes@2x.browser.png";
+import weatherSmallIcon from "../assets/historical/ios4.1/springboard/apps/Weather@2x.browser.png";
 import safariFinalIcon from "../assets/historical/ios4.1/springboard/apps/Safari@2x.browser.png";
 import youtubeFinalIcon from "../assets/historical/ios4.1/springboard/apps/YouTube@2x.browser.png";
 import itunesFinalIcon from "../assets/historical/ios4.1/springboard/apps/iTunes@2x.browser.png";
@@ -15,6 +19,10 @@ import { AppRuntimeState } from "../state/appRuntimeState";
 import { MultitaskingBarEvent, MultitaskingBarState } from "../state/multitaskingBarState";
 
 const SYSTEM_MULTITASKING_APPS = [
+  {id:"game-center",name:"Game Center",iconSrc:gamecenterSmallIcon,iconStatus:"READY",available:true},
+  {id:"app-store",name:"App Store",iconSrc:appstoreSmallIcon,iconStatus:"READY",available:true},
+  {id:"notes",name:"Notes",iconSrc:notesSmallIcon,iconStatus:"READY",available:true},
+  {id:"weather",name:"Weather",iconSrc:weatherSmallIcon,iconStatus:"READY",available:true},
   {id:"safari",name:"Safari",iconSrc:safariFinalIcon,iconStatus:"READY",available:true},
   {id:"youtube",name:"YouTube",iconSrc:youtubeFinalIcon,iconStatus:"READY",available:true},
   {id:"itunes",name:"iTunes",iconSrc:itunesFinalIcon,iconStatus:"READY",available:true},

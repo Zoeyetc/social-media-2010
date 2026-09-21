@@ -1,3 +1,4 @@
+import { initialSmallApps, smallAppsTransition } from "../state/smallApps";
 import { ITUNES_TRACKS, initialITunesState, iTunesTransition } from "../state/finalDecorativeApps";
 import { FormEvent, PointerEvent, useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { DevicePresenter, HeroDevicePresentation } from "./DevicePresentation";
@@ -217,6 +218,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   };
   const voiceMemos = useVoiceMemos();
   const [remainingBasicApps, dispatchRemainingBasicApps] = useReducer(remainingBasicAppsTransition, undefined, createInitialRemainingBasicApps);
+  const [smallApps, dispatchSmallApps] = useReducer(smallAppsTransition, undefined, initialSmallApps);
   const [basicSystemApps, dispatchBasicSystemApps] = useReducer(basicSystemAppsTransition, undefined, createInitialBasicSystemApps);
   const [foursquareState, dispatchFoursquare] = useReducer(foursquareStateTransition, undefined, createInitialFoursquareState);
   const [flickrState, dispatchFlickr] = useReducer(flickrStateTransition, undefined, createInitialFlickrState);
@@ -363,6 +365,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     dispatchFacebook({ type: "RESET" });
     dispatchInstagram({ type: "RESET" });
     dispatchFoursquare({ type: "RESET" });
+    dispatchSmallApps({ type: "RESET" });
     dispatchBasicSystemApps({ type: "RESET" });
     dispatchRemainingBasicApps({ type: "RESET" });
     dispatchITunes({ type: "RESET" });
@@ -1489,6 +1492,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           voiceMemos,
           monotonicNow: performance.now(),
           basicSystemApps,
+          smallApps, dispatchSmallApps,
           dispatchBasicSystemApps,
           openSystemMap: (venueId: string) => {
             if (!resolveSystemMapVenue(venueId) || appRuntime.activeAppId !== "foursquare" || appRuntime.phase !== "running") return;
