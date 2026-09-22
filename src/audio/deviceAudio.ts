@@ -159,7 +159,14 @@ class DeviceAudioService {
   }
 
   get diagnostics() {
-    return { volume: this.volume, muteMode: this.canPlayAudio ? "ringer" : "silent", audioGateOpen: this.canPlayAudio, lastSuppressedSound: this.lastSuppressedSound };
+    return {
+      volume: this.volume,
+      muteMode: this.canPlayAudio ? "ringer" : "silent",
+      audioGateOpen: this.canPlayAudio,
+      lastSuppressedSound: this.lastSuppressedSound,
+      activeChannel: this.activeAudio ? "one-shot" : this.previewAudio ? "itunes-preview" : null,
+      previewState: { ...this.previewState },
+    };
   }
 
   setVolume(volume: number): void {

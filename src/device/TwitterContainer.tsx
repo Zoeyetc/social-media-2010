@@ -28,6 +28,7 @@ import composeToolUsernamesSrc from "../assets/twitter/chrome/twitter-compose-to
 import composeToolHashtagsSrc from "../assets/twitter/chrome/twitter-compose-tool-hashtags-2010-reconstructed.svg";
 import composeToolShrinkUrlsSrc from "../assets/twitter/chrome/twitter-compose-tool-shrink-urls-2010-reconstructed.svg";
 import { TwitterAvatar } from "./TwitterAvatar";
+import { useRafScrollPersistence } from "./scrollPersistence";
 
 type TwitterContainerProps = {
   state: TwitterState;
@@ -45,6 +46,7 @@ type TwitterContainerProps = {
 export function TwitterContainer({ state, dispatch, publicState, dispatchPublic, currentElapsedMs, onLocalTweetSubmitted, currentDeviceDateTime, currentDeviceTime, onRequestMedia, mediaAttachmentActive }: TwitterContainerProps) {
   const sessionIdentity = useSessionIdentity();
   const timelineRef = useRef<HTMLDivElement>(null);
+  const timelineScroll = useRafScrollPersistence(state.scrollPosition, scrollPosition => dispatch({ type: "SET_SCROLL_POSITION", scrollPosition }));
   const selectedTweet = [...state.timeline, ...state.mentionTweets, ...state.linkedTweets].find(tweet => tweet.id === state.selectedTweetId) ?? null;
   const composerTarget = [...state.timeline, ...state.mentionTweets, ...state.linkedTweets].find(tweet => tweet.id === state.replyComposerTweetId) ?? null;
   const composerHandle = composerTarget ? (composerTarget.authorHandle || twitterReplyHandle(composerTarget.displayName)) : null;
@@ -140,7 +142,7 @@ export function TwitterContainer({ state, dispatch, publicState, dispatchPublic,
     {state.activeTab === "timeline" && state.currentView === "timeline" && <div
       ref={timelineRef}
       className="twitter-timeline"
-      onScroll={event => dispatch({ type: "SET_SCROLL_POSITION", scrollPosition: event.currentTarget.scrollTop })}
+      onScroll={event => timelineScroll.record(event.currentTarget.scrollTop)}
     >
       {timelineActivities.map(activity => <TimelineTweet
         key={activity.id}
@@ -152,7 +154,7 @@ export function TwitterContainer({ state, dispatch, publicState, dispatchPublic,
         revealed={activity.source === "public_visitor" ? publicState.revealedArchiveId === activity.id : state.revealedTweetId === activity.id}
         userActivity={activity.retweetActivity || activity.tweet.origin === "user"}
         onReveal={() => activity.source === "public_visitor" ? dispatchPublic({ type: "TOGGLE_ARCHIVE_ACTIONS", archiveId: activity.id }) : dispatch({ type: "TOGGLE_TWEET_ACTIONS", tweetId: activity.tweet.id, timelineItemId: activity.id })}
-        onOpen={activity.capabilities.detail ? () => dispatch({ type: "OPEN_TWEET", tweetId: activity.tweet.id, scrollPosition: timelineRef.current?.scrollTop ?? state.scrollPosition }) : undefined}
+        onOpen={activity.capabilities.detail ? () => dispatch({ type: "OPEN_TWEET", tweetId: activity.tweet.id, scrollPosition: timelineScroll.current() }) : undefined}
         onReply={activity.capabilities.reply ? () => dispatch({ type: "BEGIN_REPLY", tweetId: activity.tweet.id }) : undefined}
         onRetweet={activity.capabilities.retweet ? () => toggleRetweet(activity.tweet.id) : undefined}
         onFavorite={() => dispatch({ type: "TOGGLE_FAVORITE", tweetId: activity.tweet.id })}
@@ -511,18 +513,20 @@ function TwitterMoreLanding({ onOpenProfile }: { onOpenProfile: () => void }) {
 
 function TwitterMentions({ mentions, tweets, scrollPosition, onScroll, onOpen }: { mentions: TwitterState["mentions"]; tweets: TwitterState["mentionTweets"]; scrollPosition: number; onScroll: (position: number) => void; onOpen: (id: string, position: number) => void }) {
   const ref = useRef<HTMLElement>(null);
+  const persistence = useRafScrollPersistence(scrollPosition, onScroll);
   useLayoutEffect(() => { if (ref.current) ref.current.scrollTop = scrollPosition; }, [scrollPosition]);
-  return <section ref={ref} className="twitter-social-list twitter-mentions-list" aria-label="Mentions" onScroll={event => onScroll(event.currentTarget.scrollTop)}>{mentions.map(item => {
+  return <section ref={ref} className="twitter-social-list twitter-mentions-list" aria-label="Mentions" onScroll={event => persistence.record(event.currentTarget.scrollTop)}>{mentions.map(item => {
     const tweet = tweets.find(candidate => candidate.id === item.tweetId);
     if (!tweet) return null;
-    return <button key={item.id} type="button" className={`twitter-social-row twitter-mention-row ${item.unread ? "is-unread" : ""}`} onClick={() => onOpen(item.id, ref.current?.scrollTop ?? scrollPosition)}><TwitterAvatar identityId={item.friendId} displayName={tweet.displayName} /><span className="twitter-mention-copy"><strong>{tweet.displayName}</strong><small>{tweet.timestamp}</small><span className="twitter-mention-body">{tweet.text}</span></span></button>;
+    return <button key={item.id} type="button" className={`twitter-social-row twitter-mention-row ${item.unread ? "is-unread" : ""}`} onClick={() => onOpen(item.id, persistence.current())}><TwitterAvatar identityId={item.friendId} displayName={tweet.displayName} /><span className="twitter-mention-copy"><strong>{tweet.displayName}</strong><small>{tweet.timestamp}</small><span className="twitter-mention-body">{tweet.text}</span></span></button>;
   })}</section>;
 }
 
 function TwitterMessages({ threads, scrollPosition, onScroll, onOpen }: { threads: TwitterState["directMessages"]; scrollPosition: number; onScroll: (position: number) => void; onOpen: (id: string, position: number) => void }) {
   const ref = useRef<HTMLElement>(null);
+  const persistence = useRafScrollPersistence(scrollPosition, onScroll);
   useLayoutEffect(() => { if (ref.current) ref.current.scrollTop = scrollPosition; }, [scrollPosition]);
-  return <section ref={ref} className="twitter-social-list twitter-messages-list" aria-label="Direct Messages" onScroll={event => onScroll(event.currentTarget.scrollTop)}>{threads.map(thread => <button key={thread.id} type="button" className={`twitter-social-row twitter-message-row ${thread.unread ? "is-unread" : ""}`} onClick={() => onOpen(thread.id, ref.current?.scrollTop ?? scrollPosition)}><TwitterAvatar identityId={thread.friendId} displayName={thread.sender} /><span className="twitter-message-copy"><strong className="twitter-message-sender">{thread.sender}</strong><small className="twitter-message-timestamp">{thread.timestamp}</small><span className="twitter-message-preview">{thread.messages[thread.messages.length - 1]?.text}</span></span></button>)}</section>;
+  return <section ref={ref} className="twitter-social-list twitter-messages-list" aria-label="Direct Messages" onScroll={event => persistence.record(event.currentTarget.scrollTop)}>{threads.map(thread => <button key={thread.id} type="button" className={`twitter-social-row twitter-message-row ${thread.unread ? "is-unread" : ""}`} onClick={() => onOpen(thread.id, persistence.current())}><TwitterAvatar identityId={thread.friendId} displayName={thread.sender} /><span className="twitter-message-copy"><strong className="twitter-message-sender">{thread.sender}</strong><small className="twitter-message-timestamp">{thread.timestamp}</small><span className="twitter-message-preview">{thread.messages[thread.messages.length - 1]?.text}</span></span></button>)}</section>;
 }
 
 function TwitterDMThread({ thread, onOpenLinkedTweet }: { thread: TwitterState["directMessages"][number] | null; onOpenLinkedTweet: (id: string) => void }) {
@@ -541,6 +545,7 @@ function TwitterPeopleList({ label, variant, users, scrollPosition, onScroll, on
   emptyStateCopy?: string;
 }) {
   const listRef = useRef<HTMLElement>(null);
+  const persistence = useRafScrollPersistence(scrollPosition, onScroll);
   useLayoutEffect(() => {
     if (listRef.current) listRef.current.scrollTop = scrollPosition;
   }, [scrollPosition]);
@@ -548,11 +553,11 @@ function TwitterPeopleList({ label, variant, users, scrollPosition, onScroll, on
     ref={listRef}
     className={`twitter-people-list${variant ? ` is-${variant}` : ""}`}
     aria-label={label}
-    onScroll={event => onScroll(event.currentTarget.scrollTop)}
+    onScroll={event => persistence.record(event.currentTarget.scrollTop)}
   >
     {users.length === 0 && emptyStateCopy && <p className="twitter-people-empty">{emptyStateCopy}</p>}
     {users.map(user => <article key={user.id} className="twitter-person-row" data-provenance={user.provenance}>
-      {onOpenProfile ? <button type="button" className="twitter-person-profile" onClick={() => onOpenProfile(user.id, listRef.current?.scrollTop ?? scrollPosition)}>
+      {onOpenProfile ? <button type="button" className="twitter-person-profile" onClick={() => onOpenProfile(user.id, persistence.current())}>
         <TwitterAvatar identityId={user.id} displayName={user.displayName} />
         <span className="twitter-person-copy">
           <strong>{user.displayName}</strong>

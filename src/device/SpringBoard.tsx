@@ -1,5 +1,6 @@
 import { WEATHER } from "../state/smallApps";
 import { CSSProperties, Dispatch, PointerEvent as ReactPointerEvent, useRef, useState } from "react";
+import type { MouseEvent as ReactMouseEvent } from "react";
 import appStoreIconSrc from "../assets/historical/ios4.1/springboard/apps/AppStore@2x.browser.png";
 import calculatorIconSrc from "../assets/historical/ios4.1/springboard/apps/Calculator@2x.browser.png";
 import calendarIconSrc from "../assets/historical/ios4.1/springboard/apps/Calendar@2x.browser.png";
@@ -143,6 +144,7 @@ const DOCK_APPS = [
 
 export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFolderEvent, activeFolderSlotIndex, onActiveFolderSlotChange, onLaunchApp, messagesBadgeCount, notificationBadgeCounts, flickrUploadCount = 0 }: SpringBoardProps) {
   const swipeStart = useRef<SwipeStart | null>(null);
+  const suppressIconActivation = useRef(false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -155,7 +157,7 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
   const beginSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (folderState !== "closed") return;
     if (!event.isPrimary || event.button !== 0) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    suppressIconActivation.current = false;
     swipeStart.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, axis: "pending" };
     setDragOffset(0);
     setIsDragging(false);
@@ -173,7 +175,7 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
         swipeStart.current = null;
         setDragOffset(0);
         setIsDragging(false);
-        event.currentTarget.releasePointerCapture(event.pointerId);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
         return;
       }
       start.axis = "horizontal";
@@ -182,6 +184,10 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
 
     event.preventDefault();
     const boundedDelta = currentPage === 0 ? Math.min(0, deltaX) : Math.max(0, deltaX);
+    if (Math.abs(deltaX) >= SWIPE_THRESHOLD) {
+      suppressIconActivation.current = true;
+      if (!event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
+    }
     setDragOffset(boundedDelta);
   };
 
@@ -206,6 +212,10 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
   };
 
   const folderIsActive = folderState !== "closed";
+  const activateIcon = (activate: () => void) => (event?: ReactMouseEvent<HTMLButtonElement>) => {
+    if ((event?.detail ?? 0) > 0 && suppressIconActivation.current) return;
+    activate();
+  };
   const activeFolderRow = Math.floor(activeFolderSlotIndex / SPRINGBOARD_COLUMN_COUNT);
   const splitDistance = FOLDER_TRAY_BASE_HEIGHT - SPRINGBOARD_ROW_GAP;
   const upperShift = Math.round(splitDistance * (activeFolderRow + 1) / (SPRINGBOARD_ROW_COUNT + 1));
@@ -236,12 +246,12 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
           const app = PAGE_ONE_APPS[index];
           if (app?.folderId) openFolder(index);
           else if (app?.launchId) onLaunchApp(app.launchId);
-        }} />
+        }} onIconActivate={activateIcon} />
         <SpringBoardPage apps={PAGE_TWO_APPS} pageNumber={2} onAppActivate={index => {
           const app = PAGE_TWO_APPS[index];
           if (app?.folderId) openFolder(index);
           else if (app?.launchId) onLaunchApp(app.launchId);
-        }} />
+        }} onIconActivate={activateIcon} />
       </div>
     </div>
     <SpringBoardPageIndicator currentPage={currentPage} />
@@ -334,10 +344,11 @@ function SpringBoardFolder({ sourceSlotIndex, panelTop, state, dispatch, onLaunc
   </div>;
 }
 
-function SpringBoardPage({ apps, pageNumber, onAppActivate, badgeCounts, folderSourceSlotIndex }: {
+function SpringBoardPage({ apps, pageNumber, onAppActivate, onIconActivate, badgeCounts, folderSourceSlotIndex }: {
   apps: readonly (SpringBoardApp | undefined)[];
   pageNumber: number;
   onAppActivate?: (index: number) => void;
+  onIconActivate: (activate: () => void) => (event?: ReactMouseEvent<HTMLButtonElement>) => void;
   badgeCounts?: Partial<Record<number, number>>;
   folderSourceSlotIndex?: number;
 }) {
@@ -346,7 +357,7 @@ function SpringBoardPage({ apps, pageNumber, onAppActivate, badgeCounts, folderS
       key={app?.name ?? `empty-${index}`}
       {...(includeSlot(index) ? app : undefined)}
       badgeCount={includeSlot(index) ? (badgeCounts?.[index] ?? 0) : 0}
-      onActivate={includeSlot(index) && app && onAppActivate ? () => onAppActivate(index) : undefined}
+      onActivate={includeSlot(index) && app && onAppActivate ? onIconActivate(() => onAppActivate(index)) : undefined}
     />)}
   </div>;
 
@@ -396,7 +407,6 @@ function SpringBoardIcon({ name, iconSrc, iconPresentation, kind, folderApps, so
   if (onActivate) return <button
     className={`${dock ? "springboard-dock-slot" : "springboard-icon-slot"} springboard-icon-button`}
     data-app-name={name}
-    onPointerDown={event => event.stopPropagation()}
     onClick={onActivate}
   >{content}</button>;
 

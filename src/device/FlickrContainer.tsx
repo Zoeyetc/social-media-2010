@@ -6,6 +6,7 @@ import type { MediaAttachmentRequest } from "../state/mediaAttachment";
 import "../styles/flickr.css";
 import type { FlickrMailController } from "../mail/flickrMailController";
 import { FlickrMailComposer } from "./FlickrMailComposer";
+import { useRafScrollPersistence } from "./scrollPersistence";
 
 type FlickrContainerProps = {
   state: FlickrState;
@@ -22,6 +23,7 @@ const Wordmark = () => <span className="flickr-wordmark">flick<b>r</b></span>;
 
 export function FlickrContainer({ state, dispatch, mail, elapsedMs = 0, experienceSessionId, mediaAttachmentActive = false, onRequestMedia }: FlickrContainerProps) {
   const photostreamRef = useRef<HTMLDivElement>(null);
+  const photostreamScroll = useRafScrollPersistence(state.photostreamScrollPosition, photostreamScrollPosition => dispatch({ type: "SET_SCROLL_POSITION", photostreamScrollPosition }));
   const swipe = useRef<{ x: number; moved: boolean } | null>(null);
   const identity = useSessionIdentity();
   const selected = state.photos.find(photo => photo.id === state.selectedPhotoId);
@@ -38,7 +40,7 @@ export function FlickrContainer({ state, dispatch, mail, elapsedMs = 0, experien
   const open = (photo: FlickrPhoto, originView: FlickrView = view) => dispatch({ type: "OPEN_PHOTO", photoId: photo.id,
     origin: originView === "set" && selectedSet ? { view: "set", setId: selectedSet.id }
       : { view: (["home", "photostream", "recent", "favorites", "search", "tag"].includes(originView) ? originView : "recent") as "photostream" },
-    photostreamScrollPosition: photostreamRef.current?.scrollTop ?? 0 });
+    photostreamScrollPosition: originView === "photostream" ? photostreamScroll.current() : 0 });
   const beginMedia = () => onRequestMedia?.("camera-or-library");
   const submitSearch = () => dispatch({ type: "SEARCH" });
   useLayoutEffect(() => {
@@ -88,7 +90,7 @@ export function FlickrContainer({ state, dispatch, mail, elapsedMs = 0, experien
     {view === "activity" && <div className="flickr-scroll flickr-activity">{state.photos.filter(p => p.ownerId === "session" && state.commentsState.some(c => c.photoId === p.id)).map(p => <article key={p.id}><h2>{p.title}</h2>{state.commentsState.filter(c => c.photoId === p.id).map(c => <p key={c.id}><strong>{c.author}</strong>: {c.text}</p>)}</article>)}
       {!state.photos.some(p => p.ownerId === "session" && state.commentsState.some(c => c.photoId === p.id)) && <p className="flickr-empty">No recent activity.</p>}</div>}
 
-    {view === "photostream" && <div className="flickr-scroll" ref={photostreamRef} onScroll={e => dispatch({ type: "SET_SCROLL_POSITION", photostreamScrollPosition: e.currentTarget.scrollTop })}>
+    {view === "photostream" && <div className="flickr-scroll" ref={photostreamRef} onScroll={event => photostreamScroll.record(event.currentTarget.scrollTop)}>
       <div className="flickr-you-tiles"><button onClick={() => dispatch({ type: "SHOW_SETS" })}><span>▧</span>Sets &amp; Tags</button><button onClick={() => navigate("favorites")}><span>★</span>Favorites</button></div>
       <h2 className="flickr-section-label">{state.ownerId === "session" ? "YOUR PHOTOSTREAM" : "PHOTOSTREAM"}</h2>{grid(photos)}
     </div>}

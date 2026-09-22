@@ -2,6 +2,7 @@ import { Dispatch, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent, TransitionEvent } from "react";
 import { cameraMediaThumbnail, type CameraMediaRecord, type CameraVideoRecord } from "../state/cameraCaptureState";
 import type { CameraRollInitialization, PhotosEvent, PhotosState } from "../state/cameraRollState";
+import { useRafScrollPersistence } from "./scrollPersistence";
 
 type PhotosBrowseProps = Readonly<{
   mode?: "browse";
@@ -25,6 +26,7 @@ export function PhotosContainer(props: PhotosContainerProps) {
       cameraRoll={{...props.cameraRoll,records:props.cameraRoll.records.filter(record=>record.mediaKind !== "video")}}
       backLabel="Cancel"
       mode="picker"
+      scrollPosition={null}
       onBack={props.onPickerCancel}
       onOpenPhoto={props.onPickerSelect}
     />;
@@ -65,8 +67,10 @@ function PhotosBrowseContainer({ state, dispatch, cameraRoll }: PhotosBrowseProp
   if (state.view === "cameraRoll" || state.view === "photo") {
     return <CameraRollGrid
       cameraRoll={cameraRoll}
+      scrollPosition={state.cameraRollScrollPosition}
+      onScrollPosition={scrollPosition => dispatch({ type: "SET_CAMERA_ROLL_SCROLL_POSITION", scrollPosition })}
       onBack={() => dispatch({ type: "BACK" })}
-      onOpenPhoto={photoId => dispatch({ type: "OPEN_PHOTO", photoId })}
+      onOpenPhoto={(photoId, scrollPosition) => dispatch({ type: "OPEN_PHOTO", photoId, scrollPosition })}
     />;
   }
 
@@ -101,20 +105,28 @@ function CameraRollGrid({
   cameraRoll,
   backLabel = "Albums",
   mode = "browse",
+  scrollPosition = null,
+  onScrollPosition,
   onBack,
   onOpenPhoto,
 }: Readonly<{
   cameraRoll: CameraRollInitialization;
   backLabel?: string;
   mode?: "browse" | "picker";
+  scrollPosition?: number | null;
+  onScrollPosition?: (scrollPosition: number) => void;
   onBack: () => void;
-  onOpenPhoto: (photoId: string) => void;
+  onOpenPhoto: (photoId: string, scrollPosition: number) => void;
 }>) {
   const grid = useRef<HTMLDivElement | null>(null);
+  const scrollPersistence = useRafScrollPersistence(scrollPosition ?? 0, position => onScrollPosition?.(position));
   useLayoutEffect(() => {
     const element = grid.current;
-    if (element && cameraRoll.status === "ready") element.scrollTop = element.scrollHeight;
-  }, [cameraRoll.records.length, cameraRoll.status]);
+    if (element && cameraRoll.status === "ready") {
+      element.scrollTop = scrollPosition === null ? element.scrollHeight : scrollPosition;
+      scrollPersistence.sync(element.scrollTop);
+    }
+  }, [cameraRoll.records.length, cameraRoll.status, scrollPosition, scrollPersistence]);
 
   return <section className="photos-container" aria-label={mode === "picker" ? "Choose from Camera Roll" : "Camera Roll"} data-mode={mode}>
     <PhotosNavigationBar title="Camera Roll" backLabel={backLabel} onBack={onBack} />
@@ -123,6 +135,7 @@ function CameraRollGrid({
       className="photos-camera-roll-grid"
       data-visual-status="RECONSTRUCTED"
       data-ordering-status="PROBABLE"
+      onScroll={event => scrollPersistence.record(event.currentTarget.scrollTop)}
     >
       {cameraRoll.status === "loading"
         ? <p className="photos-state-message" role="status">Loading Camera Roll…</p>
@@ -135,7 +148,7 @@ function CameraRollGrid({
               className="photos-camera-roll-thumbnail"
               key={photo.id}
               aria-label={`Open ${photo.filename}`}
-              onClick={() => onOpenPhoto(photo.id)}
+              onClick={() => onOpenPhoto(photo.id, scrollPersistence.current())}
             >
               <img src={cameraMediaThumbnail(photo)} alt="" />
               {photo.mediaKind === "video" && <span className="photos-video-badge">▶ {Math.ceil(photo.durationMs/1000)}s</span>}

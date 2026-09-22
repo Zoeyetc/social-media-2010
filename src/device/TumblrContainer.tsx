@@ -3,6 +3,7 @@ import { TumblrEvent, TumblrPost, TumblrState, TumblrReblog, tumblrMyPosts } fro
 import { simulatedClock } from "../state/deviceMachine";
 import { useSessionIdentity } from "../state/sessionIdentity";
 import { IOS4Input, IOS4Textarea } from "./IOS4KeyboardSystem";
+import { useRafScrollPersistence } from "./scrollPersistence";
 
 type TumblrContainerProps = {
   state: TumblrState;
@@ -23,6 +24,7 @@ function postsInReverseChronologicalOrder(posts: readonly TumblrPost[]) {
 
 export function TumblrContainer({ state, dispatch, currentElapsedMs, mediaAttachmentActive = false, onRequestMedia }: TumblrContainerProps) {
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const dashboardScroll = useRafScrollPersistence(state.dashboardScrollPosition, dashboardScrollPosition => dispatch({ type: "SET_DASHBOARD_SCROLL_POSITION", dashboardScrollPosition }));
   const searchRef = useRef<HTMLInputElement>(null);
   const identity = useSessionIdentity();
   const selected = state.posts.find(post => post.id === state.selectedPostId) ?? null;
@@ -52,6 +54,8 @@ export function TumblrContainer({ state, dispatch, currentElapsedMs, mediaAttach
       {state.currentView === "dashboard" && <>
         <button type="button" className="tumblr-nav-left tumblr-nav-icon" aria-label="Refresh" onClick={() => {
           if (dashboardRef.current) dashboardRef.current.scrollTop = 0;
+          dashboardScroll.cancel();
+          dashboardScroll.sync(0);
           dispatch({ type: "SET_DASHBOARD_SCROLL_POSITION", dashboardScrollPosition: 0 });
         }}><TumblrIcon name="refresh" /></button>
         <button type="button" className="tumblr-nav-right tumblr-nav-icon" aria-label="Search" aria-controls="tumblr-dashboard-search" onClick={() => searchRef.current?.focus()}><TumblrIcon name="search" /></button>
@@ -81,7 +85,7 @@ export function TumblrContainer({ state, dispatch, currentElapsedMs, mediaAttach
       <div
         ref={dashboardRef}
         className="tumblr-dashboard"
-        onScroll={event => dispatch({ type: "SET_DASHBOARD_SCROLL_POSITION", dashboardScrollPosition: event.currentTarget.scrollTop })}
+        onScroll={event => dashboardScroll.record(event.currentTarget.scrollTop)}
       >
         {dashboardEntries.map(({ post, reblog }) => <PostRow
           key={reblog?.id ?? post.id}
@@ -93,7 +97,7 @@ export function TumblrContainer({ state, dispatch, currentElapsedMs, mediaAttach
           onOpen={() => dispatch({
             type: "OPEN_POST",
             postId: post.id,
-            dashboardScrollPosition: dashboardRef.current?.scrollTop ?? state.dashboardScrollPosition,
+            dashboardScrollPosition: dashboardScroll.current(),
           })}
         />)}
         {state.dashboardSegment === "my-posts" && dashboardEntries.length === 0 && <p className="tumblr-empty">No posts.</p>}

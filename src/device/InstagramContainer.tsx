@@ -8,6 +8,7 @@ import { InstagramRefreshButton, InstagramTabBar, InstagramTopBar } from "./inst
 import { InstagramFilteredImage, INSTAGRAM_FILTER_OPTIONS, instagramVisibleFilterLabel } from "./instagram/InstagramFilteredImage";
 import { PhotosContainer } from "./PhotosContainer";
 import instagramClockSrc from "../assets/instagram/chrome/instagram-clock-2010-reconstructed.svg";
+import { useRafScrollPersistence } from "./scrollPersistence";
 
 type InstagramContainerProps = {
   state: InstagramState;
@@ -20,6 +21,8 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
   const identity = useSessionIdentity();
   const feedRef = useRef<HTMLDivElement>(null);
   const popularRef = useRef<HTMLDivElement>(null);
+  const feedScroll = useRafScrollPersistence(state.scrollPosition, scrollPosition => dispatch({ type: "SET_SCROLL_POSITION", scrollPosition }));
+  const popularScroll = useRafScrollPersistence(state.popularScrollPosition, scrollPosition => dispatch({ type: "SET_POPULAR_SCROLL_POSITION", scrollPosition }));
   const isWorkflow = state.currentView === "source" || state.currentView === "filter" || state.currentView === "share";
   const followedKnownPosts = selectInstagramVisibleFollowedPosts(state);
   const followedAccounts = selectInstagramFollowedAccounts(state);
@@ -90,7 +93,7 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
     {state.currentView === "feed" && <div
       ref={feedRef}
       className="instagram-feed"
-      onScroll={event => dispatch({ type: "SET_SCROLL_POSITION", scrollPosition: event.currentTarget.scrollTop })}
+      onScroll={event => feedScroll.record(event.currentTarget.scrollTop)}
     >
       {state.photos.length === 0 && followedKnownPosts.length === 0
         ? <div className="instagram-empty-feed">
@@ -121,7 +124,7 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
         })}</>}
     </div>}
 
-    {state.currentView === "popular" && <div ref={popularRef} className="instagram-popular-grid" aria-label="Popular photos" data-refresh-count={state.popularRefreshCount} onScroll={event => dispatch({ type: "SET_POPULAR_SCROLL_POSITION", scrollPosition: event.currentTarget.scrollTop })}>
+    {state.currentView === "popular" && <div ref={popularRef} className="instagram-popular-grid" aria-label="Popular photos" data-refresh-count={state.popularRefreshCount} onScroll={event => popularScroll.record(event.currentTarget.scrollTop)}>
       {INSTAGRAM_POPULAR_POSTS.map(post => <button key={post.id} type="button" aria-label={`Open ${post.category} photo by ${post.username}`} onClick={() => dispatch({ type: "OPEN_POPULAR_PHOTO", postId: post.id })}><InstagramPopularFixture media={post.media} username={post.username} /></button>)}
     </div>}
 

@@ -26,11 +26,13 @@ export type PhotosState = Readonly<{
   view: PhotosView;
   selectedPhotoId: string | null;
   viewerControlsVisible: boolean;
+  cameraRollScrollPosition: number | null;
 }>;
 
 export type PhotosEvent =
   | Readonly<{ type: "OPEN_CAMERA_ROLL" }>
-  | Readonly<{ type: "OPEN_PHOTO"; photoId: string }>
+  | Readonly<{ type: "OPEN_PHOTO"; photoId: string; scrollPosition?: number }>
+  | Readonly<{ type: "SET_CAMERA_ROLL_SCROLL_POSITION"; scrollPosition: number }>
   | Readonly<{ type: "PAGE_PHOTO"; photoId: string }>
   | Readonly<{ type: "BACK" }>
   | Readonly<{ type: "TOGGLE_VIEWER_CONTROLS" }>
@@ -40,21 +42,34 @@ export const initialPhotosState: PhotosState = Object.freeze({
   view: "albums",
   selectedPhotoId: null,
   viewerControlsVisible: true,
+  cameraRollScrollPosition: null,
 });
 
 export function photosStateTransition(state: PhotosState, event: PhotosEvent): PhotosState {
   switch (event.type) {
     case "OPEN_CAMERA_ROLL":
-      return { view: "cameraRoll", selectedPhotoId: null, viewerControlsVisible: true };
+      return { ...state, view: "cameraRoll", selectedPhotoId: null, viewerControlsVisible: true };
     case "OPEN_PHOTO":
-      return { view: "photo", selectedPhotoId: event.photoId, viewerControlsVisible: true };
+      return {
+        ...state,
+        view: "photo",
+        selectedPhotoId: event.photoId,
+        viewerControlsVisible: true,
+        cameraRollScrollPosition: event.scrollPosition === undefined
+          ? state.cameraRollScrollPosition
+          : Math.max(0, event.scrollPosition),
+      };
+    case "SET_CAMERA_ROLL_SCROLL_POSITION":
+      return state.view === "cameraRoll"
+        ? { ...state, cameraRollScrollPosition: Math.max(0, event.scrollPosition) }
+        : state;
     case "PAGE_PHOTO":
       return state.view === "photo" ? { ...state, selectedPhotoId: event.photoId } : state;
     case "BACK":
       if (state.view === "photo") {
-        return { view: "cameraRoll", selectedPhotoId: null, viewerControlsVisible: true };
+        return { ...state, view: "cameraRoll", selectedPhotoId: null, viewerControlsVisible: true };
       }
-      if (state.view === "cameraRoll") return initialPhotosState;
+      if (state.view === "cameraRoll") return { ...state, view: "albums", selectedPhotoId: null, viewerControlsVisible: true };
       return state;
     case "TOGGLE_VIEWER_CONTROLS":
       return state.view === "photo"

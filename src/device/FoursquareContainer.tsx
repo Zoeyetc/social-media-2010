@@ -15,6 +15,7 @@ import { IOS4Textarea } from "./IOS4KeyboardSystem";
 import { FoursquareAvatar } from "./FoursquareAvatar";
 import { resolveSystemMapVenue } from "../state/basicSystemApps";
 import { FoursquareMapOverlay } from "./FoursquareMapOverlay";
+import { useRafScrollPersistence } from "./scrollPersistence";
 
 type Props = { state: FoursquareState; dispatch: Dispatch<FoursquareEvent>; currentDeviceDateTime: Date; onOpenMap?: (venueId: string) => void };
 const TAB_PRESENTATION: Readonly<Record<FoursquareRootTab, { label: string; icon: string }>> = Object.freeze({
@@ -24,6 +25,7 @@ const TAB_PRESENTATION: Readonly<Record<FoursquareRootTab, { label: string; icon
 export function FoursquareContainer({ state, dispatch, currentDeviceDateTime, onOpenMap }: Props) {
   const identity = useSessionIdentity();
   const rootRef = useRef<HTMLDivElement>(null);
+  const rootScroll = useRafScrollPersistence(state.rootScrollPositions[state.activeTab], scrollPosition => dispatch({ type: "SET_ROOT_SCROLL_POSITION", tab: state.activeTab, scrollPosition }));
   const venue = state.venues.find(candidate => candidate.id === state.selectedVenueId) ?? null;
   const venueViewModel = createFoursquareVenueViewModels(state.venues, state.socialActivities).find(candidate => candidate.id === state.selectedVenueId) ?? null;
   useLayoutEffect(() => {
@@ -38,7 +40,7 @@ export function FoursquareContainer({ state, dispatch, currentDeviceDateTime, on
       <strong className={state.activeTab === "friends" && state.currentView === "root" ? "is-wordmark" : ""}>{title}</strong>
     </header>
     <main className="foursquare-content">
-      {state.currentView === "root" && <div ref={rootRef} className={`foursquare-root is-${state.activeTab}`} onScroll={event => dispatch({ type: "SET_ROOT_SCROLL_POSITION", tab: state.activeTab, scrollPosition: event.currentTarget.scrollTop })}>
+      {state.currentView === "root" && <div ref={rootRef} className={`foursquare-root is-${state.activeTab}`} onScroll={event => rootScroll.record(event.currentTarget.scrollTop)}>
         {state.activeTab === "friends" && <FriendsRoot simulatedNowMs={currentDeviceDateTime.getTime()} activities={state.socialActivities} venues={state.venues} onOpenVenue={venueId => dispatch({ type: "OPEN_VENUE", venueId, scrollPosition: state.rootScrollPositions.places })} />}
         {state.activeTab === "places" && <PlacesRoot state={state} onOpen={(venueId, scrollPosition) => dispatch({ type: "OPEN_VENUE", venueId, scrollPosition })} scrollHost={rootRef} />}
         {state.activeTab === "tips" && <QuietRoot label="Tips" />}
@@ -49,7 +51,7 @@ export function FoursquareContainer({ state, dispatch, currentDeviceDateTime, on
       {state.currentView === "leaderboard" && <Leaderboard entries={buildLeaderboard(state.pointEvents)} playerDisplayName={identity.name} />}
     </main>
     <nav className="foursquare-tab-bar" aria-label="Foursquare sections">
-      {FOURSQUARE_ROOT_TABS.map(tab => <button key={tab} type="button" aria-current={state.activeTab === tab ? "page" : undefined} onClick={() => dispatch({ type: "SHOW_TAB", tab })}>
+      {FOURSQUARE_ROOT_TABS.map(tab => <button key={tab} type="button" aria-current={state.activeTab === tab ? "page" : undefined} onClick={() => { rootScroll.flush(); dispatch({ type: "SHOW_TAB", tab }); }}>
         <img src={TAB_PRESENTATION[tab].icon} alt="" aria-hidden="true" /><span>{TAB_PRESENTATION[tab].label}</span>
       </button>)}
     </nav>

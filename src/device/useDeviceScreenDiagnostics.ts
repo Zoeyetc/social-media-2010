@@ -7,7 +7,8 @@ type Report = {
   presenter: DevicePresenter; experienceSessionId: string | null;
   sessions: Record<string, number[]>; transitions: string[];
 };
-const enabled = import.meta.env.DEV && (new URLSearchParams(location.search).get("deviceScreenDebug") === "1" || new URLSearchParams(location.search).get("heroLifecycleDebug") === "1");
+const visible = import.meta.env.DEV && (new URLSearchParams(location.search).get("deviceScreenDebug") === "1" || new URLSearchParams(location.search).get("heroLifecycleDebug") === "1");
+const enabled = visible || (import.meta.env.DEV && new URLSearchParams(location.search).get("performanceDebug") === "1");
 let nextInstance = 0;
 const seen = new Set<number>();
 const active = new Set<number>();
@@ -28,7 +29,7 @@ export function useDeviceScreenDiagnostics(presenter: DevicePresenter, experienc
     report.semanticInstanceId = id;
     report.rawMounts++;
     seen.add(id); active.add(id); report.semanticMounts = seen.size;
-    if (!output) {
+    if (visible && !output) {
       output = document.createElement("output");
       output.setAttribute("aria-label", "DeviceScreen continuity diagnostics");
       Object.assign(output.style, { position: "fixed", left: "8px", top: "8px", zIndex: "300", whiteSpace: "pre-wrap", maxWidth: "90vw", background: "#101010e8", color: "#bbb", padding: "6px", font: "10px monospace", pointerEvents: "none" });

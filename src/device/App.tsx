@@ -60,6 +60,7 @@ import { PublicTwitterOutro } from "./PublicTwitterOutro";
 import { AmbientWorld } from "../world/AmbientWorld";
 import type { CameraStillCapture } from "../world/AmbientWorld";
 import { selectCameraVideoScene, type CameraVideoSceneSelection } from "../world/cameraVideoScenes";
+import { useReleasePerformanceDiagnostics } from "./useReleasePerformanceDiagnostics";
 
 const TERMINAL_DEPLETED_DISPLAY_MS = 1_500;
 const AUTO_SLEEP_DELAY_MS = 60_000;
@@ -271,6 +272,20 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const deviceStatusTime = formatDeviceTime(deviceDateTime);
   const lockScreenTime = formatLockScreenTime(deviceDateTime);
   const deviceDate = formatDeviceDate(deviceDateTime);
+  const activeVideoObjectUrlCount = cameraRoll.records.reduce((count, record) => count + (record.mediaKind === "video" ? 2 : 0), 0);
+  useReleasePerformanceDiagnostics({
+    lifecyclePhase: presenter === "hero" ? lifecycle.phase : "legacy",
+    softwarePhase: session.phase,
+    experienceSessionId: session.experienceSessionId,
+    elapsedMs: elapsed,
+    cameraMediaObjectCount: cameraRoll.records.length,
+    activeVideoObjectUrlCount,
+    notificationQueueLength: notifications.queue.length,
+    schedulerPendingCount: session.deviceEvents.length,
+    currentApp: session.phase === "app" ? appRuntime.activeAppId : null,
+    powerHoldRafActive: powerFrame.current !== null,
+    screenPortalBootRafActive: presenter === "hero" && lifecycle.bootStartedAt !== null && !lifecycle.bootComplete,
+  });
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
