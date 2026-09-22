@@ -5,7 +5,7 @@ import parkIcon from "../assets/foursquare/icons/category-park-2010-reconstructe
 import { FOURSQUARE_VENUE_TIPS, type FoursquareCheckinActivity } from "./foursquareContent";
 import type { FoursquareVenue } from "../state/foursquareState";
 
-export const FOURSQUARE_VENUE_CATEGORIES = ["coffee-shop", "diner-restaurant", "bookstore", "park"] as const;
+export const FOURSQUARE_VENUE_CATEGORIES = ["coffee-shop", "diner-restaurant", "bookstore", "park", "gelato", "chinese-restaurant"] as const;
 export type FoursquareVenueCategory = typeof FOURSQUARE_VENUE_CATEGORIES[number];
 
 export type FoursquareVenueViewModel = Readonly<{
@@ -22,6 +22,8 @@ export type FoursquareVenueViewModel = Readonly<{
 }>;
 
 const CATEGORY_BY_VENUE_ID: Readonly<Record<string, { id: FoursquareVenueCategory; label: string; icon: string }>> = Object.freeze({
+  "gelato-roma": Object.freeze({ id: "gelato", label: "Ice Cream / Gelato", icon: dinerIcon }),
+  "hk": Object.freeze({ id: "chinese-restaurant", label: "Chinese Restaurant", icon: dinerIcon }),
   "night-owl": Object.freeze({ id: "coffee-shop", label: "Coffee Shop", icon: coffeeIcon }),
   "main-street-diner": Object.freeze({ id: "diner-restaurant", label: "Diner / Restaurant", icon: dinerIcon }),
   "cedar-books": Object.freeze({ id: "bookstore", label: "Bookstore", icon: bookstoreIcon }),

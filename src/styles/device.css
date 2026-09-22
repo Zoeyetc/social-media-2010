@@ -1323,7 +1323,10 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .facebook-place-tag-entry b { color: #8a9099; font-size: 18px; }
 .facebook-place-tag-friends { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #fff; }
 .facebook-place-tag-friends label { min-height: 45px; padding: 0 10px; display: grid; grid-template-columns: 22px minmax(0,1fr); align-items: center; gap: 4px; border-bottom: 1px solid #c4c8cf; font-size: 12px; }
-.facebook-place-tag-friends input { width: 15px; height: 15px; margin: 0; }
+/* Reconstructed period checkbox; retain the native semantic/input behavior. */
+.facebook-place-tag-friends input[type="checkbox"] { appearance:none; -webkit-appearance:none; width:15px; height:15px; margin:0; border:1px solid #758497; border-radius:2px; background:linear-gradient(#fff,#d9e0e8); box-shadow:inset 0 1px 1px #ffffffcc,0 1px 0 #fff; }
+.facebook-place-tag-friends input[type="checkbox"]:checked { border-color:#34577f; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 15'%3E%3Cpath d='M3 7.5 6 10.5 12 4' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"),linear-gradient(#83a8d1,#3e6da4); background-size:100% 100%; box-shadow:inset 0 1px 0 #b4cce5,0 1px 0 #fff; }
+.facebook-place-tag-friends input[type="checkbox"]:focus-visible { outline:1px solid #34577f; outline-offset:2px; }
 .facebook-place-detail { flex: 1 1 auto; min-height: 0; display: grid; grid-template-rows: 31px minmax(0,1fr); background: #fff; }
 .facebook-place-detail > nav { display: grid; grid-template-columns: repeat(2,1fr); border-bottom: 1px solid #9399a2; background: linear-gradient(#f4f5f7,#d4d7dc); }
 .facebook-place-detail > nav button { color: #304f82; border: 0; border-right: 1px solid #afb4bc; background: transparent; font-size: 10px; font-weight: bold; text-shadow: 0 1px #fff; }
@@ -1432,3 +1435,12 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 
 .springboard-icon-slot[data-app-name="Weather"] .weather-icon-digits { position:absolute; left:50%; top:0; transform:translateX(-50%); white-space:nowrap; }
 .springboard-icon-slot[data-app-name="Weather"] .weather-icon-degree { position:absolute; left:100%; top:-1px; margin-left:.5px; font-size:8px; line-height:11px; font-weight:300; }
+
+/* Bounded synthetic Camera video, using the existing mode artwork. */
+.camera-video-mode-control{position:absolute;z-index:5;left:249px;top:0;width:71px;height:53px;border:0;background:transparent}
+.camera-runtime-container[data-camera-mode="video"] .camera-runtime-mode-thumb{left:292px}
+.camera-video-record-dot{position:absolute;z-index:2;left:150px;top:17px;width:20px;height:20px;border-radius:50%;background:#b71919;box-shadow:inset 0 1px 2px #650c0c;pointer-events:none}
+.camera-video-record-dot.is-recording{border-radius:2px}
+.camera-video-status{position:absolute;top:40px;left:35px;right:35px;text-align:center;color:white;text-shadow:0 1px 1px black;font:14px Helvetica,Arial,sans-serif;pointer-events:none}
+.photos-camera-roll-thumbnail{position:relative}.photos-video-badge{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:white;font:10px Helvetica,Arial,sans-serif;text-align:right;padding:2px}
+.photos-video-viewer{background:black}.photos-video-viewer video{display:block;width:320px;height:356px;object-fit:contain}.photos-video-play{display:block;margin:8px auto;padding:5px 22px;border:1px solid #555;border-radius:4px;background:linear-gradient(#777,#303030);color:white;font:bold 14px Helvetica,Arial,sans-serif}

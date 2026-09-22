@@ -18,7 +18,7 @@ export type FacebookProfileInfo = Readonly<{ fullName: string; formalCanonicalNa
 
 export const FACEBOOK_CANONICAL_PROFILE_INFO: Readonly<Record<CoreSocialCharacterId, FacebookProfileInfo>> = Object.freeze({
   katie: Object.freeze({ fullName: "Katie Dawson", age: 14, location: "Los Angeles", lifeStage: "High school student", interests: Object.freeze(["music", "photography", "movies", "shopping", "dogs"]), classification: "CURATED" as const }),
-  matt: Object.freeze({ fullName: "Matt Ricci", formalCanonicalName: "Matteo Lee Ricci", age: 18, location: "Los Angeles", activity: "Bass", interests: Object.freeze(["computers", "music", "bass", "movies"]), classification: "CURATED" as const }),
+  matt: Object.freeze({ fullName: "Matteo Lee Ricci", formalCanonicalName: "Matteo Lee Ricci", age: 18, location: "Los Angeles", activity: "Bass", interests: Object.freeze(["computers", "music", "bass", "movies"]), classification: "CURATED" as const }),
   alex: Object.freeze({ fullName: "Alex Wong", age: 21, location: "Los Angeles", lifeStage: "College student", interests: Object.freeze(["coffee", "dogs", "photography", "movies", "food"]), classification: "CURATED" as const }),
   chris: Object.freeze({ fullName: "Chris Morgan", age: 19, location: "Los Angeles", lifeStage: "College student", interests: Object.freeze(["basketball", "Lakers", "movies", "music"]), classification: "CURATED" as const }),
   jay: Object.freeze({ fullName: "Jay Diaz", age: 18, location: "Los Angeles", lifeStage: "Recent high-school graduate", interests: Object.freeze(["guitar", "Led Zeppelin", "Interpol", "The Strokes", "live music", "records"]), classification: "CURATED" as const }),

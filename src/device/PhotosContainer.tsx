@@ -1,6 +1,6 @@
 import { Dispatch, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent, TransitionEvent } from "react";
-import type { CameraPhotoRecord } from "../state/cameraCaptureState";
+import { cameraMediaThumbnail, type CameraMediaRecord, type CameraVideoRecord } from "../state/cameraCaptureState";
 import type { CameraRollInitialization, PhotosEvent, PhotosState } from "../state/cameraRollState";
 
 type PhotosBrowseProps = Readonly<{
@@ -22,7 +22,7 @@ type PhotosContainerProps = PhotosBrowseProps | PhotosPickerProps;
 export function PhotosContainer(props: PhotosContainerProps) {
   if (props.mode === "picker") {
     return <CameraRollGrid
-      cameraRoll={props.cameraRoll}
+      cameraRoll={{...props.cameraRoll,records:props.cameraRoll.records.filter(record=>record.mediaKind !== "video")}}
       backLabel="Cancel"
       mode="picker"
       onBack={props.onPickerCancel}
@@ -48,6 +48,7 @@ function PhotosBrowseContainer({ state, dispatch, cameraRoll }: PhotosBrowseProp
 
   if (state.view === "photo" && selectedPhoto) {
     const selectedIndex = cameraRoll.records.findIndex(record => record.id === selectedPhoto.id);
+    if(selectedPhoto.mediaKind === "video") return <VideoViewer key={selectedPhoto.id} video={selectedPhoto} onBack={()=>dispatch({type:"BACK"})}/>;
     return <PhotoViewer
       photo={selectedPhoto}
       previousPhoto={selectedIndex > 0 ? cameraRoll.records[selectedIndex - 1] : null}
@@ -85,7 +86,7 @@ function PhotosBrowseContainer({ state, dispatch, cameraRoll }: PhotosBrowseProp
           >
             <span className="photos-album-cover">
               {latestPhoto
-                ? <img src={latestPhoto.objectUrl} alt="" />
+                ? <img src={cameraMediaThumbnail(latestPhoto)} alt="" />
                 : <span className="photos-album-cover-empty" aria-hidden="true" />}
             </span>
             <strong>Camera Roll</strong>
@@ -136,7 +137,8 @@ function CameraRollGrid({
               aria-label={`Open ${photo.filename}`}
               onClick={() => onOpenPhoto(photo.id)}
             >
-              <img src={photo.objectUrl} alt="" />
+              <img src={cameraMediaThumbnail(photo)} alt="" />
+              {photo.mediaKind === "video" && <span className="photos-video-badge">▶ {Math.ceil(photo.durationMs/1000)}s</span>}
             </button>)}
     </div>
   </section>;
@@ -151,9 +153,9 @@ function PhotoViewer({
   onToggleControls,
   onPage,
 }: Readonly<{
-  photo: CameraPhotoRecord;
-  previousPhoto: CameraPhotoRecord | null;
-  nextPhoto: CameraPhotoRecord | null;
+  photo: CameraMediaRecord;
+  previousPhoto: CameraMediaRecord | null;
+  nextPhoto: CameraMediaRecord | null;
   controlsVisible: boolean;
   onBack: () => void;
   onToggleControls: () => void;
@@ -179,7 +181,7 @@ function PhotoViewer({
     setSettling(false);
   }, [photo.id]);
 
-  const settleToPhoto = (target: CameraPhotoRecord, offset: number) => {
+  const settleToPhoto = (target: CameraMediaRecord, offset: number) => {
     pendingPhotoId.current = target.id;
     setSettling(true);
     setDragOffset(offset);
@@ -299,13 +301,13 @@ function PhotoViewer({
         onTransitionEnd={finishSettling}
       >
         {previousPhoto && <span className="photos-photo-viewer-slide is-previous" aria-hidden="true">
-          <img src={previousPhoto.objectUrl} alt="" />
+          <img src={cameraMediaThumbnail(previousPhoto)} alt="" />
         </span>}
         <span className="photos-photo-viewer-slide is-current">
-          <img src={photo.objectUrl} alt={photo.filename} />
+          <img src={cameraMediaThumbnail(photo)} alt={photo.filename} />
         </span>
         {nextPhoto && <span className="photos-photo-viewer-slide is-next" aria-hidden="true">
-          <img src={nextPhoto.objectUrl} alt="" />
+          <img src={cameraMediaThumbnail(nextPhoto)} alt="" />
         </span>}
       </span>
     </button>
@@ -327,4 +329,15 @@ function PhotosNavigationBar({
     </button>}
     <strong>{title}</strong>
   </header>;
+}
+
+function VideoViewer({video,onBack}:{video:CameraVideoRecord;onBack:()=>void}) {
+  const player=useRef<HTMLVideoElement|null>(null);
+  const [playing,setPlaying]=useState(false);
+  useEffect(()=>{const element=player.current;return()=>{if(element){element.pause();element.removeAttribute("src");element.load();}};},[video.id]);
+  return <section className="photos-container photos-video-viewer" aria-label="Video">
+    <PhotosNavigationBar title="Camera Roll" backLabel="Camera Roll" onBack={onBack}/>
+    <video ref={player} src={video.objectUrl} poster={video.posterUrl} muted playsInline preload="metadata" onPlay={()=>setPlaying(true)} onPause={()=>setPlaying(false)} onEnded={()=>setPlaying(false)} aria-label={video.filename}/>
+    <button type="button" className="photos-video-play" onClick={()=>{const element=player.current;if(!element)return;if(element.paused)void element.play().catch(()=>setPlaying(false));else element.pause();}}>{playing?"Pause":"Play"}</button>
+  </section>;
 }

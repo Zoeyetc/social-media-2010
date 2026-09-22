@@ -324,3 +324,21 @@ export async function eraseAllPlayerCameraRolls() {
   metadataStore.delete(LEGACY_CAPTURE_SEQUENCE_METADATA_KEY);
   await completion;
 }
+
+// Reserve from the same durable namespace as stills, without persisting session video blobs.
+export async function reserveCameraVideoSequence(experienceSessionId: string): Promise<number> {
+  assertExperienceSessionId(experienceSessionId);
+  const database = await openCameraRollDatabase();
+  const transaction = database.transaction(CAMERA_ROLL_METADATA_STORE, "readwrite");
+  const completion = transactionComplete(transaction);
+  const store = transaction.objectStore(CAMERA_ROLL_METADATA_STORE);
+  const key = cameraRollSequenceMetadataKey(experienceSessionId);
+  const metadata = await requestResult(store.get(key) as IDBRequest<CaptureSequenceMetadata | undefined>);
+  const sequence = metadata?.nextSequence;
+  if (!sequence || !Number.isInteger(sequence) || sequence > MAX_CAPTURE_SEQUENCE) {
+    transaction.abort(); await completion.catch(() => undefined); throw new Error("Camera Roll namespace unavailable.");
+  }
+  store.put({key, experienceSessionId, nextSequence: sequence + 1});
+  await completion;
+  return sequence;
+}

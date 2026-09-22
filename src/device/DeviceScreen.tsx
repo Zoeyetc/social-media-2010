@@ -1,3 +1,4 @@
+import { StocksContainer, SettingsContainer, type RCSystemAppsProps } from "./RCSystemApps";
 import { WeatherContainer, NotesContainer, AppleAccountGate } from "./SmallApps";
 import { SafariContainer, YouTubeContainer, ITunesContainer, type ITunesProps } from "./FinalDecorativeApps";
 import type { ComponentProps } from "react";
@@ -77,6 +78,8 @@ export type DeviceScreenProps = {
     dispatchRemainingBasicApps: RemainingAppsProps["dispatch"];
     monotonicNow: number;
     voiceMemos: ReturnType<typeof useVoiceMemos>;
+    rcSystemApps: RCSystemAppsProps["state"];
+    dispatchRCSystemApps: RCSystemAppsProps["dispatch"];
     smallApps: ComponentProps<typeof NotesContainer>["state"];
     dispatchSmallApps: ComponentProps<typeof NotesContainer>["dispatch"];
     basicSystemApps: BasicSystemAppsProps["state"];
@@ -107,6 +110,10 @@ export type DeviceScreenProps = {
     cameraRoll: ComponentProps<typeof PhotosContainer>["cameraRoll"];
     setCameraPreviewCanvas: ComponentProps<typeof CameraContainer>["previewCanvasRef"];
     setCameraLookPointerOffset: ComponentProps<typeof CameraContainer>["onLookPointerOffsetChange"];
+    videoStatus: "idle" | "recording" | "saving";
+    videoError: string;
+    toggleCameraVideo: () => void;
+    setCameraMode: (mode: "photo" | "video") => void;
     captureCameraPhoto: ComponentProps<typeof CameraContainer>["onCapture"];
     openLatestCameraPhoto: ComponentProps<typeof CameraContainer>["onOpenLatestPhoto"];
   };
@@ -278,6 +285,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
         onCapture={cameraRoll.status === "ready" ? captureCameraPhoto : undefined}
         latestPhoto={cameraRoll.records[cameraRoll.records.length - 1] ?? null}
         onOpenLatestPhoto={media.cameraActive ? undefined : openLatestCameraPhoto}
+        videoStatus={camera.videoStatus} videoError={camera.videoError} onVideo={camera.toggleCameraVideo} onModeChange={camera.setCameraMode}
       />}
       {appRuntime.activeAppId === "photos" && <PhotosContainer
         state={photosState}
@@ -350,6 +358,8 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       {(appRuntime.activeAppId === "whatsapp" || appRuntime.activeAppId === "skype") && <LegacyLoadingContainer appId={appRuntime.activeAppId} />}
       {appRuntime.activeAppId === "calculator" && <CalculatorContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
       {appRuntime.activeAppId === "calendar" && <CalendarContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
+      {appRuntime.activeAppId === "stocks" && <StocksContainer state={apps.rcSystemApps} dispatch={apps.dispatchRCSystemApps} />}
+      {appRuntime.activeAppId === "settings" && <SettingsContainer state={apps.rcSystemApps} dispatch={apps.dispatchRCSystemApps} />}
       {appRuntime.activeAppId === "maps" && <MapsContainer state={apps.basicSystemApps} dispatch={apps.dispatchBasicSystemApps} />}
       {appRuntime.activeAppId === "foursquare" && <FoursquareContainer
         onOpenMap={apps.openSystemMap}

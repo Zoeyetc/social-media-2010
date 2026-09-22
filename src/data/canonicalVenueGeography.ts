@@ -41,6 +41,9 @@ export const SM2010_LOCAL_MAP_BOUNDS: LocalMapBounds = Object.freeze({
 export const SM2010_SESSION_PLAYER_MAP_POINT = localMapPoint(0.00, 0.00);
 
 export const CANONICAL_VENUE_GEOGRAPHY = Object.freeze({
+  "night-owl": Object.freeze({ venueId: "night-owl", point: localMapPoint(-0.15, -0.15), classification: SM2010_GEOGRAPHY_CLASSIFICATION }),
+  "cedar-books": Object.freeze({ venueId: "cedar-books", point: localMapPoint(0.30, 0.40), classification: SM2010_GEOGRAPHY_CLASSIFICATION }),
+  "hk": Object.freeze({ venueId: "hk", point: localMapPoint(0.65, -0.25), classification: SM2010_GEOGRAPHY_CLASSIFICATION }),
   "downtown-coffee": Object.freeze({
     venueId: "downtown-coffee",
     point: localMapPoint(0.15, 0.15),

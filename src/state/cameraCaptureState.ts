@@ -80,6 +80,7 @@ export type CameraPhotoDurableRecord = Readonly<{
 }>;
 
 export type CameraPhotoRecord = CameraPhotoDurableRecord & Readonly<{
+  mediaKind?: "photo";
   objectUrl: string;
 }>;
 
@@ -98,6 +99,12 @@ export function createCameraPhotoRecord(
   }
 }
 
-export function releaseCameraPhotoRecords(records: readonly CameraPhotoRecord[]) {
-  records.forEach(record => URL.revokeObjectURL(record.objectUrl));
+export type CameraVideoRecord = Omit<CameraPhotoRecord, "mediaKind" | "width" | "height" | "mimeType" | "framing"> & Readonly<{
+  mediaKind: "video"; width: number; height: number; mimeType: string; durationMs: number; posterUrl: string;
+}>;
+export type CameraMediaRecord = CameraPhotoRecord | CameraVideoRecord;
+export const cameraMediaThumbnail = (record: CameraMediaRecord) => record.mediaKind === "video" ? record.posterUrl : record.objectUrl;
+
+export function releaseCameraPhotoRecords(records: readonly CameraMediaRecord[]) {
+  records.forEach(record => { URL.revokeObjectURL(record.objectUrl); if(record.mediaKind === "video") URL.revokeObjectURL(record.posterUrl); });
 }

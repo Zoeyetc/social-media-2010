@@ -30,9 +30,15 @@ try {
  const now=Date.now; Date.now=()=>Date.parse("2026-09-16T00:00:00Z");
  assert.deepEqual(m.createInitialBasicSystemApps().calendar,initial.calendar); Date.now=now;
  assert.equal(initial.maps.selectedVenueId,null);
+ const edgeState=m.basicSystemAppsTransition(initial,{type:"MAP_VENUE",venueId:"gelato-roma"});
+ const edgeMap=renderToStaticMarkup(React.createElement(ui.MapsContainer,{state:edgeState,dispatch(){}}));
+ const blankTiles=edgeMap.match(/data-map-boundary="unavailable">([\s\S]*?)<\/g>/)?.[1];
+ assert.ok(blankTiles);assert.ok([...blankTiles.matchAll(/width="([0-9.]+)"/g)].some(match=>Number(match[1])>0 && Number(match[1])<320));
+ assert.doesNotMatch(edgeMap,/spinner|Loading|world map unavailable/i);
+
  for(let run=0;run<2;run++) {
-  for(const id of ["main-street-diner","riverside-park","night-owl","cedar-books"]) {
-   const target=m.resolveSystemMapVenue(id),eligible=["main-street-diner","riverside-park"].includes(id);
+  for(const id of [...m.MAP_ELIGIBLE_FOURSQUARE_IDS,"unknown"]) {
+   const target=m.resolveSystemMapVenue(id),eligible=m.MAP_ELIGIBLE_FOURSQUARE_IDS.includes(id);
    let venueState=f.foursquareStateTransition(f.createInitialFoursquareState(),{type:"OPEN_VENUE",venueId:id,scrollPosition:40});
    venueState=f.foursquareStateTransition(venueState,{type:"SHOW_VENUE_INFO"});
    const html=renderToStaticMarkup(React.createElement(FoursquareContainer,{state:venueState,dispatch:()=>{},currentDeviceDateTime:new Date("2010-10-20T07:02:00Z"),onOpenMap:()=>{}}));

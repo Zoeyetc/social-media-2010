@@ -25,16 +25,30 @@ const hooks = {
 };
 globalThis.__lifecycleHooks = hooks;
 globalThis.__sceneSelected = () => sceneSelections++;
+let videoSequence = 0;
 const persistence = {
   eraseCurrentCameraRoll: async () => { eraseCount++; }, initializeCameraRollPersistence: async () => { initializeCount++; return []; },
   deleteStalePlayerCameraRolls: async () => {}, eraseAllPlayerCameraRolls: async () => { throw Error("must not erase world stores"); },
   discardPersistedCameraPhoto: async () => {}, persistCameraCapturedArtifact: async () => { throw Error("not capturing in lifecycle test"); },
   isCameraCaptureOwnerCurrent: (a, b) => a === b,
+  reserveCameraVideoSequence: async () => ++videoSequence,
+  cameraRollRecordId: (id, sequence) => `camera-photo-${id}-${String(sequence).padStart(4,"0")}`,
 };
 globalThis.__lifecyclePersistence = persistence;
+const realSetTimeout = globalThis.setTimeout;
 const realDateNow = Date.now; Date.now = () => clock;
 const realPerformanceNow = performance.now; performance.now = () => clock;
 const storage = new Map();
+const originalMediaRecorder=globalThis.MediaRecorder;
+let stoppedVideoTracks=0,videoRecorderInstances=0;
+globalThis.MediaRecorder=class {
+  static isTypeSupported(type){return type==="video/mp4";}
+  constructor(){videoRecorderInstances++;this.state="inactive";}
+  start(){this.state="recording";}
+  stop(){if(this.state==="inactive")return;this.state="inactive";this.ondataavailable?.({data:new Blob(["synthetic clip"])});void this.onstop?.();}
+};
+const syntheticCanvas={width:640,height:850,toBlob(callback){callback(new Blob(["poster"]));},captureStream(){return{getTracks:()=>[{stop(){stoppedVideoTracks++;}}]};}};
+
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value) };
 globalThis.window = {
   location: { search: "" },
@@ -46,6 +60,7 @@ globalThis.window = {
   addEventListener(name, fn) { listeners.set(name, fn); }, removeEventListener(name) { listeners.delete(name); },
 };
 globalThis.location = window.location;
+globalThis.setTimeout = (fn, delay, ...args) => delay === 12000 ? window.setTimeout(fn, delay) : realSetTimeout(fn, delay, ...args);
 globalThis.clearTimeout = window.clearTimeout;
 globalThis.clearInterval = window.clearInterval;
 globalThis.cancelAnimationFrame = window.cancelAnimationFrame;
@@ -142,7 +157,7 @@ try {
     view.screen.props.apps.dispatchFoursquare({type:"OPEN_VENUE",venueId:"main-street-diner",scrollPosition:80});
     view.screen.props.apps.dispatchFoursquare({type:"SHOW_VENUE_INFO"}); await flush();
     const beforeMaps = view.screen.props.apps.foursquareState;
-    view.screen.props.apps.openSystemMap("night-owl"); await flush();
+    view.screen.props.apps.openSystemMap("unknown"); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId,"foursquare");
     view.screen.props.apps.openSystemMap("main-street-diner"); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId,"maps");
@@ -199,8 +214,28 @@ try {
     }
     view.screen.props.navigation.launchSpringBoardApp("camera"); await flush();
     view.screen.props.navigation.dispatchAppRuntime({ type: "ANIMATION_COMPLETE" }); await flush();
+    assert.deepEqual(view.screen.props.apps.rcSystemApps,{stockSymbol:"AAPL",settingsRoute:"root"});
     assert.equal(view.screen.props.camera.cameraRuntime.cameraApp.phase, "previewing");
     assert.equal(sceneSelections, run + 1, "Camera open does not reroll");
+    assert.equal(view.screen.props.camera.cameraRoll.records.filter(record=>record.mediaKind==="video").length,0,"new session clears videos");
+    view.screen.props.camera.setCameraPreviewCanvas(syntheticCanvas);await flush();
+    view.screen.props.camera.setCameraMode("video");await flush();
+    for(let clip=0;clip<4;clip++) {
+      const count=videoRecorderInstances;
+      view.screen.props.camera.toggleCameraVideo();await flush();
+      assert.equal(view.screen.props.camera.videoStatus,"recording");
+      assert.equal(videoRecorderInstances,count+1);
+      view.screen.props.camera.toggleCameraVideo();await flush();
+      assert.equal(view.screen.props.camera.videoStatus,"idle");
+      assert.equal(view.screen.props.camera.cameraRoll.records.filter(record=>record.mediaKind==="video").length,clip+1);
+    }
+    const count=videoRecorderInstances;
+    view.screen.props.camera.toggleCameraVideo();await flush();assert.equal(videoRecorderInstances,count,"four clip cap");
+    assert.equal(view.screen.props.camera.videoError,"Camera Roll video limit reached");
+    assert.equal(new Set(view.screen.props.camera.cameraRoll.records.map(record=>record.id)).size,view.screen.props.camera.cameraRoll.records.length);
+    view.screen.props.apps.dispatchRCSystemApps({type:"STOCK_SELECT",symbol:"YHOO"});
+    view.screen.props.apps.dispatchRCSystemApps({type:"SETTINGS_ROUTE",route:"sounds"});await flush();
+
     view.screen.props.apps.dispatchMessages({ type: "EDIT_DRAFT", value: "session-only" }); await flush();
     view.powerControl.begin(); view.powerControl.end(); await flush();
     assert.equal(view.powerControl.state, "asleep");
@@ -291,4 +326,4 @@ try {
   slots.forEach(slot => slot?.cleanup?.());
   assert.equal(timers.size, 0); assert.equal(listeners.size, 0);
   console.log("PASS: actual App two-run lifecycle, unique IDs, software boot/reset, sleep/wake continuity, per-session Camera Roll bootstrap, timer cleanup; resource/world persistence checks.");
-} finally { globalThis.FormData=realFormData; Date.now = realDateNow; performance.now = realPerformanceNow; await server.close(); }
+} finally { globalThis.setTimeout=realSetTimeout; globalThis.MediaRecorder=originalMediaRecorder; globalThis.FormData=realFormData; Date.now = realDateNow; performance.now = realPerformanceNow; await server.close(); }

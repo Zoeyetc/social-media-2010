@@ -61,6 +61,7 @@ export type CameraRuntimeState = Record<CameraOwner, CameraSession>;
 
 export type CameraRuntimeEvent =
   | { type: "INITIALIZE_SESSION"; sceneId: CameraVideoSceneId; eventType: CameraVideoEventType }
+  | { type: "SET_MODE"; owner: CameraOwner; mode: CameraMode }
   | { type: "LAUNCH"; owner: CameraOwner }
   | { type: "LAUNCH_COMPLETE"; owner: CameraOwner }
   | { type: "SUSPEND"; owner: CameraOwner }
@@ -126,6 +127,8 @@ export function cameraRuntimeTransition(
   const replace = (next: CameraSession): CameraRuntimeState => ({ ...state, [event.owner]: next });
 
   switch (event.type) {
+    case "SET_MODE":
+      return event.owner === "cameraApp" && session.phase === "previewing" && !session.suspended ? replace({...session, mode:event.mode}) : state;
     case "LAUNCH":
       return session.phase === "none"
         ? replace({

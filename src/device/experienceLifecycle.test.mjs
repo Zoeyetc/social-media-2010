@@ -25,11 +25,14 @@ const hooks = {
 };
 globalThis.__lifecycleHooks = hooks;
 globalThis.__sceneSelected = () => sceneSelections++;
+let videoSequence = 0;
 const persistence = {
   eraseCurrentCameraRoll: async () => { eraseCount++; }, initializeCameraRollPersistence: async () => { initializeCount++; return []; },
   deleteStalePlayerCameraRolls: async () => {}, eraseAllPlayerCameraRolls: async () => { throw Error("must not erase world stores"); },
   discardPersistedCameraPhoto: async () => {}, persistCameraCapturedArtifact: async () => { throw Error("not capturing in lifecycle test"); },
   isCameraCaptureOwnerCurrent: (a, b) => a === b,
+  reserveCameraVideoSequence: async () => ++videoSequence,
+  cameraRollRecordId: (id, sequence) => `camera-photo-${id}-${String(sequence).padStart(4,"0")}`,
 };
 globalThis.__lifecyclePersistence = persistence;
 const realDateNow = Date.now; Date.now = () => clock;

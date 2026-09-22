@@ -1,4 +1,7 @@
 export const CANONICAL_VENUES = Object.freeze({
+  "night-owl": Object.freeze({ id: "night-owl" as const, name: "Night Owl Cafe" as const }),
+  "cedar-books": Object.freeze({ id: "cedar-books" as const, name: "Cedar Books" as const }),
+  "hk": Object.freeze({ id: "hk" as const, name: "HK" as const }),
   "downtown-coffee": Object.freeze({
     id: "downtown-coffee" as const,
     name: "Downtown Coffee" as const,

@@ -1,3 +1,5 @@
+import { CameraVideoRecorder, VIDEO_MAX_CLIPS } from "../state/cameraVideoRecorder";
+import { initialRCSystemApps, rcSystemAppsTransition } from "../state/rcSystemApps";
 import { initialSmallApps, smallAppsTransition } from "../state/smallApps";
 import { ITUNES_TRACKS, initialITunesState, iTunesTransition } from "../state/finalDecorativeApps";
 import { FormEvent, PointerEvent, useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
@@ -15,8 +17,8 @@ import {
 } from "../state/cameraRuntime";
 import type { CameraLookOffset, CameraOwner } from "../state/cameraRuntime";
 import { createCameraPhotoRecord, releaseCameraPhotoRecords } from "../state/cameraCaptureState";
-import type { CameraPhotoRecord } from "../state/cameraCaptureState";
-import { deleteStalePlayerCameraRolls, discardPersistedCameraPhoto, eraseAllPlayerCameraRolls, eraseCurrentCameraRoll, initializeCameraRollPersistence, isCameraCaptureOwnerCurrent, persistCameraCapturedArtifact } from "../state/cameraRollPersistence";
+import type { CameraPhotoRecord, CameraMediaRecord } from "../state/cameraCaptureState";
+import { reserveCameraVideoSequence, cameraRollRecordId, deleteStalePlayerCameraRolls, discardPersistedCameraPhoto, eraseAllPlayerCameraRolls, eraseCurrentCameraRoll, initializeCameraRollPersistence, isCameraCaptureOwnerCurrent, persistCameraCapturedArtifact } from "../state/cameraRollPersistence";
 import { initialCameraRoll, initialPhotosState, photosStateTransition, sortCameraRollRecords } from "../state/cameraRollState";
 import type { CameraRollInitialization } from "../state/cameraRollState";
 import { mediaRequestTransition, mediaRequestVisible, type ActiveMediaRequest, type MediaAttachment, type MediaAttachmentRequest } from "../state/mediaAttachment";
@@ -89,8 +91,8 @@ type PublicTwitterQaHandle = Readonly<{
 type PublicTwitterQaWindow = Window & { __SM2010_PUBLIC_TWITTER_QA__?: PublicTwitterQaHandle };
 
 type CameraCaptureQaHandle = Readonly<{
-  latest: () => CameraPhotoRecord | null;
-  records: () => readonly CameraPhotoRecord[];
+  latest: () => CameraMediaRecord | null;
+  records: () => readonly CameraMediaRecord[];
   persistenceStatus: () => CameraRollInitialization["status"];
   failNextCapture: () => void;
   eraseCurrentCameraRoll: () => Promise<void>;
@@ -157,6 +159,11 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const cameraUiVisible = session.phase === "app" && (appRuntime.activeAppId === "camera" || mediaCameraActive) && cameraRuntime.cameraApp.phase !== "none";
   const [photosState, dispatchPhotos] = useReducer(photosStateTransition, initialPhotosState);
   const cameraCapture = useRef<CameraStillCapture | null>(null);
+  const videoRecorder = useRef<CameraVideoRecorder | null>(null);
+  if (!videoRecorder.current) videoRecorder.current = new CameraVideoRecorder();
+  const [videoStatus, setVideoStatus] = useState<"idle" | "recording" | "saving">("idle");
+  const [videoError, setVideoError] = useState("");
+  const videoPending = useRef(false);
   const cameraCaptureInFlight = useRef(false);
   const cameraCaptureNamespace = useRef(0);
   const activeExperienceSessionIdRef = useRef(session.experienceSessionId);
@@ -218,6 +225,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   };
   const voiceMemos = useVoiceMemos();
   const [remainingBasicApps, dispatchRemainingBasicApps] = useReducer(remainingBasicAppsTransition, undefined, createInitialRemainingBasicApps);
+  const [rcSystemApps, dispatchRCSystemApps] = useReducer(rcSystemAppsTransition, undefined, initialRCSystemApps);
   const [smallApps, dispatchSmallApps] = useReducer(smallAppsTransition, undefined, initialSmallApps);
   const [basicSystemApps, dispatchBasicSystemApps] = useReducer(basicSystemAppsTransition, undefined, createInitialBasicSystemApps);
   const [foursquareState, dispatchFoursquare] = useReducer(foursquareStateTransition, undefined, createInitialFoursquareState);
@@ -355,6 +363,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
 
   const resetDisposableRuntime = useCallback(() => {
     pendingUnlockDestination.current = null;
+    videoRecorder.current?.cancel(); videoPending.current = false; setVideoStatus("idle"); setVideoError("");
     if (shutdownResetStarted.current) return;
     shutdownResetStarted.current = true;
     deliveredEventClaims.current.clear();
@@ -365,6 +374,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     dispatchFacebook({ type: "RESET" });
     dispatchInstagram({ type: "RESET" });
     dispatchFoursquare({ type: "RESET" });
+    dispatchRCSystemApps({ type: "RESET" });
     dispatchSmallApps({ type: "RESET" });
     dispatchBasicSystemApps({ type: "RESET" });
     dispatchRemainingBasicApps({ type: "RESET" });
@@ -442,11 +452,42 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     else if (session.phase === "shutdown" && session.shutdownReason === "manual") finishExperience({ reason: "powered-off" });
   }, [presenter, lifecycle.phase, session, now, finishExperience]);
 
+  useEffect(() => {
+    if (!cameraUiVisible || mediaCameraActive || cameraRuntime.cameraApp.suspended || session.phase !== "app") videoRecorder.current?.stop();
+  }, [cameraUiVisible, mediaCameraActive, cameraRuntime.cameraApp.suspended, session.phase]);
+  useEffect(() => () => { videoRecorder.current?.cancel(); }, []);
+  const toggleCameraVideo = () => {
+    if (videoRecorder.current?.active) {setVideoStatus("saving");videoRecorder.current.stop();return;}
+    const experienceSessionId=session.experienceSessionId, canvas=cameraPreviewCanvas;
+    if(videoPending.current || cameraCaptureInFlight.current || !canvas || !experienceSessionId || mediaCameraActive || session.phase !== "app" || appRuntime.activeAppId !== "camera" || cameraRuntime.cameraApp.suspended || cameraRuntime.cameraApp.phase !== "previewing" || cameraRuntime.cameraApp.mode !== "video" || cameraRollRef.current.status !== "ready") return;
+    if(cameraRollRef.current.records.filter(record=>record.mediaKind==="video").length >= VIDEO_MAX_CLIPS) {setVideoError("Camera Roll video limit reached");return;}
+    const namespace=cameraCaptureNamespace.current, cameraSession=cameraRuntime.cameraApp;
+    const createdAt=simulatedDeviceDateTime(elapsedMs(session,Date.now())).toISOString();
+    const current=()=>namespace===cameraCaptureNamespace.current && cameraRollMounted.current && activeExperienceSessionIdRef.current===experienceSessionId;
+    videoPending.current=true;setVideoError("");
+    const started=videoRecorder.current!.start(canvas, async clip=>{
+      if(!current()) return;
+      setVideoStatus("saving");
+      try {
+        const sequence=await reserveCameraVideoSequence(experienceSessionId);
+        if(!current()) return;
+        const objectUrl=URL.createObjectURL(clip.blob);
+        let posterUrl:string;
+        try {posterUrl=URL.createObjectURL(clip.poster);} catch(error) {URL.revokeObjectURL(objectUrl);throw error;}
+        const record: CameraMediaRecord=Object.freeze({id:cameraRollRecordId(experienceSessionId,sequence),filename:`IMG_${String(sequence).padStart(4,"0")}.${clip.blob.type.startsWith("video/mp4")?"mov":"webm"}`,captureSequence:sequence,experienceSessionId,createdAt,sceneId:"ambient-world-production-v0.1",width:clip.width,height:clip.height,mimeType:clip.blob.type,byteSize:clip.blob.size,blob:clip.blob,origin:"player-camera",cameraFacing:cameraSession.cameraDevice,cameraMode:"video",cameraVideoEventType:cameraSession.cameraVideoEventType,cameraVideoSceneId:cameraSession.cameraVideoSceneId,mediaKind:"video",durationMs:clip.durationMs,objectUrl,posterUrl});
+        const next:CameraRollInitialization={status:"ready",records:sortCameraRollRecords([...cameraRollRef.current.records,record]),error:null};
+        cameraRollRef.current=next;setCameraRoll(next);
+      } catch {if(current())setVideoError("Video could not be saved");}
+      finally {if(current()){videoPending.current=false;setVideoStatus("idle");}}
+    }, message=>{if(current()){videoPending.current=false;setVideoStatus("idle");setVideoError(message);}});
+    if(started)setVideoStatus("recording");
+  };
+
   const captureCameraPhoto = async () => {
     const capture = cameraCapture.current;
     const cameraSession = cameraRuntime.cameraApp;
     const experienceSessionId = session.experienceSessionId;
-    if (!capture || !experienceSessionId || cameraCaptureInFlight.current || cameraRollRef.current.status !== "ready") return;
+    if (videoPending.current || cameraSession.mode !== "photo" || !capture || !experienceSessionId || cameraCaptureInFlight.current || cameraRollRef.current.status !== "ready") return;
     cameraCaptureInFlight.current = true;
     if (!requestCameraCapture(cameraRuntime, "cameraApp", dispatchCameraRuntime)) {
       cameraCaptureInFlight.current = false;
@@ -1339,15 +1380,15 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   useEffect(() => {
     if (!mediaVisible || mediaRequest?.stage !== "result" || mediaRequest.experienceSessionId !== session.experienceSessionId) return;
     const record = cameraRoll.records.find(photo => photo.id === mediaRequest.selectedMediaId);
-    if (record) returnMediaToRequester(mediaRequest, { id: record.id, objectUrl: record.objectUrl, filename: record.filename });
+    if (record && record.mediaKind !== "video") returnMediaToRequester(mediaRequest, { id: record.id, objectUrl: record.objectUrl, filename: record.filename });
   }, [mediaVisible, mediaRequest, cameraRoll.records, session.experienceSessionId, returnMediaToRequester]);
   const chooseMediaSource = (source: "camera" | "library") => {
     if (!mediaVisible || !mediaRequest || mediaRequest.stage !== "source") return;
     dispatchMediaRequest({ type: "SOURCE", id: mediaRequest.id, source });
-    if (source === "camera") dispatchCameraRuntime({ type: "LAUNCH", owner: "cameraApp" });
+    if (source === "camera") { dispatchCameraRuntime({ type: "LAUNCH", owner: "cameraApp" }); dispatchCameraRuntime({type:"SET_MODE",owner:"cameraApp",mode:"photo"}); }
   };
   const selectMediaPhoto = (photoId: string) => {
-    if (!mediaVisible || !mediaRequest || mediaRequest.stage !== "library" || !cameraRoll.records.some(photo => photo.id === photoId)) return;
+    if (!mediaVisible || !mediaRequest || mediaRequest.stage !== "library" || !cameraRoll.records.some(photo => photo.id === photoId && photo.mediaKind !== "video")) return;
     dispatchMediaRequest({ type: "SELECT", id: mediaRequest.id, mediaId: photoId });
   };
 
@@ -1507,7 +1548,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           voiceMemos,
           monotonicNow: performance.now(),
           basicSystemApps,
-          smallApps, dispatchSmallApps,
+          smallApps, dispatchSmallApps, rcSystemApps, dispatchRCSystemApps,
           dispatchBasicSystemApps,
           openSystemMap: (venueId: string) => {
             if (!resolveSystemMapVenue(venueId) || appRuntime.activeAppId !== "foursquare" || appRuntime.phase !== "running") return;
@@ -1524,6 +1565,13 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           setCameraPreviewCanvas,
           setCameraLookPointerOffset,
           captureCameraPhoto,
+          videoStatus, videoError, toggleCameraVideo,
+          setCameraMode: mode => {
+            if (!videoPending.current && !mediaCameraActive) {
+              setVideoError("");
+              dispatchCameraRuntime({type:"SET_MODE",owner:"cameraApp",mode});
+            }
+          },
           openLatestCameraPhoto,
         }}
         overlays={{

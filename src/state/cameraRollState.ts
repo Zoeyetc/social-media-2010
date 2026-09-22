@@ -1,9 +1,9 @@
-import type { CameraPhotoRecord } from "./cameraCaptureState";
+import type { CameraMediaRecord } from "./cameraCaptureState";
 
 export type CameraRollInitialization =
-  | Readonly<{ status: "loading"; records: readonly CameraPhotoRecord[]; error: null }>
-  | Readonly<{ status: "ready"; records: readonly CameraPhotoRecord[]; error: null }>
-  | Readonly<{ status: "error"; records: readonly CameraPhotoRecord[]; error: string }>;
+  | Readonly<{ status: "loading"; records: readonly CameraMediaRecord[]; error: null }>
+  | Readonly<{ status: "ready"; records: readonly CameraMediaRecord[]; error: null }>
+  | Readonly<{ status: "error"; records: readonly CameraMediaRecord[]; error: string }>;
 
 export const initialCameraRoll: CameraRollInitialization = Object.freeze({
   status: "loading",
@@ -11,12 +11,12 @@ export const initialCameraRoll: CameraRollInitialization = Object.freeze({
   error: null,
 });
 
-export function compareCameraRollRecords(a: CameraPhotoRecord, b: CameraPhotoRecord) {
+export function compareCameraRollRecords(a: CameraMediaRecord, b: CameraMediaRecord) {
   const timeDifference = Date.parse(a.createdAt) - Date.parse(b.createdAt);
   return timeDifference || a.captureSequence - b.captureSequence;
 }
 
-export function sortCameraRollRecords(records: readonly CameraPhotoRecord[]) {
+export function sortCameraRollRecords(records: readonly CameraMediaRecord[]) {
   return Object.freeze([...records].sort(compareCameraRollRecords));
 }
 

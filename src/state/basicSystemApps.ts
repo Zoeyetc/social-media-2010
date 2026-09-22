@@ -28,7 +28,7 @@ export function calculatorKey(state: CalculatorState, key: string): CalculatorSt
   return { display, accumulator: Number.isFinite(value) ? value : null, operation: display === "Error" ? null : key as CalculatorOperation, replace: true, cleared: false };
 }
 
-export const MAP_ELIGIBLE_FOURSQUARE_IDS = ["main-street-diner", "riverside-park"] as const;
+export const MAP_ELIGIBLE_FOURSQUARE_IDS = ["main-street-diner", "riverside-park", "night-owl", "cedar-books", "gelato-roma", "hk"] as const;
 export type MapsVenueId = typeof MAP_ELIGIBLE_FOURSQUARE_IDS[number];
 export function resolveSystemMapVenue(id: string) {
   if (!MAP_ELIGIBLE_FOURSQUARE_IDS.some(eligible => eligible === id)) return null;

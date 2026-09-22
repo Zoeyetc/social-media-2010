@@ -16,7 +16,7 @@ The centralized `isFacebookNewsFeedEligible` selector reads `createdAt`, formats
 | `luca-pickup-basketball-photos`, `luca-main-street-diner-checkin`, `jay-band-performance-photo`, `jay-guitar-photo`, `z-tokyo-profile-picture-update` | Luca / Jay / Z.tokyo | 2010 | Yes | 2010 and existing audience permits distribution |
 | `jack-football-game-photo`, `sophie-jack-tagged-02`, `sophie-jack-tagged-03`, `ryan-jack-night-photo`, `june-jack-tagged-night-photo`, `luca-jack-tagged-photo`, `matt-jack-tagged-photo`, `jack-summer-party-photo`, `jack-summer-photos` | Upload owners | 2010 | Yes | Owner upload stories with friends-of-friends visibility |
 | `june-starbucks-photo`, `june-profile-picture-update`, `sophie-june-club-photo-story`, `june-home-photo`, `june-sophie-photo`, `june-graduation-photo`, `june-18th-birthday-photos` | June / Sophie | 2010 | No for current user | Pass year gate but remain custom/private |
-| `jack-matt-2010-photo`, `jack-practice-brutal`, `jack-car-photo`, `jack-profile-picture-update` | Jack | 2010 | No for current user | Pass year gate but remain custom/private |
+| `jack-practice-brutal`, `jack-car-photo`, `jack-profile-picture-update` | Jack | 2010 | No for current user | Pass year gate but remain custom/private |
 | `luca-profile-picture-current`, `luca-work-main-street-diner` | Luca | 2010 | No for current user | Pass year gate but remain custom/private |
 | `jay-may-guitar-photo` | Jay | 2010 | Yes | Canonical friends-visible May music story |
 | Katie's 2010 profile/selfie stories | Katie | 2010 | No for current user | Pass year gate but remain custom/private |
@@ -36,3 +36,17 @@ Katie/Chris/Sophie live gossip additions are comments on existing 2010 stories r
 ## Preserved surfaces
 
 The year gate is not called by Profile Wall or photo selectors. Historical Jack, Alex, Ben, Matt, Chris, and Katie content remains discoverable through their canonical Wall and photo relationships. No scheduler timing, story timestamp, album membership, tag relationship, or media file is changed.
+
+## RC Jack/Matt relationship audience correction
+
+User-approved narrative metadata: `jack-matt-2010-photo`,
+`jack-car-matt-2009-photos`, `jack-matt-2008-photo`, and
+`jack-matt-family-2007-photo` are Friends, superseding their former
+Custom/user-excluded classification. All four remain hidden on Jack's Wall
+before friendship and become eligible after acceptance. This is curated
+narrative intent, not an archival claim about real posts' privacy settings.
+
+The 2010 photo becomes Feed-eligible at its original October 18 timestamp;
+the 2007–2009 posts remain excluded by the Feed year gate. Acceptance changes
+no IDs, timestamps, captions, media, or insertion order. Unrelated Jack Custom
+posts remain private. Audience selectors are unchanged.

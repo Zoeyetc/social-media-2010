@@ -139,7 +139,7 @@ const BASELINE_FOLLOWED_USER_IDS = new Set([
   ...SUGGESTED_USER_DEFINITIONS.filter(user => user.initiallyFollowing).map(user => user.id),
   "alex",
 ]);
-const OWNER_PROFILE_BASELINE = Object.freeze({ followerCount: 12, baselineTweetCount: 34, baselineFavoriteCount: 7, provenance: "CURATED" as const });
+const OWNER_PROFILE_BASELINE = Object.freeze({ followerCount: 12, baselineTweetCount: 0, baselineFavoriteCount: 7, provenance: "CURATED" as const });
 
 function historicalAccountStatistics(profileId: string): TwitterAccountStatistics {
   const curated = (value: number, field: string): TwitterHistoricalStat => ({
@@ -177,8 +177,9 @@ function historicalAccountStatistics(profileId: string): TwitterAccountStatistic
 }
 
 const TWITTER_USER_PROFILES: TwitterUserProfile[] = [
+  { id: "matt", displayName: "Matt Ricci", handle: "@mattricci", avatarSeed: "M" },
   // RECONSTRUCTED canonical Twitter metadata; default avatar, no invented bio or counts.
-  { id: "jay", displayName: "Jay Diaz", handle: "@jaydiaz", avatarSeed: "J", statsHold: { following: true, follower: true, tweet: true, favorite: true } },
+  { id: "jay", displayName: "Jay Diaz", handle: "@jaydiaz", avatarSeed: "J", statsHold: { following: true, follower: true, favorite: true } },
   {
     id: "june",
     displayName: "June",
@@ -253,7 +254,7 @@ const TWITTER_USER_PROFILES: TwitterUserProfile[] = [
   { id: "priya", displayName: "Priya", handle: "@priya", avatarSeed: "P", followingCount: 204, followerCount: 302, tweetCount: 1480, favoriteCount: 215 },
   { id: "claire", displayName: "Claire", handle: "@claire", avatarSeed: "C", followingCount: 71, followerCount: 45, tweetCount: 260, favoriteCount: 18 },
   { id: "ben", displayName: "Ben", handle: "@ben", avatarSeed: "B", followingCount: 130, followerCount: 97, tweetCount: 621, favoriteCount: 54 },
-  { id: "alex", displayName: "Alex", handle: "@alex", avatarSeed: "A", followingCount: 91, followerCount: 73, tweetCount: 512, favoriteCount: 38 },
+  { id: "alex", displayName: "Alex Wong", handle: "@alexwong", avatarSeed: "A" },
   { id: "chris", displayName: "Chris", handle: "@chris", avatarSeed: "C", followingCount: 116, followerCount: 102, tweetCount: 684, favoriteCount: 45 },
   {
     id: "kanye-west",
@@ -698,7 +699,8 @@ export function getTwitterUserProfile(displayName: string, sessionDisplayName: s
   }
 
   const match = TWITTER_USER_PROFILES.find(profile => (
-    profile.displayName.toLowerCase() === normalized.toLowerCase()
+    profile.id === normalized.toLowerCase()
+    || profile.displayName.toLowerCase() === normalized.toLowerCase()
     || profile.handle.toLowerCase() === normalized.toLowerCase()
   ));
   if (match) return match;
@@ -725,7 +727,7 @@ export function selectTwitterUserProfile(state: TwitterState, profileId: string,
       ...base,
       followingCount: state.followedUserIds.length,
       followerCount: state.ownerProfileStats.followerCount,
-      tweetCount: state.ownerProfileStats.baselineTweetCount + state.timeline.filter(tweet => tweet.origin === "user").length,
+      tweetCount: new Set(state.timeline.filter(tweet => tweet.origin === "user").map(tweet => tweet.id)).size,
       favoriteCount: state.ownerProfileStats.baselineFavoriteCount + state.favoriteTweetIds.length,
     };
   }
@@ -749,8 +751,9 @@ export function selectTwitterUserProfile(state: TwitterState, profileId: string,
   const profile = getTwitterUserProfileForId(profileId, sessionDisplayName);
   return {
     ...profile,
+    ...(["matt", "alex", "jay"].includes(profile.id) ? { tweetCount: new Set([...state.timeline, ...state.mentionTweets, ...state.linkedTweets].filter(tweet => tweet.friendId === profile.id).map(tweet => tweet.id)).size } : {}),
     following: profile.id !== "unknown" && state.followedUserIds.includes(profile.id),
-    followerCount: profile.statsHold?.follower || profile.id === "unknown"
+    followerCount: profile.statsHold?.follower || profile.followerCount === undefined
       ? profile.followerCount
       : (profile.followerCount ?? 0) + sessionFollowerDelta(state, profile.id),
   };
@@ -792,7 +795,7 @@ export function selectTwitterFollowingUsers(state: TwitterState, sessionDisplayN
   return state.followedUserIds.flatMap(profileId => {
     const suggested = state.suggestedUsers.find(user => user.id === profileId);
     if (suggested) return [suggested];
-    const profile = getTwitterUserProfileForId(profileId, sessionDisplayName);
+    const profile = selectTwitterUserProfile(state, profileId, sessionDisplayName);
     if (!profile.id || profile.id === "unknown" || profile.id === "session-owner") return [];
     return [{
       id: profile.id,
@@ -817,7 +820,7 @@ export function selectTwitterFollowingUsers(state: TwitterState, sessionDisplayN
 
 function curatedProfileStat(value: number | undefined, field: string): TwitterHistoricalStat {
   return {
-    value: value ?? 0,
+    value,
     provenance: "CURATED-FILL",
     confidence: "low",
     sourceNotes: `Fictional account ${field} value is CURATED for the session artwork.`,

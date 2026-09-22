@@ -185,6 +185,8 @@ const projectedPolygon = (
 }).join(" ");
 
 export function Shared2010Map({ width, height, viewport, venueIds, showPlayer = false }: Shared2010MapProps) {
+  const edge = projectLocalMapPoint({xMiles: SM2010_LOCAL_MAP_BOUNDS.minXMiles, yMiles: SM2010_LOCAL_MAP_BOUNDS.maxYMiles}, viewport, width, height);
+  const end = projectLocalMapPoint({xMiles: SM2010_LOCAL_MAP_BOUNDS.maxXMiles, yMiles: SM2010_LOCAL_MAP_BOUNDS.minYMiles}, viewport, width, height);
   const primaryRoads = SM2010_CANONICAL_MAP_ROADS.filter(road => road.kind === "primary");
   const localRoads = SM2010_CANONICAL_MAP_ROADS.filter(road => road.kind === "local");
   return <svg
@@ -241,6 +243,12 @@ export function Shared2010Map({ width, height, viewport, venueIds, showPlayer = 
       stroke="#faf7ed"
       strokeWidth="2"
     />)}
+    <g fill="#deddd7" data-map-boundary="unavailable">
+      <rect x="0" y="0" width={Math.max(0, edge.x)} height={height}/>
+      <rect x={Math.max(0,end.x)} y="0" width={Math.max(0,width-end.x)} height={height}/>
+      <rect x="0" y="0" width={width} height={Math.max(0,edge.y)}/>
+      <rect x="0" y={Math.max(0,end.y)} width={width} height={Math.max(0,height-end.y)}/>
+    </g>
     {venueIds.map(venueId => {
       const projected = getProjectedVenuePoint(venueId, viewport, width, height);
       return projected && <circle

@@ -101,7 +101,7 @@ const UTILITIES_APPS = [
 const PAGE_ONE_APPS: readonly (SpringBoardApp | undefined)[] = [
   { name: "Calendar", iconSrc: calendarIconSrc, calendarDay: "20", launchId: "calendar" },
   { name: "Photos", iconSrc: photosIconSrc, launchId: "photos" },
-  { name: "Stocks", iconSrc: stocksIconSrc },
+  { name: "Stocks", iconSrc: stocksIconSrc, launchId: "stocks" },
   { name: "Maps", iconSrc: mapsIconSrc, launchId: "maps" },
   { name: "Weather", iconSrc: weatherIconSrc, launchId: "weather" },
   { name: "Notes", iconSrc: notesIconSrc, launchId: "notes" },
@@ -109,7 +109,7 @@ const PAGE_ONE_APPS: readonly (SpringBoardApp | undefined)[] = [
   { name: "iTunes", iconSrc: iTunesIconSrc, launchId: "itunes" },
   { name: "App Store", iconSrc: appStoreIconSrc, launchId: "app-store" },
   { name: "Game Center", iconSrc: gameCenterIconSrc, launchId: "game-center" },
-  { name: "Settings", iconSrc: settingsIconSrc },
+  { name: "Settings", iconSrc: settingsIconSrc, launchId: "settings" },
   { name: "Facebook", socialAppId: "facebook", launchId: "facebook" },
   { name: "Twitter", socialAppId: "twitter", launchId: "twitter" },
   { name: "Instagram", socialAppId: "instagram", launchId: "instagram" },

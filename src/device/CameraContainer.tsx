@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 import { CAMERA_LOOK_NOMINAL_LIMITS, clampCameraLookPointerOffset } from "../state/cameraRuntime";
 import type { CameraLookOffset, CameraOwner, CameraSession } from "../state/cameraRuntime";
-import type { CameraPhotoRecord } from "../state/cameraCaptureState";
+import { cameraMediaThumbnail, type CameraMediaRecord } from "../state/cameraCaptureState";
 import cameraIconSrc from "../assets/historical/ios4.1/camera/CameraButtonIcon@2x.browser.png";
 import cameraModeIconSrc from "../assets/historical/ios4.1/camera/CameraSwitchIcon@2x.browser.png";
 import cameraLaunchSrc from "../assets/historical/ios4.1/camera/Default-Camera@2x.browser.png";
@@ -26,8 +26,12 @@ type CameraContainerProps = {
   mediaAttachment?: boolean;
   previewCanvasRef?: (canvas: HTMLCanvasElement | null) => void;
   onLookPointerOffsetChange?: (offset: CameraLookOffset) => void;
+  videoStatus?: "idle" | "recording" | "saving";
+  videoError?: string;
+  onVideo?: () => void;
+  onModeChange?: (mode:"photo"|"video")=>void;
   onCapture?: () => void;
-  latestPhoto?: CameraPhotoRecord | null;
+  latestPhoto?: CameraMediaRecord | null;
   onOpenLatestPhoto?: () => void;
 };
 
@@ -40,6 +44,7 @@ type CameraLookDrag = {
 
 export function CameraContainer({
   owner,
+  videoStatus="idle", videoError="", onVideo, onModeChange,
   session,
   onCancel,
   mediaAttachment = false,
@@ -60,9 +65,9 @@ export function CameraContainer({
   const shutterEnabled = isStandaloneCamera
     && session.phase === "previewing"
     && !session.suspended
-    && session.mode === "photo"
+    && videoStatus !== "saving"
     && session.cameraDevice === "rear"
-    && Boolean(onCapture);
+    && Boolean(session.mode === "video" ? onVideo : onCapture);
 
   useEffect(() => {
     if (lookDrag.current) {
@@ -174,7 +179,7 @@ export function CameraContainer({
           ? <img
             className="camera-runtime-preview-thumbnail"
             data-visual-status="RECONSTRUCTED"
-            src={latestPhoto.objectUrl}
+            src={cameraMediaThumbnail(latestPhoto)}
             alt=""
           />
           : <img className="camera-runtime-preview-placeholder" src={previewPlaceholderSrc} alt="" />}
@@ -189,7 +194,7 @@ export function CameraContainer({
           className="camera-runtime-shutter"
           data-visual-status="RECONSTRUCTED"
           data-shutter-pressed={shutterPressed || undefined}
-          aria-label="Take Picture"
+          aria-label={session.mode === "photo" ? "Take Picture" : videoStatus === "recording" ? "Stop Recording" : "Record Video"}
           disabled={!shutterEnabled}
           style={{ borderImageSource: `url("${shutterPressed ? shutterPressedSrc : shutterSrc}")` }}
           onPointerDown={pressShutter}
@@ -201,11 +206,12 @@ export function CameraContainer({
           onBlur={() => setShutterPressed(false)}
           onClick={() => {
             setShutterPressed(false);
-            if (shutterEnabled) onCapture?.();
+            if (shutterEnabled) {if(session.mode === "video")onVideo?.();else onCapture?.();}
           }}
         />
-        <img className="camera-runtime-shutter-icon" src={cameraIconSrc} alt="" />
+        {session.mode === "photo" ? <img className="camera-runtime-shutter-icon" src={cameraIconSrc} alt="" /> : <span className={`camera-video-record-dot ${videoStatus === "recording" ? "is-recording" : ""}`} />}
         {!onCancel && <>
+        <button type="button" className="camera-video-mode-control" aria-label={session.mode === "photo" ? "Switch to Video" : "Switch to Photo"} disabled={videoStatus !== "idle" || session.phase !== "previewing" || session.suspended} onClick={()=>onModeChange?.(session.mode === "photo" ? "video" : "photo")} />
         <img className="camera-runtime-mode-background" src={switchWellBackgroundSrc} alt="" />
         <img className="camera-runtime-mode-well" src={switchWellSrc} alt="" />
         <img
@@ -219,6 +225,7 @@ export function CameraContainer({
         </>}
       </div>
     </>}
+    {(videoStatus !== "idle" || videoError) && <div className="camera-video-status" role="status">{videoError || (videoStatus === "recording" ? "● REC" : "Saving…")}</div>}
     {onCancel && <button
       type="button"
       className="camera-picker-cancel"

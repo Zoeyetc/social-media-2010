@@ -1,3 +1,5 @@
+import stocksIcon from "../assets/historical/ios4.1/springboard/apps/Stocks@2x.browser.png";
+import settingsIcon from "../assets/historical/ios4.1/springboard/apps/Settings@2x.browser.png";
 import { WEATHER } from "../state/smallApps";
 import gamecenterSmallIcon from "../assets/historical/ios4.1/springboard/apps/GameCenter@2x.browser.png";
 import appstoreSmallIcon from "../assets/historical/ios4.1/springboard/apps/AppStore@2x.browser.png";
@@ -20,6 +22,8 @@ import { AppRuntimeState } from "../state/appRuntimeState";
 import { MultitaskingBarEvent, MultitaskingBarState } from "../state/multitaskingBarState";
 
 const SYSTEM_MULTITASKING_APPS = [
+  {id:"stocks",name:"Stocks",iconSrc:stocksIcon,iconStatus:"READY",available:true},
+  {id:"settings",name:"Settings",iconSrc:settingsIcon,iconStatus:"READY",available:true},
   {id:"game-center",name:"Game Center",iconSrc:gamecenterSmallIcon,iconStatus:"READY",available:true},
   {id:"app-store",name:"App Store",iconSrc:appstoreSmallIcon,iconStatus:"READY",available:true},
   {id:"notes",name:"Notes",iconSrc:notesSmallIcon,iconStatus:"READY",available:true},
