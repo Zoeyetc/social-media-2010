@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:staging": "npm run build",
+    "deploy:staging": "npm run build:staging && wrangler deploy",
+    "deploy:staging:dry-run": "npm run build:staging && wrangler deploy --dry-run",
     "preview": "vite preview",
     "test:seed": "node scripts/validate-seed-content.mjs",
     "test:public-twitter": "node scripts/validate-public-twitter.mjs",
     "mail:serve": "node server/flickrMailServer.mjs",
-    "test:flickr-mail": "node src/mail/flickrMailController.test.mjs && node server/flickrMail.test.mjs"
+    "test:flickr-mail": "node src/mail/flickrMailController.test.mjs && node server/flickrMail.test.mjs && node worker/flickrMailWorker.test.mjs"
   },
   "dependencies": {
     "@react-three/fiber": "^9.7.0",
@@ -24,6 +27,7 @@
   "devDependencies": {
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@types/three": "^0.185.4"
+    "@types/three": "^0.185.4",
+    "wrangler": "^4.139.0"
   }
 }

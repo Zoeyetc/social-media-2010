@@ -8,3 +8,5 @@ tmp/firmware/
 .env
 .env.*
 !.env.mail.example
+.dev.vars*
+.wrangler/

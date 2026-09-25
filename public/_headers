@@ -1,0 +1,8 @@
+/hero.html
+  Cache-Control: no-store
+
+/hero
+  Cache-Control: no-store
+
+/index.html
+  Cache-Control: no-store

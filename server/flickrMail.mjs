@@ -28,7 +28,7 @@ export function validateMailPayload(payload) {
   return { ...payload, image: { ...image }, subject: payload.subject.trim() };
 }
 
-export function readMailConfig(env = process.env) {
+export function readMailConfig(env = process.env, defaultOrigin = "http://127.0.0.1:5175") {
   const mode = env.MAIL_TRANSPORT === "mock" ? "mock" : "real";
   if (mode === "mock" && env.NODE_ENV === "production") throw new Error("Mock mail transport is forbidden in production.");
   const recipients = (env.MAIL_RECIPIENT_ALLOWLIST ?? "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -36,7 +36,7 @@ export function readMailConfig(env = process.env) {
   const replyTo = env.MAIL_REPLY_TO ?? "";
   if ((from && !validMailRecipient(from)) || (replyTo && !validMailRecipient(replyTo)) || recipients.some(x => !validMailRecipient(x))) throw new Error("Invalid server mail address configuration.");
   const secret = env.MAIL_LIMIT_SECRET ?? "";
-  const origin = env.MAIL_ORIGIN ?? "http://127.0.0.1:5175";
+  const origin = env.MAIL_ORIGIN ?? defaultOrigin;
   if (new URL(origin).origin !== origin) throw new Error("MAIL_ORIGIN must be one exact origin.");
   const provider = env.MAIL_PROVIDER ?? "resend";
   if (provider !== "resend") throw new Error("Unsupported mail provider; install a server-side adapter first.");
