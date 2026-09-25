@@ -205,6 +205,7 @@ button, input { font: inherit; }
 .app-launch-container[data-app-id="camera"] > .app-runtime-surface { inset: 0; }
 .app-launch-container[data-app-id="camera"] .ios4-keyboard-system { height: 480px; }
 .ios4-keyboard-system { width: 320px; height: 460px; display: grid; grid-template-rows: minmax(0,1fr) 0; overflow: hidden; background: #000; transition: grid-template-rows 210ms ease-out; }
+.ios4-keyboard-prewarm { position: absolute; width: 320px; height: 460px; visibility: hidden; pointer-events: none; contain: strict; }
 .ios4-keyboard-system.is-keyboard-visible { grid-template-rows: minmax(0,1fr) 216px; }
 .ios4-keyboard-viewport { position: relative; min-height: 0; overflow: hidden; background: #000; }
 .ios4-keyboard-viewport > .facebook-container,

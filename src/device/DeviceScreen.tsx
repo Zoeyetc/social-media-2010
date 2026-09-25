@@ -30,6 +30,7 @@ import { SpringBoard } from "./SpringBoard";
 import { StatusBar } from "./StatusBar";
 import { TwitterContainer } from "./TwitterContainer";
 import { IOS4KeyboardSystem } from "./IOS4KeyboardSystem";
+import { KeyboardPrewarm } from "./KeyboardPrewarm";
 import type { ActiveMediaRequest, MediaAttachmentRequest } from "../state/mediaAttachment";
 import { MediaSourceChooser } from "./MediaAttachmentPresentation";
 
@@ -253,6 +254,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       onAttempt={attemptScreenPasscode}
       onCancel={cancelScreenPasscode}
     />}
+    {session.phase === "springboard" && session.experienceSessionId && <KeyboardPrewarm key={session.experienceSessionId} sessionId={session.experienceSessionId} />}
     {session.phase === "springboard" && <SpringBoard
       currentPage={springBoardPage}
       onPageChange={setSpringBoardPage}
@@ -271,6 +273,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       onClosed={completeScreenAppClose}
     >
       <IOS4KeyboardSystem
+        experienceSessionId={session.experienceSessionId}
         onVisibilityChange={setNotificationKeyboardVisible}
         suspended={multitaskingBar !== "closed" || media.visible}
         suspendReason={multitaskingBar !== "closed" ? "app-switch" : "navigation"}

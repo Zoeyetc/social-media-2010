@@ -65,7 +65,8 @@ class DeviceAudioService {
     }
     if(!this.canPlayAudio || audio!==this.previewAudio)return;
     const token=++this.previewGeneration;
-    audio.volume=this.volume;audio.muted=false;
+    // A direct media element avoids WebAudio's cross-origin muted-source rule.
+    audio.volume=this.volume;audio.muted=!this.canPlayAudio;
     const updateTime=()=>{if(audio===this.previewAudio)this.updatePreview({...this.previewState,position:Number.isFinite(audio.currentTime)?audio.currentTime:0,duration:Number.isFinite(audio.duration)?audio.duration:0});};
     audio.ontimeupdate=updateTime;audio.onloadedmetadata=updateTime;
     audio.onended=()=>{if(audio===this.previewAudio)this.updatePreview({...this.previewState,status:"paused"});};
@@ -150,6 +151,7 @@ class DeviceAudioService {
   }
 
   audioModeChanged(): void {
+    if (this.previewAudio) this.previewAudio.muted = !this.canPlayAudio;
     if (!this.canPlayAudio) this.pausePreview();
     if (!this.canPlayAudio && this.activeAudio) {
       this.activeAudio.muted = true;

@@ -1,5 +1,7 @@
 import { MAIL_IMAGE_MAX } from "../src/mail/flickrMailContract.ts";
 import { MailError, createMailService, createResendTransport, readMailConfig } from "../server/flickrMail.mjs";
+import { ITUNES_TRACKS } from "../src/state/finalDecorativeApps.ts";
+import { matchesPreview } from "../src/audio/itunesPreviewMatcher.mjs";
 
 const MAX_REQUEST = Math.ceil(MAIL_IMAGE_MAX / 3) * 4 + 32768;
 const JSON_HEADERS = {
@@ -40,7 +42,7 @@ function htmlNoStore(response) {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
-export function createWorker({ providerFetch = fetch } = {}) {
+export function createWorker({ providerFetch = fetch, appleFetch = fetch } = {}) {
   const services = new Map();
   const serviceFor = (env, origin) => {
     let entry = services.get(origin);
@@ -57,6 +59,17 @@ export function createWorker({ providerFetch = fetch } = {}) {
       try {
         const url = new URL(request.url);
         const service = () => serviceFor(env, url.origin);
+        if (url.pathname === "/api/itunes-preview/resolve") {
+          if (request.method !== "GET") return json(405, { error: "Method not allowed." });
+          const track = ITUNES_TRACKS.find(item => item.id === url.searchParams.get("id"));
+          if (!track) return json(404, { results: [] });
+          const query = new URLSearchParams({ term: `${track.title} ${track.artist}`, country: "US", media: "music", entity: "song", limit: "10" });
+          const response = await appleFetch(`https://itunes.apple.com/search?${query}`, { signal: request.signal });
+          if (!response.ok) return json(502, { results: [] });
+          const body = await response.json();
+          const matches = Array.isArray(body?.results) ? body.results.filter(item => item && typeof item === "object" && matchesPreview(track, item)) : [];
+          return json(200, { results: matches.slice(0, 1) });
+        }
         if (url.pathname === "/api/flickr-mail/config") {
           if (request.method !== "GET") return json(405, { error: "Method not allowed." });
           return json(200, service().configuration());

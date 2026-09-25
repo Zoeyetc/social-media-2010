@@ -1,21 +1,6 @@
+import { matchesPreview } from "./itunesPreviewMatcher.mjs";
+export { matchesPreview, approvedPreviewURL } from "./itunesPreviewMatcher.mjs";
 export type PreviewTrack = {id:string;title:string;artist:string};
-const normalize = (value:string) => value.toLocaleLowerCase("en-US").replace(/[’‘]/g,"'").replace(/\s+/g," ").trim();
-export function approvedPreviewURL(value:unknown):value is string {
-  if(typeof value!=="string")return false;
-  try {const url=new URL(value);return url.protocol==="https:" && url.hostname==="audio-ssl.itunes.apple.com" && !url.username && !url.password && !url.port && url.pathname.startsWith("/itunes-assets/AudioPreview");}catch{return false;}
-}
-export function matchesPreview(track:PreviewTrack,result:Record<string,unknown>):boolean {
- if(result.wrapperType!=="track" || result.kind!=="song" || result.country!=="USA" || typeof result.trackName!=="string" || typeof result.artistName!=="string" || !approvedPreviewURL(result.previewUrl))return false;
- if(typeof result.collectionName==="string" && /karaoke|tribute|\blive\b|re-record|taylor.s version/i.test(result.collectionName))return false;
- const title=normalize(result.trackName),artist=normalize(result.artistName);
- if(track.id!=="like-a-g6")return title===normalize(track.title) && artist===normalize(track.artist);
- // Apple distributes featured credits across title/artist fields. Accept only this
- // audited equivalence, never general fuzzy substring matching or remix suffixes.
- const match=title.match(/^like a g6(?: \(feat\. (?:the )?cataracs & dev\))?$/);
- if(!match)return false;
- const credits=artist.split(/,| & /).map(s=>s.trim().replace(/^the cataracs$/,"cataracs")).sort();
- return JSON.stringify(credits)===JSON.stringify(["cataracs","dev","far east movement"]) || (artist==="far east movement" && title!=="like a g6");
-}
 export const PREVIEW_CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 export const PREVIEW_FAILURE_COOLDOWN_MS = 45 * 1000;
 export const PREVIEW_LOOKUP_TIMEOUT_MS = 12000;
@@ -64,7 +49,10 @@ export class ITunesPreviewResolver {
   });
   const work=(async()=>{
     const query=new URLSearchParams({term:`${track.title} ${track.artist}`,country:"US",media:"music",entity:"song",limit:"10"});
-    const response=await fetch(`https://itunes.apple.com/search?${query}`,{signal:controller.signal,credentials:"omit",referrerPolicy:"no-referrer"});
+    // Production metadata crosses the same-origin Worker boundary. The remote
+    // preview URL itself remains on Apple's host for direct HTMLAudio playback.
+    const lookup=import.meta.env.PROD ? `/api/itunes-preview/resolve?id=${encodeURIComponent(track.id)}` : `https://itunes.apple.com/search?${query}`;
+    const response=await fetch(lookup,{signal:controller.signal,credentials:"omit",referrerPolicy:"no-referrer"});
     if(!response.ok)throw new Error("Preview unavailable");
     const data:unknown=await response.json();
     const results=data && typeof data==="object" && "results" in data && Array.isArray(data.results) ? data.results : [];

@@ -78,6 +78,7 @@ const INITIAL_KEYBOARD_STATE: IOS4KeyboardViewState = {
 };
 
 const IOS4KeyboardContext = createContext<IOS4KeyboardContextValue | null>(null);
+let measuredOpenSessionId: string | null = null;
 
 const LETTER_ROWS = [
   [..."QWERTYUIOP"],
@@ -125,11 +126,12 @@ function keepFocusedControlVisible(element: IOS4TextControl) {
   });
 }
 
-export function IOS4KeyboardSystem({ children, suspended = false, suspendReason = "app-switch", onVisibilityChange }: {
+export function IOS4KeyboardSystem({ children, suspended = false, suspendReason = "app-switch", onVisibilityChange, experienceSessionId }: {
   children: ReactNode;
   suspended?: boolean;
   suspendReason?: IOS4KeyboardDismissReason;
   onVisibilityChange?: (visible: boolean) => void;
+  experienceSessionId?: string | null;
 }) {
   const activeRegistration = useRef<IOS4InputRegistration | null>(null);
   const suspendedRef = useRef(suspended);
@@ -156,6 +158,11 @@ export function IOS4KeyboardSystem({ children, suspended = false, suspendReason 
       return;
     }
     const previous = activeRegistration.current;
+    if (import.meta.env.DEV && experienceSessionId && measuredOpenSessionId !== experienceSessionId) {
+      measuredOpenSessionId = experienceSessionId;
+      const openedAt = performance.now();
+      requestAnimationFrame(() => console.info("[IOS4Keyboard] first open/layout ms", Math.round(performance.now() - openedAt)));
+    }
     if (previous && previous.inputId !== registration.inputId) previous.onDismiss?.("input-switch");
     activeRegistration.current = registration;
     setState(current => ({
@@ -168,7 +175,7 @@ export function IOS4KeyboardSystem({ children, suspended = false, suspendReason 
       keyboardVisible: true,
     }));
     keepFocusedControlVisible(registration.element);
-  }, []);
+  }, [experienceSessionId]);
 
   const refreshKeyboard = useCallback((registration: IOS4InputRegistration) => {
     if (suspendedRef.current) return;

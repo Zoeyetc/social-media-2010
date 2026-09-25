@@ -74,6 +74,9 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
 }] });
 try {
   const { App } = await server.ssrLoadModule("/src/device/App.tsx");
+  const { DeviceAudio } = await server.ssrLoadModule("/src/audio/deviceAudio.ts");
+  let unlockSounds = 0;
+  DeviceAudio.unlock = () => { unlockSounds++; };
   const device = await server.ssrLoadModule("/src/state/deviceMachine.ts");
   const { initialVoiceMemoState } = await server.ssrLoadModule("/src/state/voiceMemoRecorder.ts");
   const { createMockPublicTwitterSubmissionRepository } = await server.ssrLoadModule("/src/data/mockPublicTwitterSubmissionRepository.ts");
@@ -108,6 +111,8 @@ try {
   await start();
   await action("completeScreenUnlock"); assert.equal(phase(),"passcode");
   await action("attemptScreenPasscode",code()); assert.equal(phase(),"springboard", "I: ordinary unlock");
+  assert.equal(unlockSounds, 1, "successful authenticated unlock uses the ordinary cue once");
+  await action("attemptScreenPasscode",code()); assert.equal(unlockSounds, 1, "duplicate success cannot replay cue");
   view.powerControl.begin();view.powerControl.end();await flush();
   await tick(60000); await wake();
   const sms=view.screen.props.overlays.activeLockNotification; assert.ok(sms); assert.equal(sms.target.type,"messagesConversation");
@@ -115,6 +120,7 @@ try {
   await action("openLockNotificationTarget",sms); assert.equal(phase(),"passcode","B: selection requires authentication");
   assert.notEqual(view.screen.props.navigation.appRuntime.activeAppId,"messages");
   await action("cancelScreenPasscode");assert.equal(phase(),"locked","H: cancel does not navigate");
+  assert.equal(unlockSounds, 1, "cancel is silent");
   assert.equal(view.screen.props.overlays.activeLockNotification.id,sms.id,"cancel preserves alert");
   await action("completeScreenUnlock");await action("attemptScreenPasscode",code());
   assert.equal(phase(),"springboard","cancel cleared navigation intent");
@@ -124,6 +130,7 @@ try {
     await action("attemptScreenPasscode","0000");assert.equal(phase(),"passcode","D/E: wrong code cannot reveal Messages");
     assert.notEqual(view.screen.props.navigation.appRuntime.activeAppId,"messages");
   }
+  assert.equal(unlockSounds, 2, "wrong attempts are silent");
   const deadline=view.screen.props.display.session.passcodeLockoutUntilElapsedMs;assert.ok(deadline);
   const extra={...sms,id:"additional-sms",target:{type:"messagesConversation",conversationId:"dad"}};
   view.screen.props.apps.dispatchMessages({type:"OPEN_CONVERSATION",conversationId:"mom"});await flush();
@@ -143,6 +150,7 @@ try {
   assert.equal(view.screen.props.display.session.passcodeLockoutUntilElapsedMs,deadline);
   await tick(30000);await wake();if(phase()==="locked")await action("completeScreenUnlock");
   await action("attemptScreenPasscode",code());assert.equal(phase(),"app","C: valid code releases deferred route");
+  assert.equal(unlockSounds, 3, "notification-auth unlock uses one ordinary cue");
   assert.equal(view.screen.props.navigation.appRuntime.activeAppId,"messages");
   assert.equal(view.screen.props.apps.messagesState.activeConversationId,sms.target.conversationId);
   view.powerControl.begin();view.powerControl.end();await flush();await wake();

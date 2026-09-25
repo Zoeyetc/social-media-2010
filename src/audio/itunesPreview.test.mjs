@@ -28,6 +28,7 @@ try {
  a.pausePreview();assert.equal(a.getPreviewState().status,"paused");await a.playPreview(ITUNES_TRACKS[0]);assert.equal(requests,1);assert.equal(first.plays,2);
  first.currentTime=7;first.ontimeupdate();assert.equal(a.getPreviewState().position,7);
  a.setVolume(.3);assert.equal(first.volume,.3);a.setMuted(true);assert.equal(a.getPreviewState().status,"paused");assert.ok(first.pauses>0);
+ assert.equal(first.muted,true,"physical mute reaches preview media element");
  await a.playPreview(ITUNES_TRACKS[0]);assert.equal(first.plays,2);a.setMuted(false);assert.equal(first.plays,2,"no unmute replay");
  await a.playPreview(ITUNES_TRACKS[1]);assert.equal(first.src,"");assert.equal(a.getPreviewState().trackId,ITUNES_TRACKS[1].id);const second=sounds.at(-1);
  a.lock();assert.equal(a.getPreviewState().status,"paused");

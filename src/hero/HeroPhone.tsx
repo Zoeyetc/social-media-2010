@@ -7,6 +7,7 @@ import { measureHeroScreenGeometry } from "./heroScreenGeometry";
 import { useHeroInspectSheen } from "./useHeroInspectSheen";
 import { captureBootReturn, bootReturnPose } from "./heroBootReturn";
 import { heroPresentationReady } from "./heroPresentationReady";
+import { inspectScale } from "./heroMobileScale";
 import {
   ProductionIPhone4Model,
   type IPhone4ModelDiagnostics,
@@ -152,7 +153,7 @@ export function HeroPhone({
       const eased = restrainedEase(detachProgress);
       x = MathUtils.lerp(initialX, 0, eased);
       y = MathUtils.lerp(initialY, 0, eased);
-      scale = MathUtils.lerp(scale, narrow ? 0.92 : 1.04, eased);
+      scale = MathUtils.lerp(scale, inspectScale(narrow), eased);
       rotation.current.x = MathUtils.lerp(START_ROTATION_X, INSPECT_X, eased);
       rotation.current.y = MathUtils.lerp(START_ROTATION_Y, INSPECT_Y, eased);
       invalidate();
@@ -160,14 +161,14 @@ export function HeroPhone({
     } else if (phase === "inspect") {
       x = 0;
       y = 0;
-      scale = narrow ? 0.92 : 1.04;
+      scale = inspectScale(narrow);
 
     } else if (phase === "powering-on" || phase === "front-aligned" || phase === "experience" || phase === "depleted" || phase === "power-loss") {
       x = 0;
       y = 0;
       const progress = phase !== "powering-on" ? 1 : Math.min(1, phaseElapsed.current / HERO_POWER_DURATION_SECONDS);
       const eased = restrainedEase(progress);
-      scale = MathUtils.lerp(narrow ? 0.92 : 1.04, finalScale, eased);
+      scale = MathUtils.lerp(inspectScale(narrow), finalScale, eased);
       if (phase !== "powering-on") rotation.current = { x: 0, y: 0 };
       if (bootStartedAt !== null && !bootComplete && (phase === "powering-on" || phase === "front-aligned")) {
         nextBootAmount = heroBootOpacity(performance.now() - bootStartedAt);

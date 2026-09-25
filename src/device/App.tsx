@@ -255,6 +255,10 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const [homePressed, setHomePressed] = useState(false);
   const [activityRevision, setActivityRevision] = useState(0);
   const [unlockReturnAppId, setUnlockReturnAppId] = useState<string | null>(null);
+  const unlockCompletionClaimed = useRef(false);
+  useEffect(() => {
+    if (session.phase === "locked") unlockCompletionClaimed.current = false;
+  }, [session.phase]);
   // Navigation intent only; never persisted and never an authentication grant.
   const pendingUnlockDestination = useRef<ActiveLockNotification | null>(null);
   const powerStarted = useRef<number | null>(null);
@@ -1311,6 +1315,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const selectedOutroTweet = outroTweets.find(tweet => tweet.id === publicTwitterOutro.selectedTweetId) ?? null;
 
   const finalizeScreenUnlock = () => {
+    if (unlockCompletionClaimed.current) return;
+    unlockCompletionClaimed.current = true;
     const destination = pendingUnlockDestination.current;
     pendingUnlockDestination.current = null;
     if (destination) {
@@ -1334,6 +1340,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   };
 
   const completeScreenUnlock: DeviceScreenProps["actions"]["completeScreenUnlock"] = () => {
+    if (session.phase !== "locked" || unlockCompletionClaimed.current) return;
     if (session.passcode) {
       update({ phase: "passcode", batteryCriticalRevealAtMs: null });
       return;
