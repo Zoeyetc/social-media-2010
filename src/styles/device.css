@@ -735,10 +735,11 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .instagram-navigation-bar button.instagram-navigation-next:not(.instagram-profile-relationship-control) { width: 42px; min-width: 42px; padding: 0; }
 .instagram-navigation-icon-button.instagram-refresh-button { width: 35px; padding: 0; display: grid; place-items: center; }
 .instagram-refresh-button img { width: 18px; height: 22px; display: block; }
-.instagram-feed { flex: 1 1 auto; min-height: 0; overflow-y: auto; background: #e7e7e7; }
+.instagram-feed { flex: 1 1 auto; width: 100%; min-width: 0; min-height: 0; box-sizing: border-box; overflow-x: hidden; overflow-y: auto; background: #e7e7e7; }
 .instagram-empty-feed { min-height: 368px; display: grid; align-content: center; justify-items: center; color: #70675f; text-align: center; }
 .instagram-empty-feed p,.instagram-empty-profile > p { margin: 0; color: #4d4741; font-size: 18px; font-weight: bold; }
 .instagram-empty-feed span { margin-top: 6px; font-size: 11px; }
+.instagram-feed > .instagram-photo-record { width: 100%; min-width: 0; box-sizing: border-box; margin-left: 0; transform: none; }
 .instagram-photo-record { padding-bottom: 7px; border-bottom: 1px solid #b6b6b6; background: #f1f1f1; }
 .instagram-photo-record > header { height: 42px; padding: 0 8px 0 7px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #d1d1d1; background: linear-gradient(#fff,#f4f4f4); font-size: 12px; }
 .instagram-photo-record > header span,.instagram-photo-record > header time { color: #999; font-size: 11px; }
@@ -747,7 +748,7 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .instagram-photo-record > header .instagram-feed-author { padding: 0; display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; gap: 5px; color: #243c54; border: 0; background: transparent; text-align: left; }
 .instagram-feed-author img { width: 30px; height: 30px; padding: 1px; display: block; border: 1px solid #777; background: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.65),0 1px 1px rgba(0,0,0,.24); object-fit: cover; }
 .instagram-feed-author strong { overflow: hidden; color: #1d3d58; font-size: 13px; line-height: 16px; text-shadow: 0 1px #fff; text-overflow: ellipsis; white-space: nowrap; }
-.instagram-feed-photo { width: 305px; height: 305px; margin: 0 8px 0 7px; border: 1px solid #e5e5e5; background: #fff; }
+.instagram-feed .instagram-feed-photo { width: calc(100% - 15px); height: auto; aspect-ratio: 1 / 1; box-sizing: border-box; margin: 0 8px 0 7px; border: 1px solid #e5e5e5; background: #fff; }
 .instagram-unavailable-photo { background: #111; }
 .instagram-empty-profile { flex: 1 1 auto; background: #f4f1ec; }
 .instagram-empty-profile > header { padding: 16px 12px 12px; border-bottom: 1px solid #b8b0a7; background: #e2ddd6; }

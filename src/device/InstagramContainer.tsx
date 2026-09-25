@@ -39,6 +39,7 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
 
   useLayoutEffect(() => {
     if (state.currentView !== "feed" || !feedRef.current) return;
+    feedRef.current.scrollLeft = 0;
     feedRef.current.scrollTop = state.scrollPosition;
   }, [state.currentView, state.scrollPosition]);
 
@@ -93,7 +94,10 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
     {state.currentView === "feed" && <div
       ref={feedRef}
       className="instagram-feed"
-      onScroll={event => feedScroll.record(event.currentTarget.scrollTop)}
+      onScroll={event => {
+        if (event.currentTarget.scrollLeft !== 0) event.currentTarget.scrollLeft = 0;
+        feedScroll.record(event.currentTarget.scrollTop);
+      }}
     >
       {state.photos.length === 0 && followedKnownPosts.length === 0
         ? <div className="instagram-empty-feed">
