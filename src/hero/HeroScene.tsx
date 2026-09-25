@@ -1,6 +1,6 @@
 import type { RuntimePowerControl } from "../device/DevicePresentation";
 import { Canvas, useThree } from "@react-three/fiber";
-import { Suspense, useCallback, useEffect, useRef, useState, type RefObject, type ReactElement } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject, type ReactElement } from "react";
 import { ACESFilmicToneMapping, Color, Float32BufferAttribute, Mesh, MeshBasicMaterial, PlaneGeometry, PMREMGenerator, RectAreaLight, Scene } from "three";
 import { RectAreaLightUniformsLib } from "three/examples/jsm/lights/RectAreaLightUniformsLib.js";
 import { HeroCable } from "./HeroCable";
@@ -12,6 +12,7 @@ import { ScreenPortal, type ScreenPortalHandle, type ScreenPortalState } from ".
 import { ScreenPortalProjection } from "./ScreenPortalProjection";
 import { HeroChargerDiagnostics, chargerDiagnosticsEnabled } from "./HeroChargerDiagnostics";
 import { HeroNote } from "./HeroNote";
+import { installHeroInspectLongPressSuppression } from "./heroInspectLongPress";
 import type { HeroCableAnchor, HeroPhase, HeroScreenGeometry } from "./heroTypes";
 
 type HeroSceneProps = Readonly<{
@@ -205,6 +206,11 @@ function SceneContents(props: HeroSceneProps & { lightingPreset: HeroLightingPre
 }
 
 export function HeroScene(props: HeroSceneProps) {
+  const sceneSurface = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (props.phase !== "inspect" || !sceneSurface.current) return;
+    return installHeroInspectLongPressSuppression(sceneSurface.current);
+  }, [props.phase]);
   const portal = useRef<ScreenPortalHandle>(null);
   const [portalHost, setPortalHost] = useState<HTMLDivElement|null>(null);
   const portalDebug = import.meta.env.DEV && (new URLSearchParams(window.location.search).get("screenPortalDebug") === "1" || new URLSearchParams(window.location.search).get("heroDebug") === "1");
@@ -239,7 +245,7 @@ export function HeroScene(props: HeroSceneProps) {
   const [reflectionV2, setReflectionV2] = useState(() => import.meta.env.DEV
     && new URLSearchParams(window.location.search).get("heroEnvironment") === "hybrid-reflection-v2");
   return (
-    <div className="hero-scene" data-lighting={isCharcoal(preset) ? preset : "revised"} aria-label="Interactive temporary reconstruction of a black iPhone 4">
+    <div ref={sceneSurface} className="hero-scene" data-lighting={isCharcoal(preset) ? preset : "revised"} aria-label="Interactive temporary reconstruction of a black iPhone 4">
       {(lightingDebug || frontDebug) && <nav className="hero-lighting-comparison" aria-label="Lighting comparison">
         {lightingDebug && LIGHTING_PRESETS.map(value => <button key={value} type="button" aria-pressed={preset === value} onClick={() => setPreset(value)}>{value}</button>)}
         {frontDebug && ([false, true] as const).map(value => <button key={`front-${value}`} type="button" aria-pressed={frontDepth === value} onClick={() => setFrontDepth(value)}>{value ? "front-depth" : "front-flat"}</button>)}

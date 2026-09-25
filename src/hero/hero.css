@@ -96,6 +96,14 @@ button, input { font: inherit; }
 .hero-lighting-comparison button { color: #999; background: #161616; border: 1px solid #444; padding: 4px 8px; font-size: 11px; }
 .hero-lighting-comparison button[aria-pressed="true"] { color: #eee; border-color: #888; }
 .hero-scene canvas { display: block; width: 100%; height: 100%; }
+.hero-sandbox[data-phase="inspect"] .hero-scene,
+.hero-sandbox[data-phase="inspect"] .hero-scene canvas {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: none;
+  -webkit-user-drag: none;
+}
 
 /* DEV ScreenPortal: software surface only, never a second device shell. */
 .hero-screen-portal-host { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
