@@ -29,6 +29,7 @@ try {
     queue=scheduleDeviceEvent(queue,{id:'valid-899',type:'momReply',dueElapsedMs:899000});
     deliver(899000); assert.ok(claims.has('valid-899'));
     queue=scheduleDeviceEvent(queue,{id:'boundary',type:'momReply',dueElapsedMs:SESSION_DURATION_MS});
+    assert.ok(!queue.some(e=>e.id==='boundary'), 'T+900 event is rejected at admission');
     deliver(900000); deliver(901000); assert.ok(!claims.has('boundary'));
     const sleeping=[{id:'sleep-catchup',type:'momReply',dueElapsedMs:899000}];
     assert.equal(nextDueDeviceEvent(sleeping,895000),null);

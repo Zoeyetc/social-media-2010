@@ -196,22 +196,22 @@ try {
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 2, "existing scheduler delivers request and direct message");
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "sleeping", "social alerts do not wake the phone");
     view.powerControl.begin(); view.powerControl.end(); await flush();
-    // SMS stays first; social arrivals cannot replace it or overlap it.
-    assert.equal(view.screen.props.overlays.activeLockNotification.id, "mom-home-yet");
+    // Newest eligible alert owns the single lock-screen presentation.
+    assert.equal(view.screen.props.overlays.activeLockNotification.id, "facebook-katie-jack-gossip-message");
     view.screen.props.actions.openLockNotificationTarget(view.screen.props.overlays.activeLockNotification); await flush();
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode");
     view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
-    assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "messages");
+    assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "facebook");
     assert.equal(view.screen.props.display.session.activeWarning, 20);
     assert.equal(view.screen.props.overlays.appNotification, null, "real low-battery warning has priority over the queued app alert");
     view.screen.props.actions.dismissScreenBatteryWarning(); await flush();
-    assert.equal(view.screen.props.overlays.appNotification.id, "facebook-jack-request");
+    assert.equal(view.screen.props.overlays.appNotification, null, "opening owner cannot promote an older alert");
     view.screen.props.actions.setNotificationKeyboardVisible(true); await flush();
     assert.equal(view.screen.props.overlays.appNotification, null, "keyboard defers without consuming queue");
     view.screen.props.actions.setNotificationKeyboardVisible(false); await flush();
-    assert.equal(view.screen.props.overlays.appNotification.id, "facebook-jack-request");
+    assert.equal(view.screen.props.overlays.appNotification, null);
     view.screen.props.actions.dismissScreenSMSAlert(); await flush();
-    assert.equal(view.screen.props.overlays.appNotification.id, "facebook-katie-jack-gossip-message");
+    assert.equal(view.screen.props.overlays.appNotification, null, "dismissal cannot resurrect superseded alerts");
     view.screen.props.actions.viewScreenAppAlert(); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "facebook", "View suspends previous app and routes to existing destination");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);

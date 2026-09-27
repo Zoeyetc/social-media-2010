@@ -46,23 +46,23 @@ Twitter and Instagram candidates explicitly resolve to no notification.
 SMS still calls `smsMessageReceived`, which delegates delivery to the shared policy
 in App. Its original standalone adapter remains available, but there are no separate
 mounted SMS/lock/badge reducers. `SMSAlertOverlay`, LockScreen chrome/slider, and the
-Messages reducer are unchanged. Queue projections supply their existing prop types.
+Messages reducer are unchanged. The single-owner projection supplies their existing prop types.
 View uses the specific SMS conversation target, including Dad, not a default Mom
 conversation. Existing SMS-only sleep-to-lock wake is preserved; social notifications
 do not wake, boot or reset the phone.
 
-One FIFO alert is visible at a time. Dismiss removes presentation, not unread state;
+One current alert owns presentation. A newer eligible alert supersedes it. Dismiss removes presentation, not unread state;
 View opens the existing app runtime. Social lock previews reuse the existing unlock
 slider's target routing, not an invented tap-to-unlock/deep-link gesture. No timer
-expires alerts: promotion occurs on dismissal/read/open. This finite session queue
-does not drop scheduled events to enforce an arbitrary cap. Terminal, asleep/off,
+expires alerts; superseded alerts never promote on dismissal/read/open. Delivery claims
+and unread state remain separate. Terminal, asleep/off,
 system alerts, keyboard and multitasking block presentation. A pending battery warning
 only blocks a lock preview when its system surface is actually displayed; its ownership
 and dismissal remain in App. No app alert replaces a battery or power confirmation.
 
 Sounds play once at delivery through `DeviceAudio.notificationReceived("message")`.
 The existing registry maps this to recovered iOS 4.1 8B117 `sms-received1.caf`.
-Physical mute still gates the sole DeviceAudio playback service. Queued/promoted
+Physical mute still gates the sole DeviceAudio playback service. Superseded
 alerts, wake and unmute never play deferred sounds. Notifications arriving during a
 system alert discard their sound. Camera, keyboard, lock/unlock and battery assets/
 semantics are untouched; no new assets or audio playback engine added.
@@ -80,7 +80,7 @@ records never create badges. Existing seeded unread Messages history is restored
 each user; “clean reset” means no previous user's session notifications, not deletion
 of historically unread seed messages.
 
-The existing completed-reset call to `resetDisposableRuntime` clears queue, dedup
+The existing completed-reset call to `resetDisposableRuntime` clears presentation owner, dedup
 claims, last delivery, suppressed-notification diagnostic and session unread IDs.
 No new lifecycle boundary, timer, persistence store, App or DeviceScreen exists.
 Mute still resets to ringer through the existing hardware reset-generation contract.
@@ -88,10 +88,10 @@ Mute still resets to ringer through the existing hardware reset-generation contr
 ## Verification and manual Safari handoff
 
 - `src/state/notificationState.test.mjs`: background/silent/foreground/lock policies,
-  duplicate sound claims, FIFO, system/keyboard/multitasking deferral, badge clear,
+  duplicate sound claims, newest-owner replacement, system/keyboard/multitasking deferral, badge clear,
   terminal rejection, two resets, no replay, preserved SMS adapter and conversation.
 - `src/device/experienceLifecycle.test.mjs`: two actual App-controller loops, existing
-  scheduler updates, SMS before social queue, real low-battery priority, keyboard
+  scheduler updates, SMS replacement by newer social alerts, real low-battery priority, keyboard
   deferral, View navigation, same-app June content update without external alert,
   asleep Foursquare delivery without wake, reset/new-user badge baseline, unchanged
   Camera bootstrap/reroll counts and timer cleanup.
@@ -109,7 +109,7 @@ Mute still resets to ringer through the existing hardware reset-generation contr
   and Hero lifecycle gating. Public Twitter validator/behavior were left untouched.
 
 DEV only: append `?notificationDebug=1` to either simulator or `hero.html`. The read-only
-panel shows queue, visible active ID, badges, last delivery/suppressed sound, phase,
+panel shows presentation owner, visible active ID, badges, last delivery/suppressed sound, phase,
 foreground app, system/keyboard/multitasking blocks and current hardware audio gate.
 It uses App's existing updates and never adds another clock.
 
@@ -119,7 +119,7 @@ and read → Facebook request T+150 / Katie T+155 (Close/View, badges) → June 
 Check silent visual/badge delivery, return to ringer without replay, future sound,
 real 20%/10% warning priority, typing and dismissal, slide coordinates and ScreenPortal
 pointer alignment. Complete terminal/recharge/reset and repeat for user two; check
-no stale queue/count and ringer gate restored. Third-party exact pixels, per-app
+no stale presentation owner/count and ringer gate restored. Third-party exact pixels, per-app
 sound assets, Instagram October pushes, Foursquare badge preferences, and granular
 Facebook notification deep links remain explicitly deferred.
 
@@ -176,23 +176,23 @@ Twitter and Instagram candidates explicitly resolve to no notification.
 SMS still calls `smsMessageReceived`, which delegates delivery to the shared policy
 in App. Its original standalone adapter remains available, but there are no separate
 mounted SMS/lock/badge reducers. `SMSAlertOverlay`, LockScreen chrome/slider, and the
-Messages reducer are unchanged. Queue projections supply their existing prop types.
+Messages reducer are unchanged. The single-owner projection supplies their existing prop types.
 View uses the specific SMS conversation target, including Dad, not a default Mom
 conversation. Existing SMS-only sleep-to-lock wake is preserved; social notifications
 do not wake, boot or reset the phone.
 
-One FIFO alert is visible at a time. Dismiss removes presentation, not unread state;
+One current alert owns presentation. A newer eligible alert supersedes it. Dismiss removes presentation, not unread state;
 View opens the existing app runtime. Social lock previews reuse the existing unlock
 slider's target routing, not an invented tap-to-unlock/deep-link gesture. No timer
-expires alerts: promotion occurs on dismissal/read/open. This finite session queue
-does not drop scheduled events to enforce an arbitrary cap. Terminal, asleep/off,
+expires alerts; superseded alerts never promote on dismissal/read/open. Delivery claims
+and unread state remain separate. Terminal, asleep/off,
 system alerts, keyboard and multitasking block presentation. A pending battery warning
 only blocks a lock preview when its system surface is actually displayed; its ownership
 and dismissal remain in App. No app alert replaces a battery or power confirmation.
 
 Sounds play once at delivery through `DeviceAudio.notificationReceived("message")`.
 The existing registry maps this to recovered iOS 4.1 8B117 `sms-received1.caf`.
-The software audio mode gates the sole DeviceAudio playback service. Queued/promoted
+The software audio mode gates the sole DeviceAudio playback service. Superseded
 alerts, wake and unmute never play deferred sounds. Notifications arriving during a
 system alert discard their sound. Camera, keyboard, lock/unlock and battery assets/
 semantics are untouched; no new assets or audio playback engine added.
@@ -210,16 +210,16 @@ records never create badges. Existing seeded unread Messages history is restored
 each user; “clean reset” means no previous user's session notifications, not deletion
 of historically unread seed messages.
 
-The existing completed-reset call to `resetDisposableRuntime` clears queue, dedup
+The existing completed-reset call to `resetDisposableRuntime` clears presentation owner, dedup
 claims, last delivery, suppressed-notification diagnostic and session unread IDs.
 No new lifecycle boundary, timer, persistence store, App or DeviceScreen exists.
 Mute still resets to ringer through the existing runtime reset-generation contract.
 
 ## Software reconciliation verification
 
-The normal App owns notification delivery, queue, claims and session-local badges.
+The normal App owns notification delivery, presentation owner, claims and session-local badges.
 `softwareSession.test.mjs` exercises two software name/boot/power-off loops, lock
-presentation, FIFO, low battery priority, keyboard deferral, foreground suppression,
+presentation, newest-owner replacement, low battery priority, keyboard deferral, foreground suppression,
 Foursquare delivery, reset, Camera bootstrap counts and timer cleanup.
 `notificationState.test.mjs` covers policy and DeviceAudio-only sound, including mute
 and no replay. The validator retains main's content checks and adds notification

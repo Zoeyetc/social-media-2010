@@ -36,7 +36,7 @@ export async function runNotificationChecks(vite) {
       assert.equal(n.notificationBadges(state).facebook, 2);
       assert.equal(state.lastSuppressedSound, "facebook:second");
       assert.equal(plays, baseline + 1, "B: silent suppresses sound only");
-      assert.deepEqual(state.queue.map(e => e.id), [event.id, "second"], "E: deterministic FIFO at equal dueAt");
+      assert.equal(state.presentationOwner.id, "second", "E: newest delivery owns presentation even at equal dueAt");
       for (const field of ["systemAlert", "keyboard", "multitasking", "terminal"]) {
         assert.equal(n.activeNotification(state, { ...context, [field]: true }), null, `F: ${field} defers app surface`);
       }
@@ -44,17 +44,19 @@ export async function runNotificationChecks(vite) {
         assert.equal(n.activeNotification(state, { ...context, phase }), null);
       }
       const lock = { ...context, phase: "locked" };
-      assert.equal(n.notificationLockPreview(n.activeNotification(state, lock)).id, event.id, "D: one existing lock preview");
+      assert.equal(n.notificationLockPreview(n.activeNotification(state, lock)).id, "second", "D: only newest lock preview");
       dispatch({ type: "DISMISS", id: event.id });
-      assert.equal(n.activeNotification(state, context).id, "second");
+      assert.equal(n.activeNotification(state, context).id, "second", "superseded dismissal cannot clear owner");
+      dispatch({ type: "DISMISS", id: "second" });
+      assert.equal(n.activeNotification(state, context), null, "dismissal cannot promote superseded alert");
       assert.equal(n.notificationBadges(state).facebook, 2, "G: dismiss is not read");
       muted = false; DeviceAudio.hardwareMuteChanged();
-      assert.equal(plays, baseline + 1, "promotion/unmute never replay skipped sound");
+      assert.equal(plays, baseline + 1, "dismissal/unmute never replay skipped sound");
       dispatch({ type: "OPEN_APP", app: "facebook" });
       assert.equal(n.notificationBadges(state).facebook, 0);
-      assert.equal(state.queue.length, 0);
+      assert.equal(state.presentationOwner, null);
       deliver({ ...event, id: "same-app" }, { ...context, phase: "app", foregroundApp: "facebook" });
-      assert.equal(state.queue.length, 0, "C: foreground app suppresses external alert");
+      assert.equal(state.presentationOwner, null, "C: foreground app suppresses external alert");
       assert.equal(n.notificationBadges(state).facebook, 0);
       assert.equal(plays, baseline + 1);
       deliver({ ...event, id: "system-blocked" }, { ...context, systemAlert: true });
@@ -65,7 +67,42 @@ export async function runNotificationChecks(vite) {
       dispatch({ type: "RESET" });
       assert.equal(state.lastSuppressedSound, null);
       assert.equal(state.delivered.length, 0);
-      assert.equal(state.queue.length, 0);
+      assert.equal(state.presentationOwner, null);
+    }
+    // Presentation replacement is independent of delivery claims and unread badges.
+    dispatch({ type: "RESET" });
+    muted = false; DeviceAudio.hardwareMuteChanged();
+    const mom = { ...event, id: "mom-a", app: "messages", kind: "sms", destination: { type: "messagesConversation", conversationId: "mom" } };
+    const facebook = { ...event, id: "facebook-a" };
+    const foursquare = { ...event, id: "foursquare-a", app: "foursquare", kind: "checkin", destination: { type: "app", appId: "foursquare" } };
+    const soundStart = plays;
+    deliver(mom, { ...context, phase: "sleeping" });
+    assert.equal(state.presentationOwner.id, mom.id, "sleeping SMS still owns presentation");
+    deliver(facebook, { ...context, phase: "sleeping" });
+    assert.equal(state.presentationOwner.id, facebook.id, "newer social alert replaces sleeping SMS");
+    assert.equal(n.activeNotification(state, { ...context, phase: "sleeping" }), null);
+    assert.equal(n.activeNotification(state, { ...context, phase: "locked" })?.id, facebook.id, "wake reveals only newest owner");
+    assert.equal(plays, soundStart + 2, "SMS and Facebook each sound once; wake is silent");
+    let pending = n.notificationLockPreview(mom);
+    pending = n.pendingNotificationRoute(pending, state);
+    assert.equal(pending.id, facebook.id, "pending passcode destination follows newer owner");
+    deliver(foursquare, { ...context, phase: "passcode" });
+    pending = n.pendingNotificationRoute(pending, state);
+    assert.equal(pending.id, foursquare.id, "lockout/passcode replacement updates pending destination");
+    assert.equal(n.activeNotification(state, { ...context, phase: "passcode" }), null, "passcode does not show alert");
+    assert.equal(plays, soundStart + 2, "silent Foursquare and replacement add no sound");
+    dispatch({ type: "DISMISS", id: foursquare.id });
+    assert.equal(state.presentationOwner, null, "dismissal cannot resurrect Mom or Facebook");
+    assert.ok(state.unread.messages.includes(mom.id), "superseded SMS remains unread");
+    assert.ok(state.unread.facebook.includes(facebook.id), "superseded Facebook badge remains");
+    assert.equal(state.delivered.length, 3, "each distinct event retains its delivery claim");
+    for (const [first, second] of [[mom, { ...mom, id: "mom-b" }], [facebook, { ...facebook, id: "facebook-b" }]]) {
+      dispatch({ type: "RESET" });
+      deliver(first); deliver(second);
+      assert.equal(state.presentationOwner.id, second.id, "same-app newest alert owns presentation");
+      dispatch({ type: "DISMISS", id: second.id });
+      assert.equal(state.presentationOwner, null, "same-app older alert never promotes");
+      assert.ok(state.unread[first.app].includes(first.id), "dismissal preserves earlier unread state");
     }
     for (const e of buildSessionTimelineEvents()) {
       const notification = d.scheduledNotificationEvent(e, formatDeviceTime(simulatedDeviceDateTime(e.dueElapsedMs)));
@@ -88,12 +125,12 @@ export async function runNotificationChecks(vite) {
     assert.equal(plays, beforeSMS + 1);
     const preview = n.notificationLockPreview(n.activeNotification(state, { ...context, phase: "locked" }));
     assert.deepEqual(preview.target, { type: "messagesConversation", conversationId: "dad" });
-    assert.equal(n.notificationSMSPresentation(state.queue[0], "springboard").status, "alert-visible");
+    assert.equal(n.notificationSMSPresentation(state.presentationOwner, "springboard").status, "alert-visible");
     dispatch({ type: "OPEN_APP", app: "messages" });
     assert.ok(state.unread.messages.includes(sms.id), "Messages clears on reading conversation, not opening app");
     dispatch({ type: "MESSAGE_BADGE", event: { type: "MARK_READ", messageId: sms.id } });
-    assert.equal(state.queue.length, 0); assert.equal(state.unread.messages.includes(sms.id), false);
-    console.log("Notification v1 A–J policy/audio/SMS/queue/priority/reset checks: PASS (two runs)");
+    assert.equal(state.presentationOwner, null); assert.equal(state.unread.messages.includes(sms.id), false);
+    console.log("Notification policy/audio/SMS/single-owner/priority/reset checks: PASS (two runs)");
   } finally { unbind(); globalThis.Audio = realAudio; }
 }
 

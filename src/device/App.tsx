@@ -37,7 +37,7 @@ import { createInitialMessagesState, DAD_LOVE_REPLY_DUE_ELAPSED_MS, deterministi
 import { createLockScreenModel } from "../state/lockScreenModel";
 import type { ActiveLockNotification } from "../state/lockNotificationState";
 import type { MessagesBadgeEvent } from "../state/messagesBadgeState";
-import { activeNotification, createInitialNotificationState, notificationBadges, notificationLockPreview, notificationSMSPresentation, notificationTransition, NOTIFICATION_APPS, type NotificationAction, type NotificationApp, type NotificationContext } from "../state/notificationState";
+import { activeNotification, createInitialNotificationState, notificationBadges, notificationLockPreview, notificationSMSPresentation, notificationTransition, pendingNotificationRoute, NOTIFICATION_APPS, type NotificationAction, type NotificationApp, type NotificationContext } from "../state/notificationState";
 import { deliverNotification, scheduledNotificationEvent, smsNotificationEvent } from "../system/notificationDelivery";
 import { NotificationDebug } from "./NotificationDebug";
 import { MediaAttachmentDebug } from "./MediaAttachmentDebug";
@@ -186,10 +186,14 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const [messagesState, dispatchMessages] = useReducer(messagesStateTransition, undefined, createInitialMessagesState);
   const [notifications, notificationDispatch] = useReducer(notificationTransition, undefined, createInitialNotificationState);
   const notificationRef = useRef(notifications);
+  const pendingUnlockDestination = useRef<ActiveLockNotification | null>(null);
   notificationRef.current = notifications;
   // Claim synchronously so a repeated scheduler effect cannot replay a delivery sound.
   const dispatchNotifications = useCallback((action: NotificationAction) => {
     notificationRef.current = notificationTransition(notificationRef.current, action);
+    if (action.type === "DELIVER" && action.decision.visual) {
+      pendingUnlockDestination.current = pendingNotificationRoute(pendingUnlockDestination.current, notificationRef.current);
+    }
     notificationDispatch(action);
   }, []);
   const dispatchMessagesBadge = useCallback((event: MessagesBadgeEvent) => dispatchNotifications({ type: "MESSAGE_BADGE", event }), [dispatchNotifications]);
@@ -261,7 +265,6 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (session.phase === "locked") unlockCompletionClaimed.current = false;
   }, [session.phase]);
   // Navigation intent only; never persisted and never an authentication grant.
-  const pendingUnlockDestination = useRef<ActiveLockNotification | null>(null);
   const powerStarted = useRef<number | null>(null);
   const powerFrame = useRef<number | null>(null);
   const homePointer = useRef<number | null>(null);
@@ -293,7 +296,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     elapsedMs: elapsed,
     cameraMediaObjectCount: cameraRoll.records.length,
     activeVideoObjectUrlCount,
-    notificationQueueLength: notifications.queue.length,
+    notificationQueueLength: Number(notifications.presentationOwner !== null),
     schedulerPendingCount: session.deviceEvents.length,
     currentApp: session.phase === "app" ? appRuntime.activeAppId : null,
     powerHoldRafActive: powerFrame.current !== null,

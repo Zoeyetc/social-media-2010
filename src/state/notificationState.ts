@@ -43,14 +43,14 @@ export function notificationDecision(event: NotificationEvent, context: Notifica
 }
 
 export type NotificationState = {
-  queue: readonly NotificationEvent[];
+  presentationOwner: NotificationEvent | null;
   unread: Record<NotificationApp, readonly string[]>;
   delivered: readonly string[];
   lastDelivered: NotificationEvent | null;
   lastSuppressedSound: string | null;
 };
 export function createInitialNotificationState(): NotificationState {
-  return { queue: [], unread: { messages: createInitialMessagesBadgeState(), facebook: [], twitter: [], instagram: [], foursquare: [] },
+  return { presentationOwner: null, unread: { messages: createInitialMessagesBadgeState(), facebook: [], twitter: [], instagram: [], foursquare: [] },
     delivered: [], lastDelivered: null, lastSuppressedSound: null };
 }
 export type NotificationAction =
@@ -69,22 +69,25 @@ export function notificationTransition(state: NotificationState, action: Notific
       if (state.delivered.includes(key)) return state;
       return { ...state, delivered: [...state.delivered, key], lastDelivered: event,
         lastSuppressedSound: action.suppressedSound ? key : state.lastSuppressedSound,
-        // Scheduler delivery order is the FIFO order, including equal dueAt values.
-        queue: decision.visual ? [...state.queue, event] : state.queue,
+        // Only the latest eligible alert owns presentation; unread and delivery claims remain independent.
+        presentationOwner: decision.visual ? event : state.presentationOwner,
         unread: decision.badge && !state.unread[event.app].includes(event.id)
           ? { ...state.unread, [event.app]: [...state.unread[event.app], event.id] } : state.unread };
     }
-    case "DISMISS": return { ...state, queue: state.queue.filter(event => event.id !== action.id) };
+    case "DISMISS": return state.presentationOwner?.id === action.id
+      ? { ...state, presentationOwner: null } : state;
     case "OPEN_APP": {
       if (!notificationPolicy[action.app].clearOnOpen) return state;
-      if (!state.unread[action.app].length && !state.queue.some(event => event.app === action.app)) return state;
-      return { ...state, unread: { ...state.unread, [action.app]: [] }, queue: state.queue.filter(event => event.app !== action.app) };
+      if (!state.unread[action.app].length && state.presentationOwner?.app !== action.app) return state;
+      return { ...state, unread: { ...state.unread, [action.app]: [] },
+        presentationOwner: state.presentationOwner?.app === action.app ? null : state.presentationOwner };
     }
     case "MESSAGE_BADGE": {
       const badgeEvent = action.event;
       return { ...state,
         unread: { ...state.unread, messages: messagesBadgeStateTransition(state.unread.messages, badgeEvent) },
-        queue: badgeEvent.type === "MARK_READ" ? state.queue.filter(event => event.app !== "messages" || event.id !== badgeEvent.messageId) : state.queue };
+        presentationOwner: badgeEvent.type === "MARK_READ" && state.presentationOwner?.app === "messages"
+          && state.presentationOwner.id === badgeEvent.messageId ? null : state.presentationOwner };
     }
   }
 }
@@ -95,8 +98,12 @@ export function notificationBadges(state: NotificationState): Record<Notificatio
 export function activeNotification(state: NotificationState, context: NotificationContext): NotificationEvent | null {
   if (context.terminal || context.systemAlert || context.keyboard || context.multitasking
     || !["locked", "springboard", "app"].includes(context.phase)) return null;
-  // Suppress queued social alerts immediately on app entry, before the clearing effect.
-  return state.queue.find(event => !(context.phase === "app" && context.foregroundApp === event.app && notificationPolicy[event.app].suppressForeground)) ?? null;
+  // Suppress the current social alert immediately on app entry, before the clearing effect.
+  const owner = state.presentationOwner;
+  return owner && !(context.phase === "app" && context.foregroundApp === owner.app && notificationPolicy[owner.app].suppressForeground) ? owner : null;
+}
+export function pendingNotificationRoute(pending: ActiveLockNotification | null, state: NotificationState): ActiveLockNotification | null {
+  return pending && state.presentationOwner ? notificationLockPreview(state.presentationOwner) : pending;
 }
 export function notificationLockPreview(event: NotificationEvent | null): ActiveLockNotification | null {
   if (!event || !notificationPolicy[event.app].lock) return null;

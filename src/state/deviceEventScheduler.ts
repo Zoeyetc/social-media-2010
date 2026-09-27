@@ -48,7 +48,7 @@ export type DeviceEvent = {
 };
 
 export function scheduleDeviceEvent(events: readonly DeviceEvent[], event: DeviceEvent): DeviceEvent[] {
-  if (!Number.isFinite(event.dueElapsedMs) || event.dueElapsedMs > SESSION_DURATION_MS) return [...events];
+  if (!Number.isFinite(event.dueElapsedMs) || event.dueElapsedMs >= SESSION_DURATION_MS) return [...events];
   return events.some(scheduled => scheduled.id === event.id)
     ? [...events]
     : [...events, event].sort((a, b) => a.dueElapsedMs - b.dueElapsedMs);
@@ -61,7 +61,7 @@ export function scheduleDeviceEvents(events: readonly DeviceEvent[], additions: 
 export function nextDueDeviceEvent(events: readonly DeviceEvent[], elapsed: number): DeviceEvent | null {
   // Narrative delivery ends before presentation/reset; never catch up after resume.
   if (!Number.isFinite(elapsed) || elapsed >= SESSION_DURATION_MS) return null;
-  return events.find(event => event.dueElapsedMs <= SESSION_DURATION_MS && event.dueElapsedMs <= elapsed) ?? null;
+  return events.find(event => event.dueElapsedMs < SESSION_DURATION_MS && event.dueElapsedMs <= elapsed) ?? null;
 }
 
 export function removeDeviceEvent(events: readonly DeviceEvent[], eventId: string): DeviceEvent[] {

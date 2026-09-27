@@ -168,6 +168,18 @@ try {
   await start();await action("completeScreenUnlock");await action("attemptScreenPasscode",code());
   assert.equal(phase(),"springboard","J: reset removes deferred destination");
   assert.notEqual(view.screen.props.navigation.appRuntime.activeAppId,"messages");
+  view.powerControl.begin();view.powerControl.end();await flush();
+  await tick(60000);await wake();
+  const firstOwner=view.screen.props.overlays.activeLockNotification;
+  assert.equal(firstOwner.id,"mom-home-yet");
+  await action("openLockNotificationTarget",firstOwner);
+  assert.equal(phase(),"passcode");
+  for (const delay of [25000, 25000, 25000, 20000]) { view.onUserActivity(); await flush(); await tick(delay); }
+  assert.equal(phase(),"passcode","newer alert cannot bypass authentication");
+  assert.notEqual(view.screen.props.navigation.appRuntime.activeAppId,"facebook");
+  await action("attemptScreenPasscode",code());
+  assert.equal(view.screen.props.navigation.appRuntime.activeAppId,"facebook","pending route follows newest Facebook owner");
+  assert.equal(view.screen.props.overlays.appNotification,null,"opening newest owner cannot promote old SMS");
   slots.forEach(slot=>slot?.cleanup?.());
   console.log("PASS: notification/passcode A–J through real App: deferred thread, cancel, wrong attempts, lockout, wake, normal unlock and reset.");
 } finally {
