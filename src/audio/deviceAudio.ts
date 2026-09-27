@@ -4,6 +4,17 @@ import { DEVICE_AUDIO_REGISTRY, DeviceAudioEvent } from "./deviceAudioRegistry";
 export type NotificationType = "message";
 
 export type PreviewState = {trackId:string|null;status:"idle"|"loading"|"playing"|"paused"|"unavailable";position:number;duration:number};
+export type OneShotPlaybackAttempt = {
+  event: DeviceAudioEvent;
+  soundId: string;
+  userActivationActive: boolean | null;
+  result: "pending" | "resolved" | "rejected";
+  rejectionName: string | null;
+  rejectionMessage: string | null;
+  errorCode: number | null;
+  readyState: number;
+  networkState: number;
+};
 const initialPreviewState = ():PreviewState => ({trackId:null,status:"idle",position:0,duration:0});
 class DeviceAudioService {
   private previewAudio: HTMLAudioElement | null = null;
@@ -112,8 +123,30 @@ class DeviceAudioService {
   private activeAudio: HTMLAudioElement | null = null;
   private audioMode: (() => "ringer" | "silent") | null = null;
   private lastSuppressedSound: DeviceAudioEvent | null = null;
+  private oneShotPlaybackAttempts: OneShotPlaybackAttempt[] = [];
   private muted = false;
   private volume = 1;
+
+  private captureOneShotMediaState(attempt: OneShotPlaybackAttempt, audio: HTMLAudioElement): void {
+    attempt.errorCode = audio.error?.code ?? null;
+    attempt.readyState = audio.readyState;
+    attempt.networkState = audio.networkState;
+  }
+
+  private recordOneShotResult(
+    attempt: OneShotPlaybackAttempt,
+    audio: HTMLAudioElement,
+    result: "resolved" | "rejected",
+    error?: unknown,
+  ): void {
+    attempt.result = result;
+    if (result === "rejected") {
+      const rejection = error as { name?: unknown; message?: unknown } | null;
+      attempt.rejectionName = typeof rejection?.name === "string" ? rejection.name : "UnknownError";
+      attempt.rejectionMessage = typeof rejection?.message === "string" ? rejection.message : String(error);
+    }
+    this.captureOneShotMediaState(attempt, audio);
+  }
 
   dispatch(event: DeviceAudioEvent): void {
     if (!this.canPlayAudio) {
@@ -132,7 +165,25 @@ class DeviceAudioService {
     audio.addEventListener("ended", () => {
       if (this.activeAudio === audio) this.activeAudio = null;
     }, { once: true });
-    void audio.play().catch(() => {
+    const userActivation = typeof navigator === "undefined"
+      ? undefined
+      : (navigator as Navigator & { userActivation?: { isActive?: boolean } }).userActivation;
+    const attempt: OneShotPlaybackAttempt = {
+      event,
+      soundId: sound.filename,
+      userActivationActive: typeof userActivation?.isActive === "boolean" ? userActivation.isActive : null,
+      result: "pending",
+      rejectionName: null,
+      rejectionMessage: null,
+      errorCode: audio.error?.code ?? null,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+    };
+    this.oneShotPlaybackAttempts.push(attempt);
+    void audio.play().then(() => {
+      this.recordOneShotResult(attempt, audio, "resolved");
+    }, (error: unknown) => {
+      this.recordOneShotResult(attempt, audio, "rejected", error);
       if (this.activeAudio === audio) this.activeAudio = null;
     });
   }
@@ -189,6 +240,7 @@ class DeviceAudioService {
       muteMode: this.canPlayAudio ? "ringer" : "silent",
       audioGateOpen: this.canPlayAudio,
       lastSuppressedSound: this.lastSuppressedSound,
+      oneShotPlaybackAttempts: this.oneShotPlaybackAttempts.map(attempt => ({ ...attempt })),
       activeChannel: this.activeAudio ? "one-shot" : this.previewAudio ? "itunes-preview" : null,
       previewState: { ...this.previewState },
       previewMedia: {
