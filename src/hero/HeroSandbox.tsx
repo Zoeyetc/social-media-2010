@@ -6,6 +6,7 @@ import { HeroScene } from "./HeroScene";
 import { HERO_BOOT_DURATION_MS, heroCanStartBoot } from "./HeroController";
 import { createExperienceSessionId } from "../state/deviceMachine";
 import { passcodeForExperienceSession } from "../state/passcode";
+import { installHeroKeyboardViewportLock } from "./heroKeyboardViewportLock";
 import type { HeroScreenGeometry } from "./heroTypes";
 
 export function HeroSandbox(presentation: HeroDevicePresentation) {
@@ -16,6 +17,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
   const runtimePower = state.phase === "experience" && state.bootComplete ? presentation.powerControl : undefined;
   const powerHitEnabled = heroCanStartBoot(state) || Boolean(runtimePower);
   const bootReadout = useRef<HTMLOutputElement>(null);
+  const stage = useRef<HTMLElement>(null);
   const completedBoot = useRef<number | null>(null);
   const hardwareDebug = import.meta.env.DEV && new URLSearchParams(location.search).get("heroHardwareDebug") === "1";
   const [draftName, setDraftName] = useState("");
@@ -23,6 +25,10 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
   const [identityRevision, setIdentityRevision] = useState(0);
   const [screenGeometry, setScreenGeometry] = useState<HeroScreenGeometry | null>(null);
   const onScreenGeometry = useCallback((geometry: HeroScreenGeometry) => setScreenGeometry(geometry), []);
+  useEffect(() => {
+    if (state.phase !== "experience" || !stage.current) return;
+    return installHeroKeyboardViewportLock(stage.current);
+  }, [state.phase]);
   // Local sandbox reset only: the persistent HeroScene is never keyed/remounted.
   useEffect(() => {
     if (state.phase !== "identity") return;
@@ -70,7 +76,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
   }, [hardwareDebug, state, powerHitEnabled, presentation.softwareReady, runtimePower]);
 
   return (
-    <main className="hero-sandbox" data-phase={state.phase}
+    <main ref={stage} className="hero-sandbox" data-phase={state.phase}
       onPointerDownCapture={presentation.onUserActivity}
       onPointerUpCapture={presentation.onUserActivity}
       onPointerCancelCapture={presentation.onUserActivity}

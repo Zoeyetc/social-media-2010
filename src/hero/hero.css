@@ -216,6 +216,22 @@ button, input { font: inherit; }
   body { overflow: auto; }
   /* Canvas dimensions track visible Safari height; fit uses its measured size. */
   .hero-sandbox { min-height: 0; height: 100dvh; }
+  /* Safari judges a control's computed size before the 3D projection and may
+     zoom before :focus styling is applied. Limit this to Hero software editors. */
+  .hero-sandbox[data-phase="experience"] .hero-screen-portal
+    :is(input:not([type]), input[type="text"], input[type="search"], input[type="email"], input[type="password"], textarea) {
+    font-size: 16px !important;
+  }
+  .hero-sandbox[data-phase="experience"] .hero-screen-portal .small-note-editor { font-size: 18px !important; }
+  .hero-sandbox[data-phase="experience"] .hero-screen-portal .flickr-comment-composer textarea { font-size: 17px !important; }
+  /* Where supported, retain the original small glyph proportions while the
+     editable element itself still computes at Safari's focus-safe 16px. */
+  @supports (font-size-adjust: 0.4) {
+    .hero-screen-portal :is(.facebook-comments-composer input, .facebook-search-field input, .facebook-place-check-in textarea) { font-size-adjust: 0.39; }
+    .hero-screen-portal :is(.facebook-comment-composer textarea, .facebook-message-composer textarea, .foursquare-checkin-form textarea, .tumblr-reblog-flow textarea) { font-size-adjust: 0.42; }
+    .hero-screen-portal :is(.mobilesms-composer input, .facebook-status-composer textarea, .tumblr-search-bar input, .flickr-search-bar input) { font-size-adjust: 0.455; }
+    .hero-screen-portal .flickr-upload :is(input, textarea) { font-size-adjust: 0.485; }
+  }
   .hero-scene {
     top: env(safe-area-inset-top, 0px);
     right: env(safe-area-inset-right, 0px);
