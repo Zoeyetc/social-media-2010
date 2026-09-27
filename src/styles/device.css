@@ -120,7 +120,7 @@ button, input { font: inherit; }
 .unlock-track button { position: absolute; z-index: 1; left: 3px; top: 4px; width: 71px; height: 47px; padding: 0; border: 0; background: transparent url("../assets/historical/ios4.1/lockscreen/bottombarknobgray@2x.browser.png") center / 71px 47px no-repeat; touch-action: none; user-select: none; cursor: grab; }
 .unlock-track button:active { cursor: grabbing; }
 @keyframes slider-highlight { 0% { opacity: 0; -webkit-mask-position: -80px center; mask-position: -80px center; } 30% { opacity: .3; } 50% { opacity: .4; } 70% { opacity: 0; -webkit-mask-position: 205px center; mask-position: 205px center; } 100% { opacity: 0; -webkit-mask-position: 205px center; mask-position: 205px center; } }
-.screen > .springboard { position: relative; height: 100%; background: #000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.png") center / 320px 480px no-repeat; }
+.screen > .springboard { position: relative; height: 100%; background: #000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.browser.png") center / 320px 480px no-repeat; }
 .springboard-folder-wallpaper-dim { position: absolute; z-index: 0; inset: 20px 0 0; background: rgba(8,11,16,.48); pointer-events: none; }
 .springboard-pages { position: absolute; z-index: 1; inset: 0 0 84px; overflow: hidden; touch-action: pan-y; }
 .springboard.is-folder-opening .springboard-pages,
