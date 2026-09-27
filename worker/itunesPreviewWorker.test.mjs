@@ -32,7 +32,14 @@ for (const track of ITUNES_TRACKS) {
   assert.equal(result.results[0].previewUrl, previewUrl);
 }
 assert.equal(requests.length, 5);
+const wrongMethod = await worker.fetch(new Request(`${origin}/api/itunes-preview/resolve?id=${ITUNES_TRACKS[0].id}`, { method: "POST" }), {});
+assert.equal(wrongMethod.status, 405);
+assert.equal(requests.length, 5);
 const unknown = await worker.fetch(new Request(`${origin}/api/itunes-preview/resolve?id=unknown`), {});
 assert.equal(unknown.status, 404);
 assert.equal(requests.length, 5, "unknown IDs never reach Apple");
+const failedWorker = createWorker({ appleFetch: async () => { throw new Error("Apple unavailable"); } });
+const failed = await failedWorker.fetch(new Request(`${origin}/api/itunes-preview/resolve?id=${ITUNES_TRACKS[0].id}`), {});
+assert.equal(failed.status, 502);
+assert.deepEqual(await failed.json(), { results: [] });
 console.log("PASS: Worker US metadata lookup and exact title/artist filtering");

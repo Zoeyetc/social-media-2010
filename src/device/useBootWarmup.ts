@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { browserWarmupHost, createBootWarmup, type WarmupSnapshot } from "./bootWarmup";
 import { bootImageTasks } from "./bootWarmupImages";
 import { buildSessionTimelineEvents } from "../data/sessionTimeline";
+import { DeviceAudio } from "../audio/deviceAudio";
+import { ITUNES_TRACKS } from "../state/finalDecorativeApps";
 
 export type BootWarmupScreen = {
   keyboardRequested: boolean;
@@ -30,6 +32,7 @@ export function useBootWarmup(sessionId: string | null, bootStartedAt: number | 
         setKeyboardSession(sessionId);
       }) },
       ...bootImageTasks(),
+      { id: "itunes-preview-metadata", tier: 2, run: signal => DeviceAudio.prewarmPreviewMetadata(ITUNES_TRACKS, signal) },
     ], browserWarmupHost(), () => setReadySession(sessionId), () => failure.current());
     active.current = run;
     run.schedule.start();

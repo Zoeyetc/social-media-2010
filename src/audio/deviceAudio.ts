@@ -13,7 +13,16 @@ class DeviceAudioService {
   private previewRetried = false;
   private previewPlayTimer: ReturnType<typeof setTimeout> | null = null;
   private previewState = initialPreviewState();
+  private previewLastEvent: string | null = null;
+  private previewPlayResult: string | null = null;
+  private previewMetadataStatus: string = "idle";
   private previewListeners = new Set<(state:PreviewState)=>void>();
+  prewarmPreviewMetadata(tracks:readonly PreviewTrack[],signal:AbortSignal):Promise<void> {
+    this.previewMetadataStatus="resolving";
+    return Promise.all(tracks.map(track=>this.previewResolver.resolve(track,signal))).then(urls=>{
+      if(!signal.aborted)this.previewMetadataStatus=`ready:${urls.filter(Boolean).length}/${tracks.length}`;
+    });
+  }
   getPreviewState = () => this.previewState;
   subscribePreview = (listener:(state:PreviewState)=>void) => {this.previewListeners.add(listener);return ()=>{this.previewListeners.delete(listener);};};
   private updatePreview(next:PreviewState) {this.previewState=next;this.previewListeners.forEach(listener=>listener(next));}
@@ -21,10 +30,10 @@ class DeviceAudioService {
     if(this.previewPlayTimer!==null)clearTimeout(this.previewPlayTimer);this.previewPlayTimer=null;
     this.previewGeneration++;this.previewAbort?.abort();this.previewAbort=null;
     const audio=this.previewAudio;this.previewAudio=null;
-    if(audio){audio.onended=null;audio.onerror=null;audio.ontimeupdate=null;audio.onloadedmetadata=null;audio.pause();audio.removeAttribute("src");audio.load();}
+    if(audio){audio.onended=null;audio.onerror=null;audio.ontimeupdate=null;audio.onloadedmetadata=null;audio.oncanplay=null;audio.onplaying=null;audio.onwaiting=null;audio.onstalled=null;audio.pause();audio.removeAttribute("src");audio.load();}
     this.updatePreview(initialPreviewState());
   }
-  resetPreview() {this.stopPreview();this.previewResolver.clear();}
+  resetPreview() {this.stopPreview();this.previewResolver.clear();this.previewLastEvent=null;this.previewPlayResult=null;this.previewMetadataStatus="idle";}
   pausePreview() {
     if(this.previewPlayTimer!==null)clearTimeout(this.previewPlayTimer);this.previewPlayTimer=null;
     if(this.previewState.status==="loading") {this.stopPreview();return;}
@@ -32,6 +41,7 @@ class DeviceAudioService {
   }
   private previewFailed(track:PreviewTrack,audio:HTMLAudioElement) {
     if(audio!==this.previewAudio)return;
+    this.previewLastEvent="error";
     const retry=!this.previewRetried;
     this.previewResolver.invalidate(track);
     this.stopPreview();
@@ -54,11 +64,16 @@ class DeviceAudioService {
 
       this.updatePreview({trackId:track.id,status:"loading",position:0,duration:0});
       try {
-        const url=await this.previewResolver.resolve(track,controller.signal);
+        // A cached URL lets play() run in this same user-activation task.
+        const ready=this.previewResolver.peek(track);
+        this.previewMetadataStatus=ready?"cached":"resolving";
+        const url=ready ?? await this.previewResolver.resolve(track,controller.signal);
         if(token!==this.previewGeneration)return;
         if(!url)throw new Error("Preview unavailable");
+        this.previewMetadataStatus="ready";
         audio.src=url;
       } catch {
+        this.previewMetadataStatus="unavailable";
         if(token===this.previewGeneration){this.stopPreview();this.updatePreview({trackId:track.id,status:"unavailable",position:0,duration:0});}
         return;
       }
@@ -68,16 +83,23 @@ class DeviceAudioService {
     // A direct media element avoids WebAudio's cross-origin muted-source rule.
     audio.volume=this.volume;audio.muted=!this.canPlayAudio;
     const updateTime=()=>{if(audio===this.previewAudio)this.updatePreview({...this.previewState,position:Number.isFinite(audio.currentTime)?audio.currentTime:0,duration:Number.isFinite(audio.duration)?audio.duration:0});};
-    audio.ontimeupdate=updateTime;audio.onloadedmetadata=updateTime;
-    audio.onended=()=>{if(audio===this.previewAudio)this.updatePreview({...this.previewState,status:"paused"});};
+    audio.ontimeupdate=updateTime;audio.onloadedmetadata=()=>{this.previewLastEvent="loadedmetadata";updateTime();};
+    audio.oncanplay=()=>{if(audio===this.previewAudio)this.previewLastEvent="canplay";};
+    audio.onplaying=()=>{if(audio===this.previewAudio)this.previewLastEvent="playing";};
+    audio.onwaiting=()=>{if(audio===this.previewAudio)this.previewLastEvent="waiting";};
+    audio.onstalled=()=>{if(audio===this.previewAudio)this.previewLastEvent="stalled";};
+    audio.onended=()=>{if(audio===this.previewAudio){this.previewLastEvent="ended";this.updatePreview({...this.previewState,status:"paused"});}};
     audio.onerror=()=>this.previewFailed(track,audio);
     if(this.previewPlayTimer!==null)clearTimeout(this.previewPlayTimer);
     this.previewPlayTimer=setTimeout(()=>{if(token===this.previewGeneration)this.previewFailed(track,audio);},12000);
     try {
+      this.previewPlayResult="pending";
       await audio.play();
+      this.previewPlayResult="resolved";
       if(token===this.previewGeneration && this.previewPlayTimer!==null){clearTimeout(this.previewPlayTimer);this.previewPlayTimer=null;}
       if(token===this.previewGeneration && audio===this.previewAudio && this.canPlayAudio)this.updatePreview({...this.previewState,trackId:track.id,status:"playing"});
     } catch(error) {
+      this.previewPlayResult=`rejected:${error instanceof Error?error.name:"unknown"}`;
       if(token!==this.previewGeneration || audio!==this.previewAudio)return;
       if(this.previewPlayTimer!==null)clearTimeout(this.previewPlayTimer);this.previewPlayTimer=null;
       // Safari may require a second explicit tap after asynchronous resolution.
@@ -161,6 +183,7 @@ class DeviceAudioService {
   }
 
   get diagnostics() {
+    const media=this.previewAudio;
     return {
       volume: this.volume,
       muteMode: this.canPlayAudio ? "ringer" : "silent",
@@ -168,6 +191,14 @@ class DeviceAudioService {
       lastSuppressedSound: this.lastSuppressedSound,
       activeChannel: this.activeAudio ? "one-shot" : this.previewAudio ? "itunes-preview" : null,
       previewState: { ...this.previewState },
+      previewMedia: {
+        metadataStatus:this.previewMetadataStatus,
+        sourcePresent:Boolean(media?.src),
+        sourceHost:(()=>{try{return media?.currentSrc?new URL(media.currentSrc).hostname:null;}catch{return null;}})(),
+        readyState:media?.readyState ?? null,networkState:media?.networkState ?? null,
+        paused:media?.paused ?? null,muted:media?.muted ?? null,volume:media?.volume ?? null,
+        errorCode:media?.error?.code ?? null,lastEvent:this.previewLastEvent,playResult:this.previewPlayResult,
+      },
     };
   }
 

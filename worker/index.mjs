@@ -64,7 +64,11 @@ export function createWorker({ providerFetch = fetch, appleFetch = fetch } = {})
           const track = ITUNES_TRACKS.find(item => item.id === url.searchParams.get("id"));
           if (!track) return json(404, { results: [] });
           const query = new URLSearchParams({ term: `${track.title} ${track.artist}`, country: "US", media: "music", entity: "song", limit: "10" });
-          const response = await appleFetch(`https://itunes.apple.com/search?${query}`, { signal: request.signal });
+          // Bounded metadata lookup only; preview bytes are served directly by Apple.
+          const signal = AbortSignal.any([request.signal, AbortSignal.timeout(12000)]);
+          let response;
+          try { response = await appleFetch(`https://itunes.apple.com/search?${query}`, { signal }); }
+          catch { return json(502, { results: [] }); }
           if (!response.ok) return json(502, { results: [] });
           const body = await response.json();
           const matches = Array.isArray(body?.results) ? body.results.filter(item => item && typeof item === "object" && matchesPreview(track, item)) : [];

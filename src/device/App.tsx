@@ -222,6 +222,12 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const [iTunesState, dispatchITunesState] = useReducer(iTunesTransition, undefined, initialITunesState);
   const [iTunesPreview, setITunesPreview] = useState(DeviceAudio.getPreviewState);
   useEffect(() => DeviceAudio.subscribePreview(setITunesPreview), []);
+  useEffect(() => {
+    if (session.phase !== "app" || appRuntime.activeAppId !== "itunes") return;
+    const controller = new AbortController();
+    void DeviceAudio.prewarmPreviewMetadata(ITUNES_TRACKS, controller.signal);
+    return () => controller.abort();
+  }, [session.phase, appRuntime.activeAppId]);
   useEffect(() => { if (["sleeping", "poweredOff", "shutdown", "hero"].includes(session.phase)) DeviceAudio.pausePreview(); }, [session.phase]);
   useEffect(() => () => DeviceAudio.resetPreview(), []);
   const dispatchITunes = (event: Parameters<typeof iTunesTransition>[1]) => {

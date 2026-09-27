@@ -26,6 +26,7 @@ export class ITunesPreviewResolver {
   if(this.valid(track,entry)){this.cache.set(key,entry);return entry.result.previewUrl as string;}
   this.cache.delete(key);this.removeStored(key);return null;
  }
+ peek(track:PreviewTrack):string|null {return this.cached(track);}
  isCoolingDown(track:PreviewTrack) {return (this.failures.get(this.key(track)) ?? 0)>this.now();}
  markFailure(track:PreviewTrack) {this.failures.set(this.key(track),this.now()+PREVIEW_FAILURE_COOLDOWN_MS);}
  invalidate(track:PreviewTrack) {const key=this.key(track);this.cache.delete(key);this.removeStored(key);}

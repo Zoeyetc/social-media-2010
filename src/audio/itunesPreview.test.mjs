@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import {createServer} from "vite";
 const server=await createServer({server:{middlewareMode:true},appType:"custom",logLevel:"silent"});
 const originalFetch=globalThis.fetch,originalAudio=globalThis.Audio;
-const sounds=[];let requests=0,pending=null,fail=false;
+const sounds=[];let requests=0,pending=null,fail=false,failPlay=false;
 const url="https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/test.m4a";
 class FakeAudio {
  constructor(){this.src="";this.currentTime=0;this.duration=30;this.plays=0;this.pauses=0;sounds.push(this);}
- async play(){this.plays++;}pause(){this.pauses++;}removeAttribute(){this.src="";}load(){}addEventListener(){}
+ async play(){this.plays++;if(failPlay)throw Object.assign(new Error("User activation required"),{name:"NotAllowedError"});}pause(){this.pauses++;}removeAttribute(){this.src="";}load(){}addEventListener(){}
 }
 globalThis.Audio=FakeAudio;
 try {
@@ -24,7 +24,11 @@ try {
  return {ok:true,json:async()=>({results:fail?[]:[{...result(track),artistName:track.id==="like-a-g6"?"Far East Movement, The Cataracs & DEV":track.artist}]})};
  };
  const {DeviceAudio:a}=await server.ssrLoadModule("/src/audio/deviceAudio.ts");
- await a.playPreview(ITUNES_TRACKS[0]);const first=sounds.at(-1);assert.equal(a.getPreviewState().status,"playing");assert.equal(requests,1);
+ await a.prewarmPreviewMetadata([ITUNES_TRACKS[0]],new AbortController().signal);
+ assert.equal(sounds.length,0,"metadata warmup does not create or play media");
+ const firstPlay=a.playPreview(ITUNES_TRACKS[0]);const first=sounds.at(-1);
+ assert.equal(first.plays,1,"cached preview calls play synchronously in the tap path");
+ await firstPlay;assert.equal(a.getPreviewState().status,"playing");assert.equal(requests,1);
  a.pausePreview();assert.equal(a.getPreviewState().status,"paused");await a.playPreview(ITUNES_TRACKS[0]);assert.equal(requests,1);assert.equal(first.plays,2);
  first.currentTime=7;first.ontimeupdate();assert.equal(a.getPreviewState().position,7);
  a.setVolume(.3);assert.equal(first.volume,.3);a.setMuted(true);assert.equal(a.getPreviewState().status,"paused");assert.ok(first.pauses>0);
@@ -37,5 +41,9 @@ try {
  fail=true;await a.playPreview(ITUNES_TRACKS[2]);assert.equal(a.getPreviewState().status,"unavailable");a.resetPreview();fail=false;
  let resolve;pending=new Promise(r=>resolve=r);const loading=a.playPreview(ITUNES_TRACKS[3]);a.resetPreview();resolve({ok:true,json:async()=>({results:[result(ITUNES_TRACKS[3])]})});await loading;assert.equal(a.getPreviewState().status,"idle","late lookup cannot restart after reset");pending=null;
  await a.playPreview(ITUNES_TRACKS[4]);const last=sounds.at(-1);last.onerror();for(let i=0;i<20;i++)await Promise.resolve();sounds.at(-1).onerror();assert.equal(a.getPreviewState().status,"unavailable");assert.equal(last.src,"");a.resetPreview();
+ failPlay=true;await a.prewarmPreviewMetadata([ITUNES_TRACKS[0]],new AbortController().signal);
+ await a.playPreview(ITUNES_TRACKS[0]);assert.equal(a.getPreviewState().status,"paused");
+ assert.equal(a.diagnostics.previewMedia.playResult,"rejected:NotAllowedError");
+ a.resetPreview();assert.equal(a.diagnostics.previewMedia.sourcePresent,false);failPlay=false;
  console.log("PASS: exact Apple title/artist/host validation, cache/reset, unavailable/error, real progress events, pause/resume, one preview at a time, mute/volume/lock and stale-lookup cancellation");
 }finally{globalThis.fetch=originalFetch;globalThis.Audio=originalAudio;await server.close();}
