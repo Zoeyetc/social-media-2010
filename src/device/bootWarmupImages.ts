@@ -12,17 +12,21 @@ import nasa from "../assets/twitter/avatar/public/nasa-2010-reconstructed.png";
 import cnn from "../assets/twitter/avatar/public/cnn-2010-reconstructed.png";
 import instagramWordmark from "../assets/instagram/chrome/instagram-wordmark-2010-reconstructed.svg";
 import instagramFeed from "../assets/instagram/chrome/instagram-feed-2010-selected-reconstructed.svg";
+import facebookHomeFeed from "../assets/facebook/home/3.2.1/feedButton@2x.png";
+import facebookHomeProfile from "../assets/facebook/home/3.2.1/profileButton@2x.png";
+import facebookHomeFriends from "../assets/facebook/home/3.2.1/friendsButton@2x.png";
 import { SPRINGBOARD_SOCIAL_APPS } from "../data/springBoardSocialApps";
 import type { WarmupTask } from "./bootWarmup";
 
 // Audited small existing artwork only. The first character/feed photographs are
 // megabyte originals, so they deliberately remain on demand (no album preload).
-export const BOOT_IMAGE_LIMIT = 20;
+export const BOOT_IMAGE_LIMIT = 23;
 export const BOOT_IMAGE_BYTE_BUDGET = 384 * 1024;
 export const BOOT_IMAGE_MAX_EDGE = 512;
 export const BOOT_IMAGE_MANIFEST = [
   ...SPRINGBOARD_SOCIAL_APPS.map(app => ({ id: `icon-${app.id}`, src: app.iconSrc, tier: (["facebook", "twitter", "instagram"].includes(app.id) ? 1 : 2) as 1 | 2 })),
-  ...Object.entries({ messages, facebookAvatar, twitterEgg, nasa, cnn, instagramWordmark, instagramFeed }).map(([id, src]) => ({ id, src, tier: 1 as const })),
+  ...Object.entries({ messages, facebookAvatar, twitterEgg, nasa, cnn, instagramWordmark, instagramFeed,
+    facebookHomeFeed, facebookHomeProfile, facebookHomeFriends }).map(([id, src]) => ({ id, src, tier: 1 as const })),
   ...Object.entries({ photos, weather, notes, stocks, settings, maps, calendar }).map(([id, src]) => ({ id, src, tier: 2 as const })),
 ] as const;
 

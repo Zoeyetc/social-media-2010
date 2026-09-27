@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { DeviceAudio } from "../audio/deviceAudio";
 import type { WarmupSnapshot } from "./bootWarmup";
+import type { CoreFirstFrameApp, CoreFirstFrameRecord } from "./coreAppFirstFrame";
 
 export type ReleasePerformanceState = Readonly<{
   lifecyclePhase: string;
@@ -18,6 +19,7 @@ export type ReleasePerformanceState = Readonly<{
 
 export type ReleasePerformanceSnapshot = ReleasePerformanceState & Readonly<{
   warmup: WarmupSnapshot | null;
+  coreFirstFrames: Record<CoreFirstFrameApp, CoreFirstFrameRecord | null>;
   deviceScreen: {
     currentInstanceCount: number;
     totalSemanticMounts: number;
@@ -58,11 +60,14 @@ function readAudioDiagnostics() {
 }
 
 /** On-demand Release Gate 3 diagnostics. No polling, logging, or visible overlay. */
-export function useReleasePerformanceDiagnostics(state: ReleasePerformanceState, readWarmup?: () => WarmupSnapshot | null) {
+export function useReleasePerformanceDiagnostics(state: ReleasePerformanceState, readWarmup?: () => WarmupSnapshot | null,
+  readCoreFirstFrames?: () => Record<CoreFirstFrameApp, CoreFirstFrameRecord | null>) {
   const stateRef = useRef(state);
   stateRef.current = state;
   const warmupRef = useRef(readWarmup);
   warmupRef.current = readWarmup;
+  const coreFirstFramesRef = useRef(readCoreFirstFrames);
+  coreFirstFramesRef.current = readCoreFirstFrames;
 
   useEffect(() => {
     if (!import.meta.env.DEV || new URLSearchParams(window.location.search).get("performanceDebug") !== "1") return;
@@ -80,6 +85,7 @@ export function useReleasePerformanceDiagnostics(state: ReleasePerformanceState,
         const snapshot: ReleasePerformanceSnapshot = {
           ...current,
           warmup: warmupRef.current?.() ?? null,
+          coreFirstFrames: coreFirstFramesRef.current?.() ?? { messages: null, facebook: null, twitter: null, instagram: null },
           deviceScreen: {
             currentInstanceCount: Math.max(0, (screen?.semanticMounts ?? 0) - (screen?.semanticUnmounts ?? 0)),
             totalSemanticMounts: screen?.semanticMounts ?? 0,

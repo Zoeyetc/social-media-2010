@@ -62,6 +62,8 @@ import type { CameraStillCapture } from "../world/AmbientWorld";
 import { selectCameraVideoScene, type CameraVideoSceneSelection } from "../world/cameraVideoScenes";
 import { useReleasePerformanceDiagnostics } from "./useReleasePerformanceDiagnostics";
 import { useBootWarmup } from "./useBootWarmup";
+import { browserCoreFirstFrameHost, createCoreAppFirstFrameGate, isCoreFirstFrameApp } from "./coreAppFirstFrame";
+import { coreAppFirstViewPlan } from "./coreAppFirstView";
 
 const TERMINAL_DEPLETED_DISPLAY_MS = 1_500;
 const AUTO_SLEEP_DELAY_MS = 60_000;
@@ -247,6 +249,10 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     createInitialTwitterState,
   );
   const [publicTwitterState, dispatchPublicTwitter] = useReducer(publicTwitterStateTransition, initialPublicTwitterState);
+  const coreFirstFrame = useRef<ReturnType<typeof createCoreAppFirstFrameGate> | null>(null);
+  if (!coreFirstFrame.current) coreFirstFrame.current = createCoreAppFirstFrameGate(browserCoreFirstFrameHost());
+  useEffect(() => { coreFirstFrame.current?.reset(session.experienceSessionId); }, [session.experienceSessionId]);
+  useEffect(() => { if (session.phase !== "springboard") coreFirstFrame.current?.cancelPending(); }, [session.phase]);
   const [publicTwitterOutro, dispatchPublicTwitterOutro] = useReducer(publicTwitterOutroTransition, initialPublicTwitterOutroState);
   const publicTwitterStateRef = useRef(publicTwitterState);
   publicTwitterStateRef.current = publicTwitterState;
@@ -301,7 +307,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     currentApp: session.phase === "app" ? appRuntime.activeAppId : null,
     powerHoldRafActive: powerFrame.current !== null,
     screenPortalBootRafActive: presenter === "hero" && (lifecycle.phase === "powering-on" || lifecycle.phase === "front-aligned") && lifecycle.bootStartedAt !== null && !lifecycle.bootComplete,
-  }, warmup.snapshot);
+  }, warmup.snapshot, coreFirstFrame.current.snapshot);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -1034,15 +1040,25 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const recordInteraction = () => setActivityRevision(revision => revision + 1);
   const launchSpringBoardApp = (appId: string) => {
     if (appRuntime.phase !== "none" && appRuntime.phase !== "suspended") return;
-    const cameraOwner = cameraOwnerForApp(appId);
-    if (cameraOwner) {
-      dispatchCameraRuntime({
-        type: cameraRuntime[cameraOwner].phase === "none" ? "LAUNCH" : "RESUME",
-        owner: cameraOwner,
-      });
+    const open = () => {
+      const cameraOwner = cameraOwnerForApp(appId);
+      if (cameraOwner) {
+        dispatchCameraRuntime({
+          type: cameraRuntime[cameraOwner].phase === "none" ? "LAUNCH" : "RESUME",
+          owner: cameraOwner,
+        });
+      }
+      dispatchAppRuntime({ type: "LAUNCH", appId });
+      update({ phase: "app" });
+    };
+    if (session.phase === "springboard" && isCoreFirstFrameApp(appId)) {
+      coreFirstFrame.current!.request(appId, session.experienceSessionId,
+        coreAppFirstViewPlan(appId, { messages: messagesState, facebook: facebookState, twitter: twitterState,
+          publicTwitter: publicTwitterState, instagram: instagramState, elapsedMs: elapsed }), open);
+    } else {
+      coreFirstFrame.current?.cancelPending();
+      open();
     }
-    dispatchAppRuntime({ type: "LAUNCH", appId });
-    update({ phase: "app" });
   };
   const openLatestCameraPhoto = () => {
     const records = cameraRollRef.current.records;
@@ -1557,6 +1573,9 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           messagesBadgeCount: messagesUnreadIds.length,
           notificationBadgeCounts: notificationBadges(notifications),
           launchSpringBoardApp,
+          coreFirstFrameRevealed: (appId: string) => {
+            if (isCoreFirstFrameApp(appId)) coreFirstFrame.current?.revealed(appId, session.experienceSessionId);
+          },
           multitaskingBar,
           dispatchMultitaskingBar,
         }}

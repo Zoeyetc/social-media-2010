@@ -74,6 +74,8 @@ MATERIAL_NAMES = (
     "MAT_BackGlass",
     "MAT_Screen",
     "MAT_ButtonMetal",
+    "MAT_HomeDisc",
+    "MAT_HomeGlyph",
     "MAT_CameraLens",
     "MAT_Flash",
     "MAT_DarkAperture",
@@ -204,6 +206,16 @@ def build_materials() -> dict[str, bpy.types.Material]:
         ),
         "MAT_ButtonMetal": make_material(
             "MAT_ButtonMetal", (0.16, 0.17, 0.18, 1.0), metallic=0.9, roughness=0.38, anisotropy=0.12
+        ),
+        # The recessed black disc needs a broader, softer reflection than the
+        # polished front glass. The printed/inlaid glyph is neutral, not chrome.
+        "MAT_HomeDisc": make_material(
+            "MAT_HomeDisc", (0.0045, 0.0050, 0.0055, 1.0),
+            roughness=0.47, coat=0.14, coat_roughness=0.30, specular=0.42
+        ),
+        "MAT_HomeGlyph": make_material(
+            "MAT_HomeGlyph", (0.105, 0.108, 0.112, 1.0),
+            metallic=0.12, roughness=0.56, specular=0.28
         ),
         "MAT_CameraLens": make_material(
             "MAT_CameraLens", (0.001, 0.002, 0.004, 1.0), metallic=0.10,
@@ -371,13 +383,13 @@ def join_objects(objects: list[bpy.types.Object], name: str) -> bpy.types.Object
 def add_home_button(materials) -> bpy.types.Object:
     button = cylinder(
         "HomeButton", 0.0054, 0.00030, (0.0, -0.00438, -0.0472),
-        materials["MAT_PhoneBody"], axis="Y", vertices=64, bevel=0.00010
+        materials["MAT_HomeDisc"], axis="Y", vertices=64, bevel=0.00010
     )
     # One closed annulus, not four self-intersecting bars.
     glyph = rounded_rect_prism("HomeGlyph", 0.00398, 0.00398, 0.00004,
-        0.00040, (0, -0.00457, -0.0472), materials["MAT_ButtonMetal"], segments=8)
+        0.00040, (0, -0.00457, -0.0472), materials["MAT_HomeGlyph"], segments=8)
     subtract(glyph, rounded_rect_prism("HomeGlyphCut", 0.00342, 0.00342,
-        0.001, 0.00020, (0, -0.00457, -0.0472), materials["MAT_ButtonMetal"], segments=8))
+        0.001, 0.00020, (0, -0.00457, -0.0472), materials["MAT_HomeGlyph"], segments=8))
     return join_objects([button, glyph], "HomeButton")
 
 

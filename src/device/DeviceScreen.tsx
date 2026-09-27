@@ -33,6 +33,7 @@ import { IOS4KeyboardSystem } from "./IOS4KeyboardSystem";
 import type { BootWarmupScreen } from "./useBootWarmup";
 import type { ActiveMediaRequest, MediaAttachmentRequest } from "../state/mediaAttachment";
 import { MediaSourceChooser } from "./MediaAttachmentPresentation";
+import { isCoreFirstFrameApp } from "./coreAppFirstFrame";
 
 type PhotosBrowseProps = Exclude<ComponentProps<typeof PhotosContainer>, { mode: "picker" }>;
 
@@ -69,6 +70,7 @@ export type DeviceScreenProps = {
     messagesBadgeCount: number;
     notificationBadgeCounts: ComponentProps<typeof SpringBoard>["notificationBadgeCounts"];
     launchSpringBoardApp: ComponentProps<typeof SpringBoard>["onLaunchApp"];
+    coreFirstFrameRevealed: (appId: string) => void;
     multitaskingBar: ComponentProps<typeof MultitaskingBar>["state"];
     dispatchMultitaskingBar: ComponentProps<typeof MultitaskingBar>["dispatch"];
   };
@@ -170,6 +172,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
     messagesBadgeCount,
     notificationBadgeCounts,
     launchSpringBoardApp,
+    coreFirstFrameRevealed,
     multitaskingBar,
     dispatchMultitaskingBar,
   } = navigation;
@@ -255,7 +258,9 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       onAttempt={attemptScreenPasscode}
       onCancel={cancelScreenPasscode}
     />}
-    {session.phase === "springboard" && <SpringBoard
+    {(session.phase === "springboard" || (session.phase === "app" && appRuntime.phase === "launching"
+      && appRuntime.activeAppId !== null && isCoreFirstFrameApp(appRuntime.activeAppId))) && <SpringBoard
+      inactive={session.phase !== "springboard"}
       currentPage={springBoardPage}
       onPageChange={setSpringBoardPage}
       folderState={folderState}
@@ -272,6 +277,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       retainShell={warmup?.keyboardRequested}
       inactive={session.phase !== "app"}
       runtime={appRuntime}
+      onCoreFirstFrame={coreFirstFrameRevealed}
       dispatch={dispatchAppRuntime}
       onClosed={completeScreenAppClose}
     >

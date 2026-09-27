@@ -13,10 +13,25 @@ const json = buffer => JSON.parse(buffer.subarray(20, 20+buffer.readUInt32LE(12)
 const gltf = json(bytes);
 const baseline = json(execFileSync('git', ['show', `HEAD:${asset}`], { maxBuffer: 8e6 }));
 assert.deepEqual(gltf.nodes.map(n=>n.name).sort(), baseline.nodes.map(n=>n.name).sort());
-assert.deepEqual(gltf.materials.map(n=>n.name).sort(), baseline.materials.map(n=>n.name).sort());
+assert.deepEqual(gltf.materials.map(n=>n.name).sort(),
+  [...baseline.materials.map(n=>n.name), 'MAT_HomeDisc', 'MAT_HomeGlyph'].sort());
 for (const n of gltf.nodes) assert.ok((n.scale ?? [1,1,1]).every(s=>Math.abs(s-1)<1e-7), n.name);
 const node = name => gltf.nodes.find(n=>n.name===name);
 const previous = name => baseline.nodes.find(n=>n.name===name);
+assert.deepEqual(node('HomeButton').translation, previous('HomeButton').translation);
+assert.deepEqual(node('HomeButton').rotation, previous('HomeButton').rotation);
+const material = name => gltf.materials.find(entry => entry.name === name);
+const homeMaterials = gltf.meshes[node('HomeButton').mesh].primitives.map(part => gltf.materials[part.material].name);
+assert.deepEqual(homeMaterials, ['MAT_HomeDisc', 'MAT_HomeGlyph'], 'only the Home disc and glyph get dedicated PBR response');
+for (const name of homeMaterials) assert.equal(material(name).emissiveFactor, undefined, `${name} must not emit light`);
+const disc = material('MAT_HomeDisc').pbrMetallicRoughness;
+const glyph = material('MAT_HomeGlyph').pbrMetallicRoughness;
+assert.ok(disc.roughnessFactor > material('MAT_FrontGlass').pbrMetallicRoughness.roughnessFactor);
+assert.ok(disc.baseColorFactor[0] < 0.01, 'Home disc stays black');
+assert.ok(glyph.metallicFactor < 0.2 && glyph.baseColorFactor[0] < 0.15, 'glyph is restrained neutral gray rather than chrome');
+for (const mesh of gltf.meshes.filter((_, index) => index !== node('HomeButton').mesh)) {
+  assert.ok(mesh.primitives.every(part => !homeMaterials.includes(gltf.materials[part.material].name)), 'Home materials stay isolated');
+}
 assert.deepEqual(node('Dock30Pin').translation, previous('Dock30Pin').translation);
 assert.deepEqual(node('Dock30Pin').rotation, previous('Dock30Pin').rotation);
 assert.deepEqual(node('PowerButton').rotation, previous('PowerButton').rotation);

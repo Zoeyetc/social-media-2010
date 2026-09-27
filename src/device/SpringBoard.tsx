@@ -37,6 +37,7 @@ import { FolderEvent, FolderState } from "../state/folderState";
 import type { NotificationApp } from "../state/notificationState";
 
 type SpringBoardProps = {
+  inactive?: boolean;
   currentPage: 0 | 1;
   onPageChange: (page: 0 | 1) => void;
   folderState: FolderState;
@@ -142,7 +143,7 @@ const DOCK_APPS = [
   { name: "YouTube", iconSrc: youtubeIconSrc },
 ] as const;
 
-export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFolderEvent, activeFolderSlotIndex, onActiveFolderSlotChange, onLaunchApp, messagesBadgeCount, notificationBadgeCounts, flickrUploadCount = 0 }: SpringBoardProps) {
+export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFolderEvent, activeFolderSlotIndex, onActiveFolderSlotChange, onLaunchApp, messagesBadgeCount, notificationBadgeCounts, flickrUploadCount = 0, inactive = false }: SpringBoardProps) {
   const swipeStart = useRef<SwipeStart | null>(null);
   const suppressIconActivation = useRef(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -229,7 +230,7 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
     "--folder-lower-offset": `${lowerShift}px`,
   };
 
-  return <div className={`springboard is-folder-${folderState}`} style={splitStyle}>
+  return <div className={`springboard is-folder-${folderState}`} style={splitStyle} inert={inactive} aria-hidden={inactive || undefined}>
     {folderIsActive && <div className="springboard-folder-wallpaper-dim" aria-hidden="true" />}
     <div
       className="springboard-pages"
