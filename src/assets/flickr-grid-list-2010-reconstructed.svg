@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+  <!-- RECONSTRUCTED: deterministic Flickr 1.2 grid/list function mark; not original bundle artwork. -->
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f5f5"/>
+      <stop offset="1" stop-color="#9da3a7"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#tile)" stroke="#62686c" stroke-width="1.5">
+    <rect x="5" y="6" width="8" height="8" rx="1"/>
+    <rect x="16" y="6" width="8" height="8" rx="1"/>
+    <rect x="27" y="6" width="8" height="8" rx="1"/>
+    <rect x="5" y="17" width="8" height="8" rx="1"/>
+    <rect x="16" y="17" width="8" height="8" rx="1"/>
+    <rect x="27" y="17" width="8" height="8" rx="1"/>
+    <rect x="5" y="28" width="8" height="7" rx="1"/>
+    <rect x="16" y="28" width="8" height="7" rx="1"/>
+    <rect x="27" y="28" width="8" height="7" rx="1"/>
+  </g>
+  <path d="M6 7h6M17 7h6M28 7h6" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1"/>
+</svg>

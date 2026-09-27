@@ -3,6 +3,7 @@ import { DeviceAudio } from "../audio/deviceAudio";
 import { MessagesEvent, MessagesState, MobileSMSMessage, shouldScheduleDadLoveReply, shouldScheduleMomLoveReply, shouldScheduleMomReply } from "../state/messagesState";
 import { IOS4Input } from "./IOS4KeyboardSystem";
 import { PendingMediaAttachment } from "./MediaAttachmentPresentation";
+import { IOS4NavigationBackButton } from "./IOS4NavigationBackButton";
 
 type MobileSMSContainerProps = {
   state: MessagesState;
@@ -57,10 +58,11 @@ export function MobileSMSContainer({ state, dispatch, currentElapsedMs, currentD
         type="button" onClick={() => dispatch({ type: "TOGGLE_LIST_EDIT" })}
         data-control-evidence="PERIOD-EVIDENCE"
       >{state.editingConversations ? "Done" : "Edit"}</button>}
-      {conversationOpen && <button
+      {conversationOpen && <IOS4NavigationBackButton
         className="mobilesms-back-button"
+        label="Messages"
         onClick={() => dispatch({ type: "BACK_TO_LIST" })}
-      >Messages</button>}
+      />}
       <strong>{conversationOpen ? contactName : "Messages"}</strong>
       {!conversationOpen && <span
         className="mobilesms-compose-control-hold"

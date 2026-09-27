@@ -356,8 +356,12 @@ button, input { font: inherit; }
 .mobilesms-navigation-bar > strong { color: #fff; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 20px; font-weight: bold; line-height: 44px; }
 .mobilesms-list-edit-control { cursor: pointer; padding: 0; border: 0; background: transparent; position: absolute; left: 10px; top: 0; height: 44px; color: #fff; font-size: 13px; font-weight: bold; line-height: 44px; text-shadow: 0 -1px 1px #26384e; }
 .mobilesms-compose-control-hold { position: absolute; right: 8px; top: 7px; width: 30px; height: 30px; }
-.mobilesms-back-button { position: absolute; z-index: 1; left: 14px; top: 7px; height: 30px; padding: 0 10px 0 8px; color: #fff; border: 1px solid #29425f; border-left: 0; border-radius: 0 5px 5px 0; background: linear-gradient(#849bb4 0%,#617c9b 49%,#3f6083 52%,#4e6d8e 100%); box-shadow: inset 0 1px rgba(255,255,255,.4), inset 0 -1px rgba(0,0,0,.16); font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 14px; font-weight: bold; line-height: 28px; text-shadow: 0 -1px 1px #26384e; }
-.mobilesms-back-button::before { content: ""; position: absolute; z-index: -1; left: -8px; top: 4px; width: 20px; height: 20px; transform: rotate(45deg); border: 1px solid #29425f; border-right: 0; border-top: 0; border-radius: 3px 0 3px 0; background: linear-gradient(135deg,#8299b2 0%,#597694 52%,#426486 100%); box-shadow: inset 1px 1px rgba(255,255,255,.24); }
+.ios4-navigation-back-button { height: 30px; padding: 0; overflow: visible; color: #fff; border: 0; border-radius: 0; background: transparent; box-shadow: none; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 14px; font-weight: bold; line-height: 30px; text-shadow: 0 -1px 1px #26384e; }
+.ios4-navigation-back-artwork { position: absolute; inset: 0; display: block; overflow: visible; pointer-events: none; filter: drop-shadow(0 1px .25px rgba(21,43,66,.38)); }
+.ios4-navigation-back-label { position: absolute; left: 10px; right: 1px; top: 0; height: 30px; display: grid; place-items: center; white-space: nowrap; pointer-events: none; }
+.mobilesms-navigation-bar > .mobilesms-back-button { position: absolute; z-index: 1; left: 6px; top: 7px; }
+.mobilesms-navigation-bar > .mobilesms-back-button:active .ios4-navigation-back-artwork { filter: brightness(.8) drop-shadow(0 1px .25px rgba(21,43,66,.38)); }
+.mobilesms-navigation-bar > .mobilesms-back-button:active .ios4-navigation-back-highlight { opacity: .15; }
 .mobilesms-conversation-list { flex: 1 1 auto; min-height: 0; overflow-x: hidden; overflow-y: auto; background: #fff; }
 .mobilesms-conversation-row { width: 100%; height: 61px; padding: 7px 11px 6px 12px; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; column-gap: 8px; color: #000; border: 0; border-bottom: 1px solid #b7b7b7; background: #fff; text-align: left; }
 .mobilesms-conversation-copy { min-width: 0; display: grid; align-content: center; gap: 2px; }
@@ -387,6 +391,7 @@ button, input { font: inherit; }
 .twitter-navigation-bar > button { position: absolute; top: 7px; height: 30px; padding: 0 8px; color: #fff; border: 1px solid #315b76; border-radius: 5px; background: linear-gradient(#84abc4 0%,#6594b3 48%,#4e81a2 52%,#3d7092 100%); box-shadow: inset 0 1px rgba(255,255,255,.42),inset 0 -1px rgba(18,53,75,.34); font-size: 12px; font-weight: bold; text-shadow: 0 -1px rgba(0,0,0,.62); }
 .twitter-account-button { left: 5px; width: 75px; padding: 0; }
 .twitter-back-button { left: 5px; min-width: 70px; padding: 0 9px 0 14px; border: 0 !important; border-radius: 0 !important; background: transparent url("../assets/twitter/chrome/twitter-back-control-2010-reconstructed.svg") center / 100% 30px no-repeat !important; box-shadow: none !important; }
+.twitter-navigation-bar > .twitter-back-button:active { filter: brightness(.78); }
 .twitter-close-button { left: 7px; }
 .twitter-compose-button { right: 5px; width: 34px; padding: 0 !important; }
 .twitter-send-button { right: 7px; }
@@ -733,6 +738,7 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .instagram-navigation-bar button:active { background: linear-gradient(#3b6686,#2d5877 52%,#244a65); box-shadow: inset 0 1px 2px rgba(0,0,0,.32); }
 .instagram-navigation-bar button:disabled { opacity: .55; }
 .instagram-navigation-bar button.instagram-navigation-cancel { width: 52px; min-width: 52px; padding: 0 0 0 6px; border: 0; border-radius: 0; background: url("../assets/instagram/chrome/instagram-back-button-2010-reconstructed.svg") center / 52px 31px no-repeat; box-shadow: none; line-height: 31px; }
+.instagram-navigation-bar button.instagram-navigation-cancel:active { filter: brightness(.78); }
 .instagram-navigation-bar button.instagram-navigation-next:not(.instagram-profile-relationship-control) { width: 42px; min-width: 42px; padding: 0; }
 .instagram-navigation-icon-button.instagram-refresh-button { width: 35px; padding: 0; display: grid; place-items: center; }
 .instagram-refresh-button img { width: 18px; height: 22px; display: block; }
@@ -821,6 +827,8 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .foursquare-navigation-bar > strong { max-width: 206px; overflow: hidden; font-size: 17px; line-height: 44px; text-overflow: ellipsis; white-space: nowrap; }
 .foursquare-navigation-bar > strong.is-wordmark { font-size: 21px; font-weight: 700; letter-spacing: -.8px; }
 .foursquare-navigation-bar > button { position: absolute; left: 6px; top: 7px; height: 30px; padding: 0 9px; color: #fff; border: 1px solid #1b536d; border-radius: 4px; background: linear-gradient(#55a0ba,#2d7894); box-shadow: inset 0 1px rgba(255,255,255,.32); font-size: 12px; font-weight: bold; text-shadow: 0 -1px rgba(0,0,0,.55); }
+.foursquare-navigation-bar.has-left-control > button { box-sizing: border-box; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foursquare-navigation-bar.has-left-control > strong { max-width: 132px; }
 .foursquare-content { min-height: 0; overflow: hidden; background: #fff; }
 .foursquare-root { width: 100%; height: 100%; overflow-y: auto; background: #fff; }
 .foursquare-tab-bar { position: relative; z-index: 3; width: 320px; height: 49px; display: grid; grid-template-columns: repeat(5,64px); border-top: 1px solid #17272d; background: linear-gradient(#50636b 0%,#35464d 48%,#24343a 52%,#18262b 100%); box-shadow: inset 0 1px rgba(255,255,255,.2); }
@@ -1428,6 +1436,7 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .facebook-navigation-bar .facebook-2010-nav-button.is-normal.is-right { min-width: 44px; }
 .facebook-navigation-bar .facebook-2010-nav-button.is-static { min-width: 62px; padding: 0 7px; opacity: 1; }
 .facebook-navigation-bar > .facebook-directional-back-control { left: 5px; top: 7px; height: 30px; padding: 0; overflow: visible; color: #fff; border: 0; border-radius: 0; background: transparent; box-shadow: none; line-height: 30px; }
+.facebook-navigation-bar > .facebook-directional-back-control:active .facebook-directional-back-artwork { filter: brightness(.78); }
 .facebook-directional-back-artwork { position: absolute; inset: 0; display: block; overflow: visible; pointer-events: none; }
 .facebook-directional-back-label { position: absolute; left: 10px; right: 1px; top: 0; height: 30px; display: grid; place-items: center; white-space: nowrap; pointer-events: none; }
 .facebook-navigation-bar .facebook-2010-nav-button.is-icon { width: 32px; padding: 0; font-size: 22px; line-height: 27px; }

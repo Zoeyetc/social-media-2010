@@ -12,6 +12,8 @@
 .flickr-nav .flickr-back { left:7px; }
 .flickr-nav .flickr-right { right:7px; }
 .flickr-nav .flickr-upload-icon { width:35px; border:0; background:transparent; padding:0; }
+.flickr-nav .flickr-grid-list-control { width:35px; padding:0; display:grid; place-items:center; }
+.flickr-grid-list-artwork { width:20px; height:20px; display:block; }
 .flickr-upload-icon svg { width:28px; height:24px; }
 .flickr-info { position:absolute; left:14px; width:17px; height:17px; font:bold 14px Georgia,serif; border:1px solid #888; border-radius:50%; text-align:center; color:#888; }
 .flickr-search-launch { height:37px; flex:0 0 37px; padding:5px 8px; background:linear-gradient(#eee,#c5c5c5); border:0; }

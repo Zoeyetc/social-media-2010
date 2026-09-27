@@ -7,6 +7,7 @@ import "../styles/flickr.css";
 import type { FlickrMailController } from "../mail/flickrMailController";
 import { FlickrMailComposer } from "./FlickrMailComposer";
 import { useRafScrollPersistence } from "./scrollPersistence";
+import flickrGridListIcon from "../assets/flickr-grid-list-2010-reconstructed.svg";
 
 type FlickrContainerProps = {
   state: FlickrState;
@@ -73,7 +74,7 @@ export function FlickrContainer({ state, dispatch, mail, elapsedMs = 0, experien
       {view === "home" || view === "search" ? <Wordmark /> : view === "recent" || view === "activity" ? <div className="flickr-segments"><button aria-pressed={view === "activity"} onClick={() => navigate("activity")}>Activity</button><button aria-pressed={view === "recent"} onClick={() => navigate("recent")}>Uploads</button></div> : <strong>{title}</strong>}
       {view === "home" && <button type="button" className="flickr-right flickr-upload-icon" aria-label="Upload Photo" onClick={() => state.pendingUpload || state.upload ? navigate("upload") : beginMedia()}><svg viewBox="0 0 28 24" aria-hidden="true"><path d="M2 8h6l2-4h9l2 4h5v14H2z" fill="#eee" stroke="#777"/><circle cx="14" cy="14" r="5" fill="#444"/><path d="M24 12V1m-4 4 4-4 4 4" fill="none" stroke="#174f86" strokeWidth="2"/></svg></button>}
       {view === "search" && <button className="flickr-right" onClick={() => navigate("home")}>Cancel</button>}
-      {view === "photostream" && <button className="flickr-right" aria-label="Toggle grid and list" onClick={() => dispatch({ type: "TOGGLE_GRID" })}>▦</button>}
+      {view === "photostream" && <button className="flickr-right flickr-grid-list-control" aria-label="Toggle grid and list" onClick={() => dispatch({ type: "TOGGLE_GRID" })}><img className="flickr-grid-list-artwork" src={flickrGridListIcon} alt="" aria-hidden="true" /></button>}
       {view === "comments" && <button className="flickr-right" onClick={() => dispatch({ type: "COMPOSE_COMMENT" })}>Comment</button>}
       {view === "compose-comment" && <button className="flickr-right" disabled={!state.commentDraft.trim()} onClick={() => dispatch({ type: "SUBMIT_COMMENT", author: identity.name })}>Post</button>}
     </header>}

@@ -34,7 +34,7 @@ export function FoursquareContainer({ state, dispatch, currentDeviceDateTime, on
 
   const title = state.currentView === "leaderboard" ? "Leaderboard" : state.currentView === "venue" ? state.venueSubview === "summary" ? venue?.name ?? "Venue" : state.venueSubview === "checkIn" ? "Check In" : state.venueSubview === "info" ? "Info" : state.venueSubview === "tips" ? "Tips" : "" : state.activeTab === "friends" ? "foursquare" : TAB_PRESENTATION[state.activeTab].label;
   return <section className="foursquare-container" aria-label="Foursquare" data-chrome-status="RECONSTRUCTED_FROM_PERIOD_SCREENSHOT">
-    <header className="foursquare-navigation-bar">
+    <header className={`foursquare-navigation-bar${state.currentView === "venue" || state.currentView === "leaderboard" ? " has-left-control" : ""}`}>
       {state.currentView === "venue" && <button type="button" onClick={() => dispatch({ type: state.venueSubview === "summary" ? "SHOW_PLACES" : "SHOW_VENUE_SUMMARY" })}>{state.venueSubview === "summary" ? "Places" : state.venueSubview === "result" ? "Close" : venue?.name ?? "Venue"}</button>}
       {state.currentView === "leaderboard" && <button type="button" onClick={() => dispatch({ type: "SHOW_PROFILE" })}>Profile</button>}
       <strong className={state.activeTab === "friends" && state.currentView === "root" ? "is-wordmark" : ""}>{title}</strong>
