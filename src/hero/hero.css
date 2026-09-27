@@ -214,7 +214,15 @@ button, input { font: inherit; }
     overflow: visible;
   }
   body { overflow: auto; }
-  .hero-sandbox { min-height: 700px; }
+  /* Canvas dimensions track visible Safari height; fit uses its measured size. */
+  .hero-sandbox { min-height: 0; height: 100dvh; }
+  .hero-scene {
+    top: env(safe-area-inset-top, 0px);
+    right: env(safe-area-inset-right, 0px);
+    bottom: env(safe-area-inset-bottom, 0px);
+    left: env(safe-area-inset-left, 0px);
+  }
+  #hero-root:has(> .public-twitter-outro) > .hero-sandbox { height: auto; }
   .hero-identity {
     top: 14vh;
     left: 24px;

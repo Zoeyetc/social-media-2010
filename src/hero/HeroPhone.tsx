@@ -7,7 +7,7 @@ import { measureHeroScreenGeometry } from "./heroScreenGeometry";
 import { useHeroInspectSheen } from "./useHeroInspectSheen";
 import { captureBootReturn, bootReturnPose } from "./heroBootReturn";
 import { heroPresentationReady } from "./heroPresentationReady";
-import { inspectScale } from "./heroMobileScale";
+import { DESKTOP_SOFTWARE_SCALE, inspectScale, mobilePhoneScale } from "./heroMobileScale";
 import {
   ProductionIPhone4Model,
   type IPhone4ModelDiagnostics,
@@ -26,7 +26,6 @@ const INSPECT_Y = MathUtils.degToRad(-12);
 const START_ROTATION_X = MathUtils.degToRad(10);
 const START_ROTATION_Y = MathUtils.degToRad(-34);
 // Shared final presentation size; software and hardware inherit this transform.
-const FINAL_PRESENTATION_SCALE = { desktop: 1.18 * 1.30, narrow: 1.02 * 1.30 } as const;
 
 type HeroPhoneProps = Readonly<{
   resetGeneration: number;
@@ -93,6 +92,11 @@ export function HeroPhone({
   const [bootAmount, setBootAmount] = useState(0);
   const { camera, invalidate, size, viewport } = useThree();
   const narrow = size.width < 760;
+  const fitViewport = { width: size.width, height: size.height,
+    fovDegrees: "fov" in camera ? Number(camera.fov) : 38,
+    cameraDistance: camera.position.z };
+  const inspectFit = inspectScale(narrow, fitViewport);
+  const softwareFit = narrow ? mobilePhoneScale(fitViewport, "software") : DESKTOP_SOFTWARE_SCALE;
   const initialX = narrow ? 0 : Math.min(2.15, size.width / 420);
   const initialY = narrow ? -0.72 : 0;
   // Keep the ending phone inside its right-hand region near the breakpoint;
@@ -144,8 +148,8 @@ export function HeroPhone({
 
     let x = initialX;
     let y = initialY;
-    let scale = narrow ? 0.76 : 0.9;
-    const finalScale = narrow ? FINAL_PRESENTATION_SCALE.narrow : FINAL_PRESENTATION_SCALE.desktop;
+    let scale = narrow ? inspectFit * 0.64 : 0.9;
+    const finalScale = softwareFit;
     let detachProgress = phase === "identity" ? 0 : 1;
     let nextBootAmount = 0;
     let alignmentFinished = false;
@@ -155,7 +159,7 @@ export function HeroPhone({
       const eased = restrainedEase(detachProgress);
       x = MathUtils.lerp(initialX, 0, eased);
       y = MathUtils.lerp(initialY, 0, eased);
-      scale = MathUtils.lerp(scale, inspectScale(narrow), eased);
+      scale = MathUtils.lerp(scale, inspectFit, eased);
       rotation.current.x = MathUtils.lerp(START_ROTATION_X, INSPECT_X, eased);
       rotation.current.y = MathUtils.lerp(START_ROTATION_Y, INSPECT_Y, eased);
       invalidate();
@@ -163,14 +167,14 @@ export function HeroPhone({
     } else if (phase === "inspect") {
       x = 0;
       y = 0;
-      scale = inspectScale(narrow);
+      scale = inspectFit;
 
     } else if (phase === "powering-on" || phase === "front-aligned" || phase === "experience" || phase === "depleted" || phase === "power-loss") {
       x = 0;
       y = 0;
       const progress = phase !== "powering-on" ? 1 : Math.min(1, phaseElapsed.current / HERO_POWER_DURATION_SECONDS);
       const eased = restrainedEase(progress);
-      scale = MathUtils.lerp(inspectScale(narrow), finalScale, eased);
+      scale = MathUtils.lerp(inspectFit, finalScale, eased);
       if (phase !== "powering-on") rotation.current = { x: 0, y: 0 };
       if (bootStartedAt !== null && !bootComplete && (phase === "powering-on" || phase === "front-aligned")) {
         nextBootAmount = heroBootOpacity(performance.now() - bootStartedAt, bootCriticalReady);
@@ -190,7 +194,7 @@ export function HeroPhone({
       const eased = restrainedEase(progress / 0.75);
       x = MathUtils.lerp(0, endingX, eased);
       y = MathUtils.lerp(0, initialY, eased);
-      scale = MathUtils.lerp(finalScale, narrow ? 0.76 : 0.9, eased);
+      scale = MathUtils.lerp(finalScale, narrow ? inspectFit * 0.64 : 0.9, eased);
       rotation.current = { x: START_ROTATION_X * eased, y: START_ROTATION_Y * eased };
       detachProgress = progress; // Return progress, consumed by the existing cable.
       invalidate();
