@@ -105,7 +105,8 @@ try {
     view.onLifecycleAction({type:"DETACH_COMPLETE"}); await flush();
     view.onLifecycleAction({type:"PRESS_POWER",startedAt:clock}); await flush();
     view.onLifecycleAction({type:"ALIGN_COMPLETE"}); await flush();
-    await tick(20000); view.onHandoff(); view.onLifecycleAction({type:"BOOT_COMPLETE",now:clock}); await flush();
+    await tick(32); await tick(32); view.screen.props.warmup.onKeyboardReady(); await flush();
+    await tick(19936); view.onHandoff(); view.onLifecycleAction({type:"BOOT_COMPLETE",now:clock}); await flush();
   };
   const wake = async () => { if(phase()==="sleeping"){view.powerControl.begin();view.powerControl.end();await flush();} };
   await start();

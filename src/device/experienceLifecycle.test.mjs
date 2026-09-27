@@ -132,7 +132,16 @@ try {
     view.onLifecycleAction({ type: "ALIGN_COMPLETE" }); await flush();
     view.onHandoff(); await flush();
     assert.equal(view.lifecycleDiagnostics.sessionStartedAt, null, "early handoff cannot consume narrative time");
-    await tick(20000);
+    await tick(32); await tick(32);
+    assert.equal(view.screen.props.warmup.keyboardRequested, true, "keyboard structure is requested during Apple-logo boot");
+    assert.equal(view.bootCriticalReady, false);
+    await tick(19936);
+    view.onHandoff(); view.onLifecycleAction({ type: "BOOT_COMPLETE", now: clock }); await flush();
+    assert.equal(view.lifecycle.phase, "front-aligned", "minimum duration alone cannot bypass Tier 0");
+    // This controller harness does not mount DOM. Acknowledge the real retained
+    // keyboard's layout boundary, independently exercised by keyboardPrewarm.test.
+    view.screen.props.warmup.onKeyboardReady(); await flush();
+    assert.equal(view.bootCriticalReady, true);
     view.onHandoff(); view.onLifecycleAction({ type: "BOOT_COMPLETE", now: clock }); await flush();
     assert.equal(view.lifecycle.phase, "experience");
     const t0 = view.lifecycleDiagnostics.sessionStartedAt;

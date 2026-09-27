@@ -78,7 +78,6 @@ const INITIAL_KEYBOARD_STATE: IOS4KeyboardViewState = {
 };
 
 const IOS4KeyboardContext = createContext<IOS4KeyboardContextValue | null>(null);
-let measuredOpenSessionId: string | null = null;
 
 const LETTER_ROWS = [
   [..."QWERTYUIOP"],
@@ -126,13 +125,25 @@ function keepFocusedControlVisible(element: IOS4TextControl) {
   });
 }
 
-export function IOS4KeyboardSystem({ children, suspended = false, suspendReason = "app-switch", onVisibilityChange, experienceSessionId }: {
+export function IOS4KeyboardSystem({ children, suspended = false, suspendReason = "app-switch", onVisibilityChange, experienceSessionId, retainStructure = false, onStructureReady }: {
   children: ReactNode;
   suspended?: boolean;
   suspendReason?: IOS4KeyboardDismissReason;
   onVisibilityChange?: (visible: boolean) => void;
   experienceSessionId?: string | null;
+  retainStructure?: boolean;
+  onStructureReady?: () => void;
 }) {
+  const structure = useRef<HTMLElement | null>(null);
+  const warmedSession = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!retainStructure || !experienceSessionId || !structure.current || warmedSession.current === experienceSessionId) return;
+    // One bounded layout read of the real retained key tree. No focus, owner,
+    // visibility change or second keyboard instance is involved.
+    if (structure.current.offsetHeight !== 216) return; // The bounded Tier 0 deadline owns failure handling.
+    warmedSession.current = experienceSessionId;
+    onStructureReady?.();
+  }, [retainStructure, experienceSessionId, onStructureReady]);
   const activeRegistration = useRef<IOS4InputRegistration | null>(null);
   const suspendedRef = useRef(suspended);
   suspendedRef.current = suspended;
@@ -158,11 +169,6 @@ export function IOS4KeyboardSystem({ children, suspended = false, suspendReason 
       return;
     }
     const previous = activeRegistration.current;
-    if (import.meta.env.DEV && experienceSessionId && measuredOpenSessionId !== experienceSessionId) {
-      measuredOpenSessionId = experienceSessionId;
-      const openedAt = performance.now();
-      requestAnimationFrame(() => console.info("[IOS4Keyboard] first open/layout ms", Math.round(performance.now() - openedAt)));
-    }
     if (previous && previous.inputId !== registration.inputId) previous.onDismiss?.("input-switch");
     activeRegistration.current = registration;
     setState(current => ({
@@ -175,7 +181,7 @@ export function IOS4KeyboardSystem({ children, suspended = false, suspendReason 
       keyboardVisible: true,
     }));
     keepFocusedControlVisible(registration.element);
-  }, [experienceSessionId]);
+  }, []);
 
   const refreshKeyboard = useCallback((registration: IOS4InputRegistration) => {
     if (suspendedRef.current) return;
@@ -281,7 +287,7 @@ export function IOS4KeyboardSystem({ children, suspended = false, suspendReason 
   return <IOS4KeyboardContext.Provider value={contextValue}>
     <div className={`ios4-keyboard-system${keyboardVisible ? " is-keyboard-visible" : ""}`} data-keyboard-owner={keyboardVisible ? state.activeInputId ?? undefined : undefined} data-keyboard-visible={keyboardVisible}>
       <div className="ios4-keyboard-viewport">{children}</div>
-      {!suspended && <section className="ios4-keyboard" aria-label="iOS 4.1 software keyboard" aria-hidden={!keyboardVisible}>
+      {(!suspended || retainStructure) && <section ref={structure} className="ios4-keyboard" aria-label="iOS 4.1 software keyboard" aria-hidden={!keyboardVisible}>
         {rows.map((row, index) => <div className={`ios4-keyboard-row is-row-${index + 1}${state.mode !== "letters" && index === 1 ? " is-ten-key-punctuation" : ""}`} key={`${state.mode}-${index}`}>
           {row.map(key => <IOS4KeyboardKey key={key} label={key} onPress={() => pressCharacter(key)} />)}
         </div>)}

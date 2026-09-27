@@ -34,6 +34,7 @@ type HeroPhoneProps = Readonly<{
   runtimePower?: RuntimePowerControl;
   bootStartedAt: number | null;
   bootComplete: boolean;
+  bootCriticalReady?: boolean;
   phase: HeroPhase;
   frontDepth?: boolean;
   frontScreenOff?: boolean;
@@ -61,6 +62,7 @@ export function HeroPhone({
   runtimePower,
   bootStartedAt,
   bootComplete,
+  bootCriticalReady = true,
   phase,
   frontDepth = false,
   frontScreenOff = false,
@@ -171,7 +173,7 @@ export function HeroPhone({
       scale = MathUtils.lerp(inspectScale(narrow), finalScale, eased);
       if (phase !== "powering-on") rotation.current = { x: 0, y: 0 };
       if (bootStartedAt !== null && !bootComplete && (phase === "powering-on" || phase === "front-aligned")) {
-        nextBootAmount = heroBootOpacity(performance.now() - bootStartedAt);
+        nextBootAmount = heroBootOpacity(performance.now() - bootStartedAt, bootCriticalReady);
         invalidate();
       }
       if (phase === "power-loss") {

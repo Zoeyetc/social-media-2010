@@ -66,7 +66,7 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
     if (id === "\0lifecycle-persistence") return Object.keys(persistence).map(key => `export const ${key}=globalThis.__lifecyclePersistence.${key};`).join("\n");
   },
   transform(code, id) {
-    if (id.endsWith("/src/device/useVoiceMemos.ts")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
+    if (/\/src\/device\/(?:use[A-Z]\w*|scrollPersistence)\.tsx?$/.test(id)) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
     if (id.endsWith("/src/device/App.tsx")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";').replaceAll("import.meta.env.DEV", process.argv.includes("--production") ? "false" : "true");
     if (/\/src\/device\/(TwitterContainer|FacebookContainer|MobileSMSContainer|FlickrContainer|TumblrContainer)\.tsx$/.test(id)) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";').replaceAll('useSessionIdentity()', '({ name: "Media Visitor" })');
     if (id.endsWith("/src/device/DeviceScreen.tsx")) return code.replace('  useDeviceScreenDiagnostics(presentation.presenter, presentation.experienceSessionId);', '');
@@ -141,7 +141,8 @@ try {
     view.onLifecycleAction({type:"DETACH_COMPLETE"});await flush();
     view.onLifecycleAction({type:"PRESS_POWER",startedAt:clock});await flush();
     view.onLifecycleAction({type:"ALIGN_COMPLETE"});await flush();
-    await tick(20000);view.onHandoff();view.onLifecycleAction({type:"BOOT_COMPLETE",now:clock});await flush();
+    await tick(32);await tick(32);view.screen.props.warmup.onKeyboardReady();await flush();
+    await tick(19936);view.onHandoff();view.onLifecycleAction({type:"BOOT_COMPLETE",now:clock});await flush();
     screen().actions.completeScreenUnlock();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
     const sessionId=view.lifecycleDiagnostics.experienceSessionId;
     assert.equal(sceneSelections,run+1);

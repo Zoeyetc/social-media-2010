@@ -6,16 +6,21 @@ type AppLaunchContainerProps = {
   dispatch: Dispatch<AppRuntimeEvent>;
   onClosed: () => void;
   children?: ReactNode;
+  retainShell?: boolean;
+  inactive?: boolean;
 };
 
-export function AppLaunchContainer({ runtime, dispatch, onClosed, children }: AppLaunchContainerProps) {
-  if (runtime.phase === "none") return null;
+export function AppLaunchContainer({ runtime, dispatch, onClosed, children, retainShell = false, inactive = false }: AppLaunchContainerProps) {
+  if (runtime.phase === "none" && !retainShell) return null;
 
   return <div
-    className={`app-launch-container is-${runtime.phase}`}
+    className={`app-launch-container is-${runtime.phase}${inactive ? " is-prewarm" : ""}`}
+    aria-hidden={inactive || undefined}
+    inert={inactive}
     data-app-id={runtime.activeAppId ?? undefined}
     onAnimationEnd={event => {
       if (event.target !== event.currentTarget) return;
+      if (inactive) return;
       if (runtime.phase === "closing") {
         dispatch({ type: "ANIMATION_COMPLETE" });
         onClosed();

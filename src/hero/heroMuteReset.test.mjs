@@ -4,16 +4,17 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { stripTypeScriptTypes } from "node:module";
 import * as THREE from "three";
+import { matchesPreview } from "../audio/itunesPreviewMatcher.mjs";
 
-const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8").replace(/^import .*;\n/gm, "").replaceAll("import.meta.env.DEV", "false").replaceAll("export ", "");
+const read = path => fs.readFileSync(new URL(path, import.meta.url), "utf8").replace(/^import .*;\n/gm, "").replace(/^export \{.*\} from .*;\n/gm, "").replaceAll("import.meta.env.DEV", "false").replaceAll("import.meta.env.PROD", "false").replaceAll("export ", "");
 const { heroTransition, initialHeroState } = new Function(stripTypeScriptTypes(read("./HeroController.ts")) + ";return {heroTransition, initialHeroState};")();
 let plays = 0, previewPlays = 0;
 const sounds = [], requests = [];
 // Evaluate the production resolver with only its transport boundary replaced.
 // No global fetch or browser audio implementation is reachable from this test.
 const transport = (url, options) => new Promise(resolve => requests.push({ url, signal: options.signal, resolve }));
-const ITunesPreviewResolver = new Function("fetch",
-  stripTypeScriptTypes(read("../audio/itunesPreviewResolver.ts"), { mode: "transform" }) + ";return ITunesPreviewResolver;")(transport);
+const ITunesPreviewResolver = new Function("fetch", "matchesPreview",
+  stripTypeScriptTypes(read("../audio/itunesPreviewResolver.ts"), { mode: "transform" }) + ";return ITunesPreviewResolver;")(transport, matchesPreview);
 class AudioStub {
   constructor() { this.src = ""; this.volume = 1; sounds.push(this); }
   play() { if (this.src.startsWith("https:")) previewPlays++; else plays++; return Promise.resolve(); }
@@ -127,7 +128,7 @@ for (let loop = 0; loop < 2; loop++) {
   audio.lock(); assert.equal(plays, loop, "muted sound discarded");
   state = heroTransition(state, { type: "PRESS_POWER", startedAt: 0 }); render();
   state = heroTransition(state, { type: "ALIGN_COMPLETE" }); render();
-  state = heroTransition(state, { type: "BOOT_COMPLETE", now: 20000 });
+  state = heroTransition(state, { type: "BOOT_COMPLETE", now: 20000, bootCriticalReady: true });
   for (const powerState of ["awake", "asleep", "awake"]) {
     render(false, { state: powerState }); render(false, { state: powerState });
     assert.equal(audio.diagnostics.muteMode, "silent", "same-session rerenders/sleep/wake preserve mute");

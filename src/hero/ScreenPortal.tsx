@@ -10,20 +10,20 @@ export type ScreenPortalHandle = { update: (quad: ProjectedScreenQuad | null) =>
 /** The target and software child persist across phases. Only presentation changes. */
 export const ScreenPortal = forwardRef<ScreenPortalHandle, {
   host: HTMLDivElement; state: ScreenPortalState; debug: boolean; software?: ReactElement;
-  bootStartedAt: number | null; bootComplete: boolean;
-}>(function ScreenPortal({host,state,debug,software,bootStartedAt,bootComplete}, ref) {
+  bootStartedAt: number | null; bootComplete: boolean; bootCriticalReady?: boolean;
+}>(function ScreenPortal({host,state,debug,software,bootStartedAt,bootComplete,bootCriticalReady = true}, ref) {
   const bootImage = useRef<HTMLImageElement>(null);
   const bootActive = bootStartedAt !== null && !bootComplete;
   useEffect(() => {
     if (!bootActive || bootStartedAt === null) return;
     let frame: number;
     const paint = () => {
-      if (bootImage.current) bootImage.current.style.opacity = String(heroBootOpacity(performance.now() - bootStartedAt));
+      if (bootImage.current) bootImage.current.style.opacity = String(heroBootOpacity(performance.now() - bootStartedAt, bootCriticalReady));
       frame = requestAnimationFrame(paint);
     };
     paint();
     return () => cancelAnimationFrame(frame);
-  }, [bootActive, bootStartedAt]);
+  }, [bootActive, bootStartedAt, bootCriticalReady]);
   const surface = useRef<HTMLDivElement>(null);
   const readout = useRef<HTMLOutputElement>(null);
   const markers = useRef<(HTMLSpanElement | null)[]>([]);

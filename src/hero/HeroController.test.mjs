@@ -6,7 +6,7 @@ import { stripTypeScriptTypes } from "node:module";
 const source = fs.readFileSync(new URL("./HeroController.ts", import.meta.url), "utf8").replace(/^import type .*;\n/gm, "");
 const { heroTransition: step, initialHeroState, heroCanStartBoot: power, heroBootOpacity: opacity, HERO_BOOT_DURATION_MS } = await import(`data:text/javascript;base64,${Buffer.from(stripTypeScriptTypes(source)).toString("base64")}`);
 assert.equal(HERO_BOOT_DURATION_MS, 20000);
-assert.deepEqual([0, 100, 200, 300, 400, 10000, 19200, 19600, 20000].map(opacity), [0, 0, .5, 1, 1, 1, 1, .5, 0]);
+assert.deepEqual([0, 100, 200, 300, 400, 10000, 19200, 19600, 20000].map(ms => opacity(ms)), [0, 0, .5, 1, 1, 1, 1, .5, 0]);
 for (const phase of ["inspect", "front-aligned", "powering-on"]) {
   assert.equal(power({ ...initialHeroState, phase, awaitingPower: true }), true, "availability is semantic, not pose-based");
   assert.equal(power({ ...initialHeroState, phase, awaitingPower: true, bootStartedAt: 100 }), false);
@@ -26,14 +26,15 @@ for (let loop = 0; loop < 2; loop++) {
   state = step(state, { type: "PRESS_POWER", startedAt });
   assert.equal(power(state), false);
   assert.equal(step(state, { type: "PRESS_POWER", startedAt: startedAt + 10 }), state);
-  assert.equal(step(state, { type: "BOOT_COMPLETE", now: startedAt + 20000 }), state, "alignment must complete first");
+  assert.equal(step(state, { type: "BOOT_COMPLETE", now: startedAt + 20000, bootCriticalReady: true }), state, "alignment must complete first");
   state = step(state, { type: "ALIGN_COMPLETE" });
   for (const ms of [0, 750, 1800, 10000, 19999]) {
-    assert.equal(step(state, { type: "BOOT_COMPLETE", now: startedAt + ms }), state);
+    assert.equal(step(state, { type: "BOOT_COMPLETE", now: startedAt + ms, bootCriticalReady: true }), state);
     assert.equal(state.bootComplete, false);
     assert.equal(power(state), false);
   }
-  state = step(state, { type: "BOOT_COMPLETE", now: startedAt + 20000 });
+  assert.equal(step(state, { type: "BOOT_COMPLETE", now: startedAt + 20000 }), state, "Tier 0 is required");
+  state = step(state, { type: "BOOT_COMPLETE", now: startedAt + 20000, bootCriticalReady: true });
   assert.equal(state.phase, "experience");
   assert.equal(state.bootComplete, true);
   assert.equal(step(state, { type: "BOOT_COMPLETE", now: startedAt + 21000 }), state);

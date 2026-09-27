@@ -61,6 +61,7 @@ import { AmbientWorld } from "../world/AmbientWorld";
 import type { CameraStillCapture } from "../world/AmbientWorld";
 import { selectCameraVideoScene, type CameraVideoSceneSelection } from "../world/cameraVideoScenes";
 import { useReleasePerformanceDiagnostics } from "./useReleasePerformanceDiagnostics";
+import { useBootWarmup } from "./useBootWarmup";
 
 const TERMINAL_DEPLETED_DISPLAY_MS = 1_500;
 const AUTO_SLEEP_DELAY_MS = 60_000;
@@ -104,14 +105,14 @@ type CameraCaptureQaWindow = Window & {
   __SM2010_CAMERA_CAPTURE_QA__?: CameraCaptureQaHandle;
 };
 
-function finishSoftwareBoot(current: Session): Session {
+function finishSoftwareBoot(current: Session, preparedEvents = buildSessionTimelineEvents()): Session {
   const startsSession = current.sessionStartEpochMs === null;
   return {
     ...current,
     phase: "locked",
     sessionStartEpochMs: startsSession ? Date.now() : current.sessionStartEpochMs,
     deviceEvents: startsSession
-      ? scheduleDeviceEvents([], buildSessionTimelineEvents())
+      ? scheduleDeviceEvents([], preparedEvents)
       : current.deviceEvents,
     deliveredTimelineEventIds: startsSession ? [] : current.deliveredTimelineEventIds,
   };
@@ -277,6 +278,14 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const lockScreenTime = formatLockScreenTime(deviceDateTime);
   const deviceDate = formatDeviceDate(deviceDateTime);
   const activeVideoObjectUrlCount = cameraRoll.records.reduce((count, record) => count + (record.mediaKind === "video" ? 2 : 0), 0);
+  const warmup = useBootWarmup(session.experienceSessionId, presenter === "hero" ? lifecycle.bootStartedAt : null,
+    () => advanceLifecycle({ type: "BOOT_FAILED" }));
+  useEffect(() => {
+    if (session.phase === "app") warmup.firstApp();
+  }, [session.phase, session.experienceSessionId]);
+  useEffect(() => {
+    if (notificationKeyboardVisible) warmup.firstKeyboard();
+  }, [notificationKeyboardVisible, session.experienceSessionId]);
   useReleasePerformanceDiagnostics({
     lifecyclePhase: presenter === "hero" ? lifecycle.phase : "legacy",
     softwarePhase: session.phase,
@@ -288,8 +297,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     schedulerPendingCount: session.deviceEvents.length,
     currentApp: session.phase === "app" ? appRuntime.activeAppId : null,
     powerHoldRafActive: powerFrame.current !== null,
-    screenPortalBootRafActive: presenter === "hero" && lifecycle.bootStartedAt !== null && !lifecycle.bootComplete,
-  });
+    screenPortalBootRafActive: presenter === "hero" && (lifecycle.phase === "powering-on" || lifecycle.phase === "front-aligned") && lifecycle.bootStartedAt !== null && !lifecycle.bootComplete,
+  }, warmup.snapshot);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -1138,10 +1147,13 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const handoffHeroScreen = () => {
     const physical = lifecycleRef.current;
     if (physical.phase !== "front-aligned" || physical.bootStartedAt === null
-      || performance.now() - physical.bootStartedAt < HERO_BOOT_DURATION_MS) return;
+      || performance.now() - physical.bootStartedAt < HERO_BOOT_DURATION_MS || !warmup.canExit()) return;
+    const preparedEvents = warmup.preparedEvents();
+    if (!preparedEvents) return;
+    warmup.bootExited();
     recordInteraction();
     setSession(current => current.phase === "poweredOff" && current.experienceSessionId
-      ? finishSoftwareBoot(current) : current);
+      ? finishSoftwareBoot(current, preparedEvents) : current);
   };
 
   const enterPublicTwitterOutroHandle = () => {
@@ -1518,6 +1530,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   </>;
 
   const screen = <DeviceScreen
+        warmup={presenter === "hero" ? warmup.screen : undefined}
         media={{ request: mediaRequest, visible: mediaVisible, cameraActive: mediaCameraActive, requestAttachment: requestMediaAttachment, chooseSource: chooseMediaSource, selectPhoto: selectMediaPhoto }}
         presentation={{ presenter, experienceSessionId: session.experienceSessionId }}
         display={{
@@ -1639,11 +1652,16 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     {presenter === "hero" ? renderHero({
       screen,
       softwareReady: session.phase !== "hero" && session.phase !== "poweredOff" && session.phase !== "booting",
+      bootCriticalReady: warmup.bootCriticalReady,
       startExperience,
       lifecycle,
       onLifecycleAction: action => {
         // Only physical acknowledgements are accepted from the presenter.
-        if (action.type === "DETACH_COMPLETE" || action.type === "PRESS_POWER" || action.type === "ALIGN_COMPLETE" || action.type === "BOOT_COMPLETE" || action.type === "ADVANCE_RETURN") advanceLifecycle(action);
+        if (action.type === "BOOT_COMPLETE") {
+          if (warmup.canExit()) advanceLifecycle({ ...action, bootCriticalReady: true });
+          return;
+        }
+        if (action.type === "DETACH_COMPLETE" || action.type === "PRESS_POWER" || action.type === "ALIGN_COMPLETE" || action.type === "ADVANCE_RETURN") advanceLifecycle(action);
       },
       simulateExperienceEnd: () => { if (import.meta.env.DEV) finishExperience({ reason: "battery-depleted" }, true); },
       lifecycleDiagnostics: {

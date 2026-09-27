@@ -12,6 +12,7 @@ export type RuntimePowerControl = {
 export type HeroDevicePresentation = {
   screen: ReactElement;
   softwareReady: boolean;
+  bootCriticalReady: boolean;
   powerControl?: RuntimePowerControl;
   lifecycle: HeroState;
   onLifecycleAction: (action: HeroAction) => void;

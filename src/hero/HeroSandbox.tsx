@@ -33,7 +33,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
   }, [state.phase]);
   const simulateExperienceEnd = presentation.simulateExperienceEnd;
   useEffect(() => {
-    if (state.phase !== "front-aligned" || state.bootStartedAt === null || state.bootComplete) return;
+    if (state.phase !== "front-aligned" || state.bootStartedAt === null || state.bootComplete || !presentation.bootCriticalReady) return;
     const startedAt = state.bootStartedAt;
     let timer: number;
     const finishBoot = () => {
@@ -49,7 +49,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
     };
     timer = window.setTimeout(finishBoot, Math.max(0, Math.ceil(HERO_BOOT_DURATION_MS - (performance.now() - startedAt))));
     return () => window.clearTimeout(timer);
-  }, [state.phase, state.bootStartedAt, state.bootComplete]);
+  }, [state.phase, state.bootStartedAt, state.bootComplete, presentation.bootCriticalReady]);
 
   useEffect(() => {
     if (!hardwareDebug) return;
@@ -99,6 +99,7 @@ export function HeroSandbox(presentation: HeroDevicePresentation) {
         runtimePower={runtimePower}
         bootStartedAt={state.bootStartedAt}
         bootComplete={state.bootComplete}
+        bootCriticalReady={presentation.bootCriticalReady}
         softwareReady={presentation.softwareReady}
         onHomePress={presentation.onHomePress}
         phase={state.phase}

@@ -21,6 +21,7 @@ type HeroSceneProps = Readonly<{
   runtimePower?: RuntimePowerControl;
   bootStartedAt: number | null;
   bootComplete: boolean;
+  bootCriticalReady?: boolean;
   screen?: ReactElement;
   softwareReady?: boolean;
   onHomePress?: () => void;
@@ -267,7 +268,7 @@ export function HeroScene(props: HeroSceneProps) {
         <SceneContents {...props} lightingPreset={preset} reflectionV2={preset === "hybrid" && reflectionV2} charcoalFill={charcoalFill} frontDepth={frontDepth} frontScreenOff={frontScreenOff} portal={portal} portalEnabled={portalEnabled} />
       </Canvas>
       {portalEnabled && <div className="hero-screen-portal-host" ref={setPortalHost} />}
-      {portalEnabled && portalHost && <ScreenPortal ref={portal} host={portalHost} state={visiblePortalState} debug={portalDebug} software={props.screen} bootStartedAt={props.bootStartedAt} bootComplete={props.bootComplete} />}
+      {portalEnabled && portalHost && <ScreenPortal ref={portal} host={portalHost} state={visiblePortalState} debug={portalDebug} software={props.screen} bootStartedAt={props.phase === "powering-on" || props.phase === "front-aligned" ? props.bootStartedAt : null} bootComplete={props.bootComplete} bootCriticalReady={props.bootCriticalReady} />}
     </div>
   );
 }

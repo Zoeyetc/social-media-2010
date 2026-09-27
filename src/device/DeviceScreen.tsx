@@ -30,7 +30,7 @@ import { SpringBoard } from "./SpringBoard";
 import { StatusBar } from "./StatusBar";
 import { TwitterContainer } from "./TwitterContainer";
 import { IOS4KeyboardSystem } from "./IOS4KeyboardSystem";
-import { KeyboardPrewarm } from "./KeyboardPrewarm";
+import type { BootWarmupScreen } from "./useBootWarmup";
 import type { ActiveMediaRequest, MediaAttachmentRequest } from "../state/mediaAttachment";
 import { MediaSourceChooser } from "./MediaAttachmentPresentation";
 
@@ -38,6 +38,7 @@ type PhotosBrowseProps = Exclude<ComponentProps<typeof PhotosContainer>, { mode:
 
 // Presentation only: App retains the single runtime and all controller side effects.
 export type DeviceScreenProps = {
+  warmup?: BootWarmupScreen;
   media: {
     request: ActiveMediaRequest | null;
     visible: boolean;
@@ -146,7 +147,7 @@ export type DeviceScreenProps = {
   };
 };
 
-export function DeviceScreen({ presentation, display, navigation, apps, camera, overlays, actions, media }: DeviceScreenProps) {
+export function DeviceScreen({ presentation, display, navigation, apps, camera, overlays, actions, media, warmup }: DeviceScreenProps) {
   useDeviceScreenDiagnostics(presentation.presenter, presentation.experienceSessionId);
   const {
     session,
@@ -254,7 +255,6 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       onAttempt={attemptScreenPasscode}
       onCancel={cancelScreenPasscode}
     />}
-    {session.phase === "springboard" && session.experienceSessionId && <KeyboardPrewarm key={session.experienceSessionId} sessionId={session.experienceSessionId} />}
     {session.phase === "springboard" && <SpringBoard
       currentPage={springBoardPage}
       onPageChange={setSpringBoardPage}
@@ -267,17 +267,23 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       flickrUploadCount={flickrState.upload ? 1 : 0}
       onLaunchApp={launchSpringBoardApp}
     />}
-    {session.phase === "app" && <AppLaunchContainer
+    {(session.phase === "app" || warmup?.keyboardRequested) && <AppLaunchContainer
+      key={session.experienceSessionId ?? "pre-session"}
+      retainShell={warmup?.keyboardRequested}
+      inactive={session.phase !== "app"}
       runtime={appRuntime}
       dispatch={dispatchAppRuntime}
       onClosed={completeScreenAppClose}
     >
       <IOS4KeyboardSystem
         experienceSessionId={session.experienceSessionId}
+        retainStructure={warmup?.keyboardRequested}
+        onStructureReady={warmup?.onKeyboardReady}
         onVisibilityChange={setNotificationKeyboardVisible}
-        suspended={multitaskingBar !== "closed" || media.visible}
+        suspended={session.phase !== "app" || multitaskingBar !== "closed" || media.visible}
         suspendReason={multitaskingBar !== "closed" ? "app-switch" : "navigation"}
       >
+      {session.phase === "app" && <>
       {(appRuntime.activeAppId === "camera" || media.cameraActive) && cameraRuntime.cameraApp.phase !== "none" && <CameraContainer
         owner="cameraApp"
         mediaAttachment={media.cameraActive}
@@ -372,6 +378,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       />}
       {media.visible && media.request?.stage === "source" && <MediaSourceChooser requester={media.request.requester} onSource={media.chooseSource} onCancel={cancelScreenCameraPicker} />}
       {media.visible && media.request?.stage === "library" && <div className="media-library-picker"><PhotosContainer mode="picker" cameraRoll={cameraRoll} onPickerCancel={cancelScreenCameraPicker} onPickerSelect={media.selectPhoto} /></div>}
+      </>}
       </IOS4KeyboardSystem>
     </AppLaunchContainer>}
     {session.phase === "app" && <MultitaskingBar

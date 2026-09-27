@@ -9,7 +9,8 @@ export function heroCanStartBoot(state: HeroState): boolean {
   return state.awaitingPower && state.bootStartedAt === null && !state.bootComplete;
 }
 
-export function heroBootOpacity(elapsedMs: number): number {
+export function heroBootOpacity(elapsedMs: number, criticalReady = true): number {
+  if (!criticalReady) return elapsedMs < 100 ? 0 : Math.min(1, (elapsedMs - 100) / 200);
   if (elapsedMs < 100 || elapsedMs >= HERO_BOOT_DURATION_MS) return 0;
   return Math.min(1, (elapsedMs - 100) / 200, (HERO_BOOT_DURATION_MS - elapsedMs) / 800);
 }
@@ -21,7 +22,8 @@ export type HeroAction =
   | { type: "CONFIRM_IDENTITY"; name: string }
   | { type: "DETACH_COMPLETE" }
   | { type: "PRESS_POWER"; startedAt: number }
-  | { type: "BOOT_COMPLETE"; now: number }
+  | { type: "BOOT_COMPLETE"; now: number; bootCriticalReady?: boolean }
+  | { type: "BOOT_FAILED" }
   | { type: "ALIGN_COMPLETE" }
   | { type: "ENTER_EXPERIENCE" }
   | { type: "EXPERIENCE_ENDED"; depleted?: boolean }
@@ -55,8 +57,12 @@ export function heroTransition(state: HeroState, action: HeroAction): HeroState 
       return heroCanStartBoot(state) ? { ...state, phase: "powering-on", awaitingPower: false, bootStartedAt: action.startedAt } : state;
     case "BOOT_COMPLETE":
       return state.phase === "front-aligned" && state.bootStartedAt !== null && !state.bootComplete
+        && action.bootCriticalReady === true
         && action.now - state.bootStartedAt >= HERO_BOOT_DURATION_MS
         ? { ...state, phase: "experience", bootComplete: true } : state;
+    case "BOOT_FAILED":
+      return state.phase === "powering-on" || state.phase === "front-aligned"
+        ? { ...state, phase: "power-loss", terminalFired: true } : state;
     case "ALIGN_COMPLETE":
       return state.phase === "powering-on" ? { ...state, phase: "front-aligned" } : state;
     case "JUMP_TO_PHASE":

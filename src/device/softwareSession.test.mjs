@@ -77,7 +77,7 @@ const server = await createServer({ server: { middlewareMode: true }, appType: "
   },
   transform(code, id) {
     if (id.endsWith("/src/device/DeviceRoot.tsx")) return code.replace('import { lazy, Suspense, useState } from "react";', 'import { lazy, Suspense } from "react"; import { useState } from "virtual:lifecycle-hooks";');
-    if (id.endsWith("/src/device/useVoiceMemos.ts")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
+    if (/\/src\/device\/use[A-Z]\w*\.tsx?$/.test(id)) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";');
     if (id.endsWith("/src/device/App.tsx")) return code.replace('from "react";', 'from "virtual:lifecycle-hooks";').replaceAll("import.meta.env.DEV", process.argv.includes("--production") ? "false" : "true");
     if (id.endsWith("/src/world/cameraVideoScenes.ts")) return code.replace("  const random = options.random ?? Math.random;", "  globalThis.__sceneSelected();\n  const random = options.random ?? Math.random;");
   },
