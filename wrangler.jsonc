@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "sm2010-hero-staging",
+  "name": "social-media-2010",
   "main": "./worker/index.mjs",
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
