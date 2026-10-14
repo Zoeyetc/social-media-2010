@@ -99,7 +99,15 @@ try {
   await flush();
   const phase = () => view.screen.props.display.session.phase;
   const code = () => view.screen.props.display.session.passcode;
-  const action = async (name, ...args) => { view.screen.props.actions[name](...args); await flush(); };
+  const action = async (name, ...args) => {
+    view.screen.props.actions[name](...args); await flush();
+    if (phase() === "passcodeEntering") {
+      assert.ok(["completeScreenUnlock", "openLockNotificationTarget", "viewScreenSMSAlert"].includes(name));
+      // This controller-only harness acknowledges DeviceScreen's completion boundary.
+      view.screen.props.actions.completeScreenPasscodeEntry(); await flush();
+      assert.equal(phase(), "passcode");
+    }
+  };
   const start = async () => {
     view.startExperience({name: "Auth QA"}); await flush();
     view.onLifecycleAction({type:"DETACH_COMPLETE"}); await flush();

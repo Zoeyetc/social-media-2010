@@ -67,7 +67,7 @@ import { coreAppFirstViewPlan } from "./coreAppFirstView";
 
 const TERMINAL_DEPLETED_DISPLAY_MS = 1_500;
 const AUTO_SLEEP_DELAY_MS = 60_000;
-const AUTO_SLEEP_PHASES = new Set<Session["phase"]>(["locked", "passcode", "springboard", "app"]);
+const AUTO_SLEEP_PHASES = new Set<Session["phase"]>(["locked", "passcodeEntering", "passcode", "springboard", "app"]);
 const HOME_DOUBLE_PRESS_MS = 300;
 const MOM_REPLY_DELAY_MS = 30_000;
 const SHUTDOWN_BLACK_SCREEN_MS = 500;
@@ -768,7 +768,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (isTimelineEvent) deliveredEventClaims.current.add(event.id);
     const eventDateTime = simulatedDeviceDateTime(event.dueElapsedMs);
     const eventTime = formatDeviceTime(eventDateTime);
-    const source = session.phase === "sleeping" || session.phase === "locked" || session.phase === "passcode" ? "lockscreen" : "foreground";
+    const source = session.phase === "sleeping" || session.phase === "locked" || session.phase === "passcodeEntering" || session.phase === "passcode" ? "lockscreen" : "foreground";
     const displayingMomConversation = session.phase === "app"
       && appRuntime.activeAppId === "messages"
       && messagesState.view === "conversation"
@@ -935,7 +935,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
       });
       return;
     }
-    if (session.phase === "locked" || session.phase === "passcode" || session.phase === "sleeping" || session.phase === "lowBatteryWarning" || session.phase === "powerOffConfirm") {
+    if (session.phase === "locked" || session.phase === "passcodeEntering" || session.phase === "passcode" || session.phase === "sleeping" || session.phase === "lowBatteryWarning" || session.phase === "powerOffConfirm") {
       update({
         previousPhase: null,
         phase: "shutdown",
@@ -1278,7 +1278,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     if (session.phase === "poweredOff") setPowerProgress(0);
   };
 
-  const homeEnabled = session.phase === "locked" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping";
+  const homeEnabled = session.phase === "locked" || session.phase === "passcodeEntering" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping";
   const displayIsLit = session.phase !== "sleeping" && session.phase !== "poweredOff" && session.phase !== "shutdown";
   const beginHomePress = (event: PointerEvent<HTMLButtonElement>) => {
     if (!homeEnabled) return;
@@ -1379,13 +1379,17 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const completeScreenUnlock: DeviceScreenProps["actions"]["completeScreenUnlock"] = () => {
     if (session.phase !== "locked" || unlockCompletionClaimed.current) return;
     if (session.passcode) {
-      update({ phase: "passcode", batteryCriticalRevealAtMs: null });
+      update({ phase: "passcodeEntering", batteryCriticalRevealAtMs: null });
       return;
     }
     finalizeScreenUnlock();
   };
 
+  const completeScreenPasscodeEntry = useCallback(() => {
+    setSession(current => current.phase === "passcodeEntering" ? { ...current, phase: "passcode" } : current);
+  }, []);
   const cancelScreenPasscode = () => {
+    if (session.phase !== "passcode") return;
     pendingUnlockDestination.current = null;
     update({ phase: "locked" });
   };
@@ -1645,6 +1649,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         actions={{
           openLockNotificationTarget,
           completeScreenUnlock,
+          completeScreenPasscodeEntry,
           attemptScreenPasscode,
           cancelScreenPasscode,
           completeScreenAppClose,
@@ -1700,7 +1705,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         softwarePhase: session.phase,
       },
       onHandoff: handoffHeroScreen,
-      powerControl: !lifecycle.terminalFired && !session.returnToHeroPending && (session.phase === "locked" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping" || session.phase === "lowBatteryWarning")
+      powerControl: !lifecycle.terminalFired && !session.returnToHeroPending && (session.phase === "locked" || session.phase === "passcodeEntering" || session.phase === "passcode" || session.phase === "springboard" || session.phase === "app" || session.phase === "sleeping" || session.phase === "lowBatteryWarning")
         ? { state: session.phase === "sleeping" ? "asleep" : "awake", begin: beginPower, end: endPower, cancel: cancelPower }
         : undefined,
       onUserActivity: () => { if (!lifecycleRef.current.terminalFired) recordInteraction(); },

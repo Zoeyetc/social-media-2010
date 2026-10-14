@@ -148,6 +148,8 @@ try {
     assert.equal(view.screen.props.overlays.activeLockNotification, null, "new user has no previous notification");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);
     view.screen.props.actions.completeScreenUnlock(); await flush();
+    assert.equal(view.screen.props.display.session.phase, "passcodeEntering", "entry crosses the system presentation boundary");
+    view.screen.props.actions.completeScreenPasscodeEntry(); await flush(); // DeviceScreen completion acknowledgement; entry timer/component contracts are tested separately.
     view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.sessionDiagnostics.softwarePhase, "springboard");
     for (const key of ["2","+","3","="]) view.screen.props.apps.dispatchBasicSystemApps({type:"CALCULATOR_KEY",key});
@@ -255,6 +257,8 @@ try {
     // Newest eligible alert owns the single lock-screen presentation.
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "facebook-katie-jack-gossip-message");
     view.screen.props.actions.openLockNotificationTarget(view.screen.props.overlays.activeLockNotification); await flush();
+    assert.equal(view.screen.props.display.session.phase, "passcodeEntering", "entry crosses the system presentation boundary");
+    view.screen.props.actions.completeScreenPasscodeEntry(); await flush(); // DeviceScreen completion acknowledgement; entry timer/component contracts are tested separately.
     assert.equal(view.sessionDiagnostics.softwarePhase, "passcode");
     view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "facebook");

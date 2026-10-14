@@ -12,7 +12,7 @@ export const SESSION_END_MS = Date.parse(SESSION_START_ISO) + SESSION_DURATION_M
 export const DEVICE_TIME_ZONE = "America/Los_Angeles";
 export const DEVICE_LOCALE = "en-US";
 
-export type DevicePhase = "hero" | "poweredOff" | "booting" | "locked" | "passcode" | "springboard" | "app" | "sleeping" | "powerOffConfirm" | "shutdown" | "lowBatteryWarning";
+export type DevicePhase = "hero" | "poweredOff" | "booting" | "locked" | "passcodeEntering" | "passcode" | "springboard" | "app" | "sleeping" | "powerOffConfirm" | "shutdown" | "lowBatteryWarning";
 export type WarningLevel = 20 | 10;
 export type ShutdownReason = "battery" | "manual" | null;
 export type Session = {
@@ -81,6 +81,7 @@ export function homeButtonTransition(session: Session): Partial<Session> | null 
     case "app":
       return { phase: "springboard" };
     case "locked":
+    case "passcodeEntering":
     case "passcode":
     case "springboard":
     case "booting":
@@ -96,6 +97,7 @@ export function homeButtonTransition(session: Session): Partial<Session> | null 
 export function shortPowerTransition(session: Session): Partial<Session> | null {
   switch (session.phase) {
     case "locked":
+    case "passcodeEntering":
     case "passcode":
     case "springboard":
     case "app":
@@ -109,6 +111,9 @@ export function shortPowerTransition(session: Session): Partial<Session> | null 
 
 export function longPowerTransition(session: Session): Partial<Session> | null {
   switch (session.phase) {
+    case "passcodeEntering":
+      // Power confirmation cancels entry; Cancel restores a stable auth gate.
+      return { previousPhase: "passcode", phase: "powerOffConfirm" };
     case "locked":
     case "passcode":
     case "springboard":

@@ -1,7 +1,8 @@
 import { StocksContainer, SettingsContainer, type RCSystemAppsProps } from "./RCSystemApps";
 import { WeatherContainer, NotesContainer, AppleAccountGate } from "./SmallApps";
 import { SafariContainer, YouTubeContainer, ITunesContainer, type ITunesProps } from "./FinalDecorativeApps";
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
+import { usePasscodeEntryTransition } from "./usePasscodeEntryTransition";
 import type { DevicePresenter } from "./DevicePresentation";
 import { useDeviceScreenDiagnostics } from "./useDeviceScreenDiagnostics";
 import type { Session } from "../state/deviceMachine";
@@ -129,6 +130,7 @@ export type DeviceScreenProps = {
   actions: {
     openLockNotificationTarget: ComponentProps<typeof LockScreen>["onViewNotification"];
     completeScreenUnlock: ComponentProps<typeof LockScreen>["onUnlock"];
+    completeScreenPasscodeEntry: () => void;
     attemptScreenPasscode: (candidate: string) => void;
     cancelScreenPasscode: () => void;
     completeScreenAppClose: ComponentProps<typeof AppLaunchContainer>["onClosed"];
@@ -213,6 +215,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
   const {
     openLockNotificationTarget,
     completeScreenUnlock,
+    completeScreenPasscodeEntry,
     attemptScreenPasscode,
     cancelScreenPasscode,
     completeScreenAppClose,
@@ -232,12 +235,21 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
     setNotificationKeyboardVisible,
   } = actions;
 
-  return <div className={`screen ${session.phase}`} data-media-camera={media.cameraActive || undefined}>
-    {(session.phase === "locked" || session.phase === "passcode"
+  const entering = session.phase === "passcodeEntering";
+  const lockedPresentation = session.phase === "locked" || entering || session.phase === "passcode";
+  const passcodeEntry = usePasscodeEntryTransition(entering, session.experienceSessionId, completeScreenPasscodeEntry);
+
+  return <div className={`screen ${session.phase}`} data-media-camera={media.cameraActive || undefined}
+    data-entry-reduced-motion={passcodeEntry.reducedMotion || undefined}
+    style={{ "--passcode-entry-duration": `${passcodeEntry.durationMs}ms` } as CSSProperties}
+    onAnimationEnd={event => {
+      if (entering && event.animationName === "system-passcode-keypad-enter") passcodeEntry.complete();
+    }}>
+    {(lockedPresentation
       || session.phase === "springboard"
       || (session.phase === "app"
         && !((appRuntime.activeAppId === "camera" || media.cameraActive) && cameraRuntime.cameraApp.phase !== "none"))) && <div className="device-status-bar-layer">
-      {(session.phase === "locked" || session.phase === "passcode")
+      {lockedPresentation
         ? <LockScreenStatusPresentation model={lockScreenModel} />
         : <StatusBar state={statusBarState} />}
     </div>}
@@ -245,19 +257,24 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       ? <div className="dead" />
       : <div className="off"><p>Press and hold the power button.</p><div className="hold"><i style={{ width: `${powerProgress * 100}%` }} /></div></div>)}
     {session.phase === "booting" && <div className="boot"><BootLogo /></div>}
-    {session.phase === "locked" && <LockScreen
+    {lockedPresentation && <div className="locked-system-surface">
+    <div className="locked-system-wallpaper" aria-hidden="true" />
+    {(session.phase === "locked" || entering) && <LockScreen
       model={lockScreenModel}
+      inactive={entering}
       activeLockNotification={activeLockNotification}
       onViewNotification={openLockNotificationTarget}
       onUnlock={completeScreenUnlock}
     />}
-    {session.phase === "passcode" && <PasscodeScreen
+    {(entering || session.phase === "passcode") && <PasscodeScreen
+      inactive={entering}
       lockedUntilElapsedMs={session.passcodeLockoutUntilElapsedMs}
       elapsedMs={elapsed}
       failedAttempts={session.passcodeAttempts}
       onAttempt={attemptScreenPasscode}
       onCancel={cancelScreenPasscode}
     />}
+    </div>}
     {(session.phase === "springboard" || (session.phase === "app" && appRuntime.phase === "launching"
       && appRuntime.activeAppId !== null && isCoreFirstFrameApp(appRuntime.activeAppId))) && <SpringBoard
       inactive={session.phase !== "springboard"}

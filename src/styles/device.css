@@ -112,6 +112,27 @@ button, input { font: inherit; }
 .passcode-keypad .passcode-keypad-action:last-child { align-items:center; justify-content:center; padding:1px 0; }
 .passcode-keypad button:disabled { color:rgba(255,255,255,.4); cursor:default; }
 .passcode-keypad button[aria-disabled="true"] { cursor:default; }
+/* System-owned entry only. Timing/easing are historically grounded reconstruction.
+   Wallpaper and locked status presentation occupy stable sibling slots in DeviceScreen. */
+.locked-system-surface { position:absolute; inset:0; overflow:hidden; }
+.locked-system-wallpaper { position:absolute; inset:0; background:#000 url("../assets/historical/ios4.1/lockscreen/DefaultWallpaper@2x~iphone.browser.png") center / 320px 480px no-repeat; }
+.locked-system-surface > .lockscreen,
+.locked-system-surface > .passcode-screen { position:absolute; inset:0; background:transparent; }
+.passcodeEntering .lockscreen-bottom-bar,
+.passcodeEntering .lockscreen-sms-alert { visibility:hidden; } /* Exit trajectory remains HOLD. */
+.passcodeEntering .locktime { animation:system-passcode-clock-exit var(--passcode-entry-duration) ease-out both; }
+.passcodeEntering .passcode-title-band,
+.passcodeEntering .passcode-keypad-panel { animation:system-passcode-content-enter var(--passcode-entry-duration) ease-out both; }
+.passcodeEntering .passcode-keypad { animation:system-passcode-keypad-enter var(--passcode-entry-duration) ease-out both; }
+.passcodeEntering .passcode-screen:not([data-passcode-locked]) .passcode-keypad button:disabled { color:#fff; }
+@keyframes system-passcode-clock-exit { from { opacity:1; } to { opacity:0; } }
+@keyframes system-passcode-content-enter { from { opacity:0; } to { opacity:1; } }
+/* 100% of this 204px panel puts its top at the 480px screen boundary. Cells stay fixed. */
+@keyframes system-passcode-keypad-enter { from { transform:translateY(100%); } to { transform:translateY(0); } }
+.passcodeEntering[data-entry-reduced-motion] .passcode-keypad { animation-name:system-passcode-content-enter; }
+@media (prefers-reduced-motion: reduce) {
+  .passcodeEntering .passcode-keypad { animation-name:system-passcode-content-enter; }
+}
 .unlock-track { position: absolute; left: 20px; bottom: 21px; width: 280px; height: 52px; overflow: hidden; text-align: center; line-height: 52px; color: #ccc; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 23px; font-weight: 400; letter-spacing: 0; }
 .unlock-track-raster { position: absolute; z-index: 0; inset: 0; border: 13px solid transparent; border-image-source: url("../assets/historical/ios4.1/lockscreen/WellLock@2x.browser.png"); border-image-slice: 26 fill; border-image-width: 13px; border-image-repeat: stretch; pointer-events: none; }
 .unlock-track-label { position: absolute; z-index: 1; left: 75px; top: 0; width: 205px; height: 52px; display: block; color: rgba(255,255,255,.36); text-align: center; text-shadow: 0 -1px rgba(0,0,0,.62); }

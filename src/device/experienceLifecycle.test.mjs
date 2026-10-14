@@ -152,6 +152,8 @@ try {
     assert.equal(view.screen.props.overlays.activeLockNotification, null, "new user has no previous notification");
     assert.equal(view.screen.props.navigation.notificationBadgeCounts.facebook, 0);
     view.screen.props.actions.completeScreenUnlock(); await flush();
+    assert.equal(view.screen.props.display.session.phase, "passcodeEntering", "entry crosses the system presentation boundary");
+    view.screen.props.actions.completeScreenPasscodeEntry(); await flush(); // DeviceScreen completion acknowledgement; entry timer/component contracts are tested separately.
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode", "slide-to-unlock routes into the passcode gate");
     const passcode = view.screen.props.display.session.passcode;
     assert.match(passcode, /^\d{4}$/);
@@ -165,6 +167,8 @@ try {
     view.powerControl.begin(); view.powerControl.end(); await flush();
     assert.equal(view.powerControl.state, "awake");
     view.screen.props.actions.completeScreenUnlock(); await flush();
+    assert.equal(view.screen.props.display.session.phase, "passcodeEntering", "entry crosses the system presentation boundary");
+    view.screen.props.actions.completeScreenPasscodeEntry(); await flush(); // DeviceScreen completion acknowledgement; entry timer/component contracts are tested separately.
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode", "wake returns through the lockscreen gate");
     assert.equal(view.screen.props.display.session.passcodeAttempts, 1, "sleep/wake does not clear passcode access state");
     view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
@@ -199,6 +203,8 @@ try {
     // Newest eligible alert owns the single lock-screen presentation.
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "facebook-katie-jack-gossip-message");
     view.screen.props.actions.openLockNotificationTarget(view.screen.props.overlays.activeLockNotification); await flush();
+    assert.equal(view.screen.props.display.session.phase, "passcodeEntering", "entry crosses the system presentation boundary");
+    view.screen.props.actions.completeScreenPasscodeEntry(); await flush(); // DeviceScreen completion acknowledgement; entry timer/component contracts are tested separately.
     assert.equal(view.lifecycleDiagnostics.softwarePhase, "passcode");
     view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
     assert.equal(view.screen.props.navigation.appRuntime.activeAppId, "facebook");
@@ -230,6 +236,8 @@ try {
     assert.equal(view.screen.props.overlays.activeLockNotification.id, "foursquare-friend-checkin");
     if (depletionTest) {
       view.screen.props.actions.completeScreenUnlock(); await flush();
+      assert.equal(view.screen.props.display.session.phase, "passcodeEntering", "entry crosses the system presentation boundary");
+      view.screen.props.actions.completeScreenPasscodeEntry(); await flush(); // DeviceScreen completion acknowledgement; entry timer/component contracts are tested separately.
       view.screen.props.actions.attemptScreenPasscode(view.screen.props.display.session.passcode); await flush();
       while (view.lifecycleDiagnostics.elapsedMs < 899750) {
         view.onUserActivity(); await flush();

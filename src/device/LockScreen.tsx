@@ -10,9 +10,10 @@ type LockScreenProps = {
   onUnlock: () => void;
   activeLockNotification: ActiveLockNotification | null;
   onViewNotification: (notification: ActiveLockNotification) => void;
+  inactive?: boolean;
 };
 
-export function LockScreen({ model, onUnlock, activeLockNotification, onViewNotification }: LockScreenProps) {
+export function LockScreen({ model, onUnlock, activeLockNotification, onViewNotification, inactive = false }: LockScreenProps) {
   const [slideProgress, setSlideProgress] = useState(0);
   const [slideOffset, setSlideOffset] = useState(0);
   const [sliderState, setSliderState] = useState<SliderState>("idle");
@@ -39,6 +40,7 @@ export function LockScreen({ model, onUnlock, activeLockNotification, onViewNoti
   };
 
   const beginDrag = (event: PointerEvent<HTMLButtonElement>) => {
+    if (inactive) return;
     setSliderState("dragging");
     pointerId.current = event.pointerId;
     pointerStartX.current = event.clientX;
@@ -78,7 +80,7 @@ export function LockScreen({ model, onUnlock, activeLockNotification, onViewNoti
     window.requestAnimationFrame(() => setSliderState("idle"));
   };
 
-  return <div className="lockscreen" data-wallpaper-asset-status="READY">
+  return <div className="lockscreen" inert={inactive} data-wallpaper-asset-status="READY">
     <div className="locktime">
       <time className="lock-clock-slot">{model.clock}</time>
       <time className="lock-date-slot">{model.date}</time>
@@ -101,6 +103,7 @@ export function LockScreen({ model, onUnlock, activeLockNotification, onViewNoti
         <button
           ref={knobRef}
           type="button"
+          disabled={inactive}
           role="slider"
           aria-label={actionableNotificationVisible ? "Slide to view notification" : "Slide to unlock"}
           aria-valuemin={0}
