@@ -1,3 +1,4 @@
+import { displayImageSrc } from "../data/displayImageDerivatives";
 import { getSharedCharacterMedia, type SharedCharacterMediaId } from "../data/sharedCharacterMedia";
 
 const FOURSQUARE_AVATARS: Readonly<Record<string, Readonly<{ mediaId: SharedCharacterMediaId; objectPosition: string }>>> = Object.freeze({
@@ -12,6 +13,6 @@ export function FoursquareAvatar({ identityId, displayName }: { identityId: stri
   if (!record) return <span className="foursquare-avatar is-fallback" role="img" aria-label={`${displayName} profile picture`} />;
   const media = getSharedCharacterMedia(record.mediaId);
   return <span className="foursquare-avatar" data-avatar-classification="CANONICAL_AVATAR_CANDIDATE" data-avatar-media-id={record.mediaId}>
-    <img src={media.src} alt="" aria-hidden="true" style={{ objectPosition: record.objectPosition }} />
+    <img src={displayImageSrc(media.src)} alt="" aria-hidden="true" style={{ objectPosition: record.objectPosition }} />
   </span>;
 }

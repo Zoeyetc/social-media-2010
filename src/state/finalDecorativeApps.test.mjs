@@ -21,12 +21,15 @@ try {
  ["Back to December","Taylor Swift"],["Like a G6","Far East Movement feat. The Cataracs & Dev"],["Just a Dream","Nelly"],["Just the Way You Are","Bruno Mars"],["Only Girl (In the World)","Rihanna"]]);
  assert.equal(m.ITUNES_AUDIO_AVAILABILITY,"OFFICIAL RUNTIME PREVIEWS");
  let s=m.initialITunesState();const dispatch=e=>s=m.iTunesTransition(s,e);
- let preview;const render=()=>ui.ITunesContainer({state:s,dispatch,preview});
+ let preview, readiness;const render=()=>ui.ITunesContainer({state:s,dispatch,preview,readiness});
  assert.equal(walk(render()).find(n=>n.props?.["aria-label"]==="Play").props.disabled,true);
  dispatch({type:"PLAY"});assert.equal(s.playRequested,false);
  walk(render()).filter(n=>n.type==="button"&&"aria-pressed" in n.props)[0].props.onClick();assert.equal(s.selectedIndex,0);
  assert.equal(walk(render()).find(n=>n.props?.["aria-label"]==="Previous track").props.disabled,true);
  dispatch({type:"PREVIOUS"});assert.equal(s.selectedIndex,0);
+ assert.equal(walk(render()).find(n=>n.props?.["aria-label"]==="Play").props.disabled,true);
+ walk(render()).find(n=>n.props?.["aria-label"]==="Play").props.onClick();assert.equal(s.playRequested,false);
+ readiness={selectedTrackMetadataReady:true,previewUrlPresent:true,playEnabled:true,status:"ready"};
  walk(render()).find(n=>n.props?.["aria-label"]==="Play").props.onClick();assert.equal(s.playRequested,true);
  let html=renderToStaticMarkup(React.createElement(ui.ITunesContainer,{state:s,dispatch}));assert.doesNotMatch(html,/Preview unavailable/);assert.doesNotMatch(html,/<audio|<progress|Now Playing/);
  preview={trackId:m.ITUNES_TRACKS[0].id,status:"playing",position:2,duration:30};

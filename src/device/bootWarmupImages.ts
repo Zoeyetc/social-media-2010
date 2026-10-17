@@ -16,36 +16,32 @@ import facebookHomeFeed from "../assets/facebook/home/3.2.1/feedButton@2x.png";
 import facebookHomeProfile from "../assets/facebook/home/3.2.1/profileButton@2x.png";
 import facebookHomeFriends from "../assets/facebook/home/3.2.1/friendsButton@2x.png";
 import { SPRINGBOARD_SOCIAL_APPS } from "../data/springBoardSocialApps";
+import { FIRST_VIEWPORT_ASSETS } from "../data/firstViewportAssets";
+import { firstViewportImageCache } from "./imageReadiness";
 import type { WarmupTask } from "./bootWarmup";
 
-// Audited small existing artwork only. The first character/feed photographs are
-// megabyte originals, so they deliberately remain on demand (no album preload).
-export const BOOT_IMAGE_LIMIT = 23;
-export const BOOT_IMAGE_BYTE_BUDGET = 384 * 1024;
-export const BOOT_IMAGE_MAX_EDGE = 512;
-export const BOOT_IMAGE_MANIFEST = [
+// Display derivatives and first-screen chrome are prepared before opportunistic icons.
+// Encoded budget is bounded; original photographs are never decoded by this queue.
+export const BOOT_IMAGE_LIMIT = 80;
+export const BOOT_IMAGE_BYTE_BUDGET = 2048 * 1024;
+export const BOOT_IMAGE_MAX_EDGE = 640;
+const OPTIONAL_IMAGE_MANIFEST = [
   ...SPRINGBOARD_SOCIAL_APPS.map(app => ({ id: `icon-${app.id}`, src: app.iconSrc, tier: (["facebook", "twitter", "instagram"].includes(app.id) ? 1 : 2) as 1 | 2 })),
   ...Object.entries({ messages, facebookAvatar, twitterEgg, nasa, cnn, instagramWordmark, instagramFeed,
     facebookHomeFeed, facebookHomeProfile, facebookHomeFriends }).map(([id, src]) => ({ id, src, tier: 1 as const })),
   ...Object.entries({ photos, weather, notes, stocks, settings, maps, calendar }).map(([id, src]) => ({ id, src, tier: 2 as const })),
 ] as const;
 
+const primarySources = new Set(FIRST_VIEWPORT_ASSETS.map(asset => asset.src));
+export const BOOT_IMAGE_MANIFEST = [
+  ...FIRST_VIEWPORT_ASSETS.map(asset => ({ ...asset, tier: 1 as const, firstViewportApps: asset.apps })),
+  ...OPTIONAL_IMAGE_MANIFEST.filter(asset => !primarySources.has(asset.src)).map(asset => ({ ...asset, tier: 2 as const, firstViewportApps: [] as readonly string[] })),
+];
 export function bootImageTasks(): WarmupTask[] {
-  return BOOT_IMAGE_MANIFEST.slice(0, BOOT_IMAGE_LIMIT).map(asset => ({
+  return BOOT_IMAGE_MANIFEST.map(asset => ({
     id: `image:${asset.id}`, tier: asset.tier,
-    run: signal => new Promise<void>((resolve, reject) => {
-      const image = new Image();
-      const cleanup = () => { image.onload = null; image.onerror = null; signal.removeEventListener("abort", cancelled); };
-      const cancelled = () => { cleanup(); image.removeAttribute("src"); reject(new Error("Image warm-up cancelled")); };
-      if (signal.aborted) { cancelled(); return; }
-      signal.addEventListener("abort", cancelled, { once: true });
-      image.decoding = "async";
-      image.onload = () => {
-        const decoded = typeof image.decode === "function" ? image.decode() : Promise.resolve();
-        void decoded.then(() => { cleanup(); resolve(); }, () => { cleanup(); reject(new Error("Image decode failed")); });
-      };
-      image.onerror = () => { cleanup(); reject(new Error("Image warm-up failed")); };
-      image.src = asset.src;
-    }),
+    bytes: "bytes" in asset ? asset.bytes : 0,
+    firstViewportApps: asset.firstViewportApps,
+    run: signal => firstViewportImageCache.decode(asset.src, signal),
   }));
 }

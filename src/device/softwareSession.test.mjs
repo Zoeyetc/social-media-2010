@@ -211,7 +211,7 @@ try {
       view.screen.props.navigation.dispatchAppRuntime({type:"ANIMATION_COMPLETE"});await flush();
       assert.equal(view.screen.props.navigation.appRuntime.activeAppId,appId);
       assert.ok(!view.screen.props.apps.messagesState.messages.some(m=>m.conversationId==="dad"),"deleted thread stays absent on switching");
-      if(appId==="itunes")assert.deepEqual(view.screen.props.apps.iTunesState,{selectedIndex:3,playRequested:true});
+      if(appId==="itunes")assert.deepEqual(view.screen.props.apps.iTunesState,{selectedIndex:3,playRequested:false});
       view.screen.props.navigation.dispatchAppRuntime({type:"SUSPEND"});await flush();
     }
     view.screen.props.navigation.launchSpringBoardApp("camera"); await flush();

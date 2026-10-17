@@ -1,3 +1,4 @@
+import { displayImageSrc } from "../data/displayImageDerivatives";
 import { Dispatch, useEffect, useLayoutEffect, useRef } from "react";
 import { InstagramEvent, InstagramState, selectInstagramFollowedAccounts, selectInstagramFollowingCount, selectInstagramKnownAccountStats, selectInstagramVisibleFollowedPosts, selectInstagramVisibleKnownPosts } from "../state/instagramState";
 import type { CameraRollInitialization } from "../state/cameraRollState";
@@ -110,12 +111,12 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
           return <article className="instagram-photo-record is-known-account" key={post.id} data-origin={post.origin}>
             <header className="instagram-feed-metadata">
               <button className="instagram-feed-author" type="button" onClick={() => dispatch({ type: "OPEN_KNOWN_PROFILE", characterId: post.canonicalCharacterId })}>
-                {avatar && <img src={avatar.src} alt="" />}
+                {avatar && <img src={displayImageSrc(avatar.src)} alt="" />}
                 <strong>{post.username}</strong>
               </button>
               <time><img src={instagramClockSrc} alt="" aria-hidden="true" />{formatInstagramRelativeTimestamp(post.timestamp, currentDeviceDateTime)}</time>
             </header>
-            <div className="instagram-square-photo instagram-feed-photo"><img className="instagram-character-photo" src={media.src} alt="" /></div>
+            <div className="instagram-square-photo instagram-feed-photo"><img className="instagram-character-photo" src={displayImageSrc(media.src)} alt="" /></div>
           </article>;
         })}{state.photos.map(photo => {
           const sourcePhoto = cameraRoll.records.find(record => record.id === photo.sourcePhotoId) ?? null;
@@ -185,7 +186,7 @@ export function InstagramContainer({ state, dispatch, currentDeviceDateTime, cam
         {selectedKnownPosts.length === 0 && <p className="instagram-period-empty-stream">No photos.</p>}
         {selectedKnownPosts.map(post => {
           const media = getSharedCharacterMedia(post.mediaId);
-          return <article key={post.id}><header>{selectedKnownAvatar ? <img src={selectedKnownAvatar.src} alt="" /> : <span className="instagram-stream-avatar-placeholder" aria-hidden="true" />}<strong>{post.username}</strong><time><img src={instagramClockSrc} alt="" aria-hidden="true" />{formatInstagramRelativeTimestamp(post.timestamp, currentDeviceDateTime)}</time></header><div className="instagram-square-photo"><img src={media.src} alt="" /></div></article>;
+          return <article key={post.id}><header>{selectedKnownAvatar ? <img src={selectedKnownAvatar.src} alt="" /> : <span className="instagram-stream-avatar-placeholder" aria-hidden="true" />}<strong>{post.username}</strong><time><img src={instagramClockSrc} alt="" aria-hidden="true" />{formatInstagramRelativeTimestamp(post.timestamp, currentDeviceDateTime)}</time></header><div className="instagram-square-photo"><img src={displayImageSrc(media.src)} alt="" /></div></article>;
         })}
       </div>
     </section>}

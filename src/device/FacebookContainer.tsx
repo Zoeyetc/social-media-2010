@@ -1,3 +1,4 @@
+import { displayImageSrc } from "../data/displayImageDerivatives";
 import { Dispatch, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { FacebookMapOverlay } from "./FacebookMapOverlay";
 import {
@@ -767,7 +768,7 @@ function FacebookCommentRow({ comment, sessionUserName, dispatch }: { comment: F
   const avatarMedia = avatarMediaId ? getFacebookStoryMedia(avatarMediaId) : null;
   return <article className="facebook-comment">
     {avatarMedia
-      ? <img className="facebook-comment-avatar" src={avatarMedia.src} alt="" aria-hidden="true" />
+      ? <img className="facebook-comment-avatar" src={displayImageSrc(avatarMedia.src)} alt="" aria-hidden="true" />
       : <span className="facebook-comment-avatar is-placeholder" aria-hidden="true" />}
     {actor
       ? <button type="button" className="facebook-comment-author" onClick={() => dispatch({ type: "OPEN_COMMENT_AUTHOR", actor })}>{actor.displayName}</button>
@@ -791,7 +792,7 @@ function FacebookCommentsOriginalStory({ item, simulatedNowMs, dispatch }: { ite
   const avatarMedia = actorProfileMediaId ? getFacebookStoryMedia(actorProfileMediaId) : null;
   return <article className="facebook-comments-original-story">
     <button type="button" className="facebook-comments-story-avatar" aria-label={`${item.author} Profile`} onClick={() => dispatch({ type: "OPEN_PROFILE", profileName: item.author })}>{avatarMedia
-      ? <img src={avatarMedia.src} alt="" aria-hidden="true" />
+      ? <img src={displayImageSrc(avatarMedia.src)} alt="" aria-hidden="true" />
       : <span aria-hidden="true" />}</button>
     <div className="facebook-comments-story-content">
       <button type="button" className="facebook-author-link" onClick={() => dispatch({ type: "OPEN_PROFILE", profileName: item.author })}>{item.author}</button>
@@ -812,7 +813,7 @@ function FacebookCommentsRow({ comment, sessionUserName, dispatch }: { comment: 
   const avatarMedia = avatarMediaId ? getFacebookStoryMedia(avatarMediaId) : null;
   return <article className="facebook-comment is-comments-detail">
     {avatarMedia
-      ? <img className="facebook-comment-avatar" src={avatarMedia.src} alt="" aria-hidden="true" />
+      ? <img className="facebook-comment-avatar" src={displayImageSrc(avatarMedia.src)} alt="" aria-hidden="true" />
       : <span className="facebook-comment-avatar is-placeholder" aria-hidden="true" />}
     <div className="facebook-comments-comment-copy">
       {actor
@@ -834,7 +835,7 @@ function FacebookStoryView({ surface, item, liked, commentCount, likeCount, stor
   const avatarMedia = actorProfileMediaId ? getFacebookStoryMedia(actorProfileMediaId) : null;
   return <article className={`facebook-feed-row facebook-story-view is-${surface}`} data-content-status={item.contentStatus} data-facebook-feed-story-id={surface === "feed" ? item.id : undefined}>
     <button type="button" className="facebook-avatar-link" aria-label={`${item.author} Profile`} onClick={onOpenProfile}>{avatarMedia
-      ? <img className="facebook-avatar-image" src={avatarMedia.src} alt="" aria-hidden="true" />
+      ? <img className="facebook-avatar-image" src={displayImageSrc(avatarMedia.src)} alt="" aria-hidden="true" />
       : <span className="facebook-avatar-hold" aria-hidden="true" />}</button>
     <span className="facebook-feed-copy">
       <button type="button" className="facebook-author-link" onClick={onOpenProfile}>{item.author}</button>
@@ -876,10 +877,10 @@ function FacebookStoryMedia({ item, dispatch, onBeforeNavigate }: { item: Facebo
       : { type: "OPEN_PHOTO", mediaId });
   };
   if (media.length === 1) return <button type="button" onClick={() => openPhoto(media[0].id)} className="facebook-story-photo-media" aria-label={`${item.author} photo`}>
-    <img src={media[0].src} alt="" />
+    <img src={displayImageSrc(media[0].src)} alt="" />
   </button>;
   return <div className={`facebook-story-album-media${albumSizeClass}`} aria-label={item.albumTitle ?? `${item.author} photos`}>
-    {media.map(record => <button key={record.id} type="button" onClick={() => openPhoto(record.id)} aria-label={`Open ${item.author} photo`}><img src={record.src} alt="" /></button>)}
+    {media.map(record => <button key={record.id} type="button" onClick={() => openPhoto(record.id)} aria-label={`Open ${item.author} photo`}><img src={displayImageSrc(record.src)} alt="" /></button>)}
     {item.albumTitle && <span>{item.albumTitle} · {media.length} photos</span>}
   </div>;
 }

@@ -1,3 +1,4 @@
+import { displayImageSrc } from "./displayImageDerivatives";
 import type { CoreSocialCharacterId } from "./coreSocialFriends";
 import { getSharedCharacterMedia, type SharedCharacterMediaId } from "./sharedCharacterMedia";
 import twitterDefaultEggSrc from "../assets/twitter/avatar/twitter-default-egg-2010-reconstructed.svg";
@@ -85,7 +86,7 @@ export function resolveTwitterAvatar({ identityId, displayName, allowNameBridge 
   if (!record) return TWITTER_DEFAULT_AVATAR;
   return Object.freeze({
     identityId: record.identityId,
-    src: record.src ?? getSharedCharacterMedia(record.mediaId as SharedCharacterMediaId).src,
+    src: displayImageSrc(record.src ?? getSharedCharacterMedia(record.mediaId as SharedCharacterMediaId).src),
     mediaId: record.mediaId,
     classification: record.classification,
     objectPosition: record.objectPosition,

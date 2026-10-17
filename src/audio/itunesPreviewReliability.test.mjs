@@ -38,10 +38,10 @@ try {
  class Audio {constructor(){this.src="";this.currentTime=0;this.duration=30;this.plays=0;sounds.push(this);}async play(){this.plays++;}pause(){}removeAttribute(){this.src="";}load(){}addEventListener(){}}
  globalThis.Audio=Audio;
  const {DeviceAudio:a}=await server.ssrLoadModule("/src/audio/deviceAudio.ts");
- await a.playPreview(tracks[0]);a.stopPreview();const before=requests;await a.playPreview(tracks[0]);assert.equal(requests,before,"cached URL hit");
- const old=sounds.at(-1);old.onerror();await flush();assert.equal(old.src,"");assert.equal(requests,before+1,"one fresh resolution");assert.equal(a.getPreviewState().status,"playing");
+ await a.preparePreviewTrack(tracks[0],signal());await a.playPreview(tracks[0]);a.stopPreview();const before=requests;await a.playPreview(tracks[0]);assert.equal(requests,before,"cached URL hit");
+ const old=sounds.at(-1);old.onerror();await flush();assert.equal(old.src,"");assert.equal(requests,before+1,"one fresh resolution");assert.equal(a.getPreviewState().status,"unavailable");assert.equal(a.previewReadiness(tracks[0]).playEnabled,true);await a.playPreview(tracks[0]);
  sounds.at(-1).onerror();await flush();assert.equal(a.getPreviewState().status,"unavailable");assert.equal(storage.size,0);for(let i=0;i<8;i++)await a.playPreview(tracks[0]);assert.equal(requests,before+1,"no retry loop during cooldown");assert.equal(sounds.filter(s=>s.src).length,0);
- a.resetPreview();mode="pending";const count=requests;const loading=a.playPreview(tracks[0]);a.playPreview(tracks[0]);a.playPreview(tracks[0]);assert.equal(requests,count+1);a.resetPreview();release({ok:true,json:async()=>({results:[valid]})});await loading;await flush();assert.equal(a.getPreviewState().status,"idle");assert.equal(sounds.filter(s=>s.src).length,0,"reset rejects stale playback");
+ a.resetPreview();mode="pending";const count=requests;const loading=a.preparePreviewTrack(tracks[0],signal());a.playPreview(tracks[0]);a.playPreview(tracks[0]);assert.equal(requests,count+1);a.resetPreview();release({ok:true,json:async()=>({results:[valid]})});await loading;await flush();assert.equal(a.getPreviewState().status,"idle");assert.equal(sounds.filter(s=>s.src).length,0,"reset rejects stale playback");
  // Optional browser storage failures must not break memory-only operation.
  Object.defineProperty(globalThis,"localStorage",{configurable:true,get(){throw Error("blocked storage");}});mode="good";r=new R(()=>now);assert.equal(await r.resolve(tracks[0],signal()),url);r.clear();a.resetPreview();
  console.log("PASS: US/lazy/single-flight, 12h validated memory/browser caches, expiry and blocked storage, offline/malformed/missing/wrong/timeout, 45s cooldown, one media recovery, reset/stale safety and one-stream ownership");

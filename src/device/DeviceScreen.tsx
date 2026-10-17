@@ -77,6 +77,7 @@ export type DeviceScreenProps = {
   };
   apps: {
     iTunesPreview: ITunesProps["preview"];
+    iTunesReadiness: ITunesProps["readiness"];
     iTunesState: ITunesProps["state"];
     dispatchITunes: ITunesProps["dispatch"];
     remainingBasicApps: RemainingAppsProps["state"];
@@ -383,7 +384,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       {(appRuntime.activeAppId === "app-store" || appRuntime.activeAppId === "game-center") && <AppleAccountGate key={`${session.experienceSessionId}:${appRuntime.activeAppId}`} app={appRuntime.activeAppId} active={appRuntime.phase === "running" && multitaskingBar === "closed"} />}
       {appRuntime.activeAppId === "safari" && <SafariContainer />}
       {appRuntime.activeAppId === "youtube" && <YouTubeContainer />}
-      {appRuntime.activeAppId === "itunes" && <ITunesContainer state={apps.iTunesState} dispatch={apps.dispatchITunes} preview={apps.iTunesPreview} />}
+      {appRuntime.activeAppId === "itunes" && <ITunesContainer state={apps.iTunesState} dispatch={apps.dispatchITunes} preview={apps.iTunesPreview} readiness={apps.iTunesReadiness} />}
       {appRuntime.activeAppId === "clock" && <ClockContainer state={apps.remainingBasicApps} dispatch={apps.dispatchRemainingBasicApps} now={apps.monotonicNow} worldTime={deviceStatusTime} />}
       {appRuntime.activeAppId === "compass" && <CompassContainer state={apps.remainingBasicApps} dispatch={apps.dispatchRemainingBasicApps} />}
       {appRuntime.activeAppId === "voice-memos" && <VoiceMemosContainer memos={apps.voiceMemos} now={apps.monotonicNow} />}

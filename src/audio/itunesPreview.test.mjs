@@ -34,13 +34,15 @@ try {
  a.setVolume(.3);assert.equal(first.volume,.3);a.setMuted(true);assert.equal(a.getPreviewState().status,"paused");assert.ok(first.pauses>0);
  assert.equal(first.muted,true,"physical mute reaches preview media element");
  await a.playPreview(ITUNES_TRACKS[0]);assert.equal(first.plays,2);a.setMuted(false);assert.equal(first.plays,2,"no unmute replay");
+ await a.preparePreviewTrack(ITUNES_TRACKS[1],new AbortController().signal);
  await a.playPreview(ITUNES_TRACKS[1]);assert.equal(first.src,"");assert.equal(a.getPreviewState().trackId,ITUNES_TRACKS[1].id);const second=sounds.at(-1);
  a.lock();assert.equal(a.getPreviewState().status,"paused");
  a.resetPreview();assert.equal(second.src,"");assert.equal(a.getPreviewState().status,"idle");
+ await a.preparePreviewTrack(ITUNES_TRACKS[0],new AbortController().signal);
  await a.playPreview(ITUNES_TRACKS[0]);assert.equal(requests,3,"reset discards cached URL");a.resetPreview();
- fail=true;await a.playPreview(ITUNES_TRACKS[2]);assert.equal(a.getPreviewState().status,"unavailable");a.resetPreview();fail=false;
- let resolve;pending=new Promise(r=>resolve=r);const loading=a.playPreview(ITUNES_TRACKS[3]);a.resetPreview();resolve({ok:true,json:async()=>({results:[result(ITUNES_TRACKS[3])]})});await loading;assert.equal(a.getPreviewState().status,"idle","late lookup cannot restart after reset");pending=null;
- await a.playPreview(ITUNES_TRACKS[4]);const last=sounds.at(-1);last.onerror();for(let i=0;i<20;i++)await Promise.resolve();sounds.at(-1).onerror();assert.equal(a.getPreviewState().status,"unavailable");assert.equal(last.src,"");a.resetPreview();
+ fail=true;await a.preparePreviewTrack(ITUNES_TRACKS[2],new AbortController().signal);assert.equal(a.previewReadiness(ITUNES_TRACKS[2]).status,"unavailable");a.resetPreview();fail=false;
+ let resolve;pending=new Promise(r=>resolve=r);const loading=a.preparePreviewTrack(ITUNES_TRACKS[3],new AbortController().signal);a.resetPreview();resolve({ok:true,json:async()=>({results:[result(ITUNES_TRACKS[3])]})});await loading;assert.equal(a.getPreviewState().status,"idle","late lookup cannot restart after reset");pending=null;
+ await a.preparePreviewTrack(ITUNES_TRACKS[4],new AbortController().signal);await a.playPreview(ITUNES_TRACKS[4]);const last=sounds.at(-1);last.onerror();for(let i=0;i<30;i++)await Promise.resolve();assert.equal(a.previewReadiness(ITUNES_TRACKS[4]).playEnabled,true);await a.playPreview(ITUNES_TRACKS[4]);sounds.at(-1).onerror();assert.equal(a.getPreviewState().status,"unavailable");assert.equal(last.src,"");a.resetPreview();
  failPlay=true;await a.prewarmPreviewMetadata([ITUNES_TRACKS[0]],new AbortController().signal);
  await a.playPreview(ITUNES_TRACKS[0]);assert.equal(a.getPreviewState().status,"paused");
  assert.equal(a.diagnostics.previewMedia.playResult,"rejected:NotAllowedError");

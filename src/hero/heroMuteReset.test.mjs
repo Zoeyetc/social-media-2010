@@ -80,12 +80,13 @@ function assertRinger() {
 const track = { id: "back-to-december", title: "Back to December", artist: "Taylor Swift" };
 async function startPreview() {
   const count = requests.length;
-  const playing = audio.playPreview(track);
+  const prepared = audio.preparePreviewTrack(track, new AbortController().signal);
   if (requests.length > count) requests.at(-1).resolve({ ok: true, json: async () => ({ results: [{
     wrapperType: "track", kind: "song", country: "USA", trackName: track.title, artistName: track.artist,
     previewUrl: "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview/test.m4a",
   }] }) });
-  await playing;
+  await prepared;
+  await audio.playPreview(track);
   assert.equal(audio.getPreviewState().status, "playing");
   return sounds.at(-1);
 }
@@ -102,17 +103,18 @@ for (let loop = 0; loop < 2; loop++) {
   state = heroTransition(state, { type: "CONFIRM_IDENTITY", name: `User ${loop}` }); render(); assertRinger();
   state = heroTransition(state, { type: "DETACH_COMPLETE" }); render(true);
   const requestCount = requests.length;
-  const loading = audio.playPreview(track);
-  assert.equal(audio.getPreviewState().status, "loading");
+  const loading = audio.preparePreviewTrack(track, new AbortController().signal);
+  assert.deepEqual(audio.getPreviewState(), idlePreview, "unresolved metadata cannot create a playback stream");
   assert.equal(requests.length, requestCount + 1, "real resolver reaches only the deterministic transport");
   const request = requests.at(-1);
   if (process.argv.includes("--volume")) {
-    const previewAudio = sounds.at(-1);
+    const streamCount = sounds.length;
     click("VolumeUp");
     // Physical hardware starts at 8/16 and retains volume across session reset.
     // setVolume must also update a pending preview, before playback can start.
     const expectedVolume = (9 + loop) / 16;
-    const observedVolume = previewAudio.volume;
+    const observedVolume = audio.diagnostics.volume;
+    assert.equal(sounds.length, streamCount, "metadata readiness creates no Audio element");
     // Release the pending lookup even if this integration assertion fails.
     if (observedVolume !== expectedVolume) {
       audio.resetPreview();

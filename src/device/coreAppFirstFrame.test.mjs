@@ -19,8 +19,8 @@ try {
   assert.equal(plans.facebook.source, "facebook-home");
   assert.equal(plans.twitter.source, "twitter-timeline");
   assert.equal(plans.instagram.source, "instagram-feed");
-  assert.ok(plans.facebook.imageSrc && plans.twitter.imageSrc && plans.instagram.imageSrc);
-  assert.equal(plans.messages.imageSrc, undefined);
+  assert.ok(plans.facebook.imageSrcs.length > 1 && plans.twitter.imageSrcs.length > 1 && plans.instagram.imageSrcs.length > 1);
+  assert.equal(plans.messages.imageSrcs, undefined);
 
   let now = 0, next = 0;
   const timers = new Map(), decodes = new Map(), marks = [], opened = [];
@@ -31,23 +31,27 @@ try {
     mark: name => marks.push(name),
   });
   const advance = ms => { now += ms; for (const [id, timer] of [...timers]) if (timer.at <= now) { timers.delete(id); timer.callback(); } };
-  const flush = async () => { for (let i = 0; i < 4; i++) await Promise.resolve(); };
+  const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve(); };
   gate.request("twitter", "run-1", plans.twitter, () => opened.push("twitter"));
   assert.deepEqual(opened, [], "tap remains on the stable SpringBoard during preparation");
   advance(CORE_FIRST_FRAME_HOLD_MS - 1); assert.deepEqual(opened, []);
   advance(1); assert.deepEqual(opened, ["twitter"], "hard fallback is bounded at 150ms");
   gate.revealed("twitter", "run-1");
   assert.equal(gate.snapshot().twitter.timeoutFallbackUsed, true);
+  assert.equal(gate.snapshot().twitter.firstViewportReady, false);
+  assert.equal(gate.snapshot().twitter.firstFrameReadyAt, null, "timeout is not a successful decode");
   assert.equal(gate.snapshot().twitter.firstOpenLatencyMs, CORE_FIRST_FRAME_HOLD_MS);
   assert.match(gate.snapshot().twitter.firstFrameSource, /fixed-geometry-fallback$/);
-  decodes.get(plans.twitter.imageSrc).resolve(); await flush();
+  plans.twitter.imageSrcs.forEach(src => decodes.get(src).resolve()); await flush();
   assert.deepEqual(opened, ["twitter"], "late decode cannot launch twice");
   gate.request("twitter", "run-1", plans.twitter, () => opened.push("twitter-again"));
   assert.equal(opened.at(-1), "twitter-again", "second open has no first-use hold");
 
   gate.request("facebook", "run-1", plans.facebook, () => opened.push("facebook"));
   assert.equal(opened.at(-1), "twitter-again");
-  decodes.get(plans.facebook.imageSrc).resolve(); await flush();
+  plans.facebook.imageSrcs.slice(0, -1).forEach(src => decodes.get(src).resolve()); await flush();
+  assert.notEqual(opened.at(-1), "facebook", "a representative image cannot stand in for the whole viewport");
+  decodes.get(plans.facebook.imageSrcs.at(-1)).resolve(); await flush();
   assert.equal(opened.at(-1), "facebook");
   gate.revealed("facebook", "run-1");
   assert.equal(gate.snapshot().facebook.timeoutFallbackUsed, false);
@@ -60,10 +64,17 @@ try {
   gate.reset("run-2");
   assert.equal(gate.snapshot().instagram, null);
   assert.equal(gate.snapshot().twitter, null);
-  assert.equal(decodes.get(plans.instagram.imageSrc).signal.aborted, true);
+  assert.equal(decodes.get(plans.instagram.imageSrcs[0]).signal.aborted, true);
   advance(CORE_FIRST_FRAME_HOLD_MS); await flush();
   assert.ok(!opened.includes("stale-instagram"), "Run 1 preparation cannot launch in Run 2");
 
+  for (const app of ["foursquare", "flickr"]) {
+    const plan = coreAppFirstViewPlan(app, state);
+    assert.ok(plan.imageSrcs.length > 1);
+    gate.request(app, "run-2", plan, () => opened.push(app));
+    plan.imageSrcs.forEach(src => decodes.get(src).resolve()); await flush();
+    assert.equal(opened.at(-1), app); assert.equal(gate.snapshot()[app].firstViewportReady, true);
+  }
   const screen = readFileSync(new URL("./DeviceScreen.tsx", import.meta.url), "utf8");
   const shell = readFileSync(new URL("./AppLaunchContainer.tsx", import.meta.url), "utf8");
   const css = readFileSync(new URL("../styles/device.css", import.meta.url), "utf8");

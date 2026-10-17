@@ -143,7 +143,8 @@ try {
     view.onLifecycleAction({type:"ALIGN_COMPLETE"});await flush();
     await tick(32);await tick(32);view.screen.props.warmup.onKeyboardReady();await flush();
     await tick(19936);view.onHandoff();view.onLifecycleAction({type:"BOOT_COMPLETE",now:clock});await flush();
-    screen().actions.completeScreenUnlock();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
+    // This headless harness acknowledges the existing CSS entry completion before typing.
+    screen().actions.completeScreenUnlock();await flush();screen().actions.completeScreenPasscodeEntry();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
     const sessionId=view.lifecycleDiagnostics.experienceSessionId;
     assert.equal(sceneSelections,run+1);
     const ambient=walk(tree).find(node=>node.type?.name==="AmbientWorld");
@@ -176,7 +177,7 @@ try {
       view.powerControl.begin();view.powerControl.end();await flush();
       assert.equal(screen().media.visible,false);assert.equal(screen().media.request.id,requestId);
       view.powerControl.begin();view.powerControl.end();await flush();
-      screen().actions.completeScreenUnlock();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
+      screen().actions.completeScreenUnlock();await flush();screen().actions.completeScreenPasscodeEntry();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
       assert.equal(screen().media.request.id,requestId);assert.equal(screen().media.cameraActive,true);
       const freshCapture = screen().camera.captureCameraPhoto();
       if (previousCapture) {
@@ -343,7 +344,7 @@ try {
     assert.match(markup(),/Kept across Camera|YOUR PHOTOSTREAM/);
     await sendFlickr({type:"SEARCH_QUERY",value:"Guitar"});await sendFlickr({type:"NAVIGATE",view:"search"});await sendFlickr({type:"SEARCH"});
     view.powerControl.begin();view.powerControl.end();await flush();
-    view.powerControl.begin();view.powerControl.end();await flush();screen().actions.completeScreenUnlock();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
+    view.powerControl.begin();view.powerControl.end();await flush();screen().actions.completeScreenUnlock();await flush();screen().actions.completeScreenPasscodeEntry();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();
     assert.equal(flickr().currentView,"search");assert.equal(flickr().searchQuery,"Guitar");
     await home();await open("messages");await open("flickr");
     assert.equal(flickr().currentView,"search");assert.equal(flickr().searchedQuery,"Guitar");
@@ -387,8 +388,8 @@ try {
     assert.equal(draft("twitter"),"draft-twitter");
     assert.equal(sceneSelections,run+1);
     // Keep an unresolved capture across reset; it must not block session two.
-    if(screen().display.session.phase==='sleeping'){view.powerControl.begin();view.powerControl.end();await flush();screen().actions.completeScreenUnlock();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();}
-    if(screen().display.session.phase==='locked'){screen().actions.completeScreenUnlock();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();}
+    if(screen().display.session.phase==='sleeping'){view.powerControl.begin();view.powerControl.end();await flush();screen().actions.completeScreenUnlock();await flush();screen().actions.completeScreenPasscodeEntry();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();}
+    if(screen().display.session.phase==='locked'){screen().actions.completeScreenUnlock();await flush();screen().actions.completeScreenPasscodeEntry();await flush();screen().actions.attemptScreenPasscode(screen().display.session.passcode);await flush();}
     screen().actions.cancelScreenCameraPicker();await flush();await request('twitter','camera');
     let releaseAcrossSession;
     walk(tree).find(node=>node.type?.name==='AmbientWorld').props.onCameraCaptureReady(snapshot=>new Promise(resolve=>{releaseAcrossSession=()=>resolve({snapshot,blob:new Blob(['stale-session'])});}));

@@ -4,6 +4,12 @@ import { DEVICE_AUDIO_REGISTRY, DeviceAudioEvent } from "./deviceAudioRegistry";
 export type NotificationType = "message";
 
 export type PreviewState = {trackId:string|null;status:"idle"|"loading"|"playing"|"paused"|"unavailable";position:number;duration:number};
+export type PreviewReadiness = Readonly<{
+  selectedTrackMetadataReady: boolean;
+  playEnabled: boolean;
+  previewUrlPresent: boolean;
+  status: "idle" | "resolving" | "ready" | "unavailable";
+}>;
 export type OneShotPlaybackAttempt = {
   event: DeviceAudioEvent;
   soundId: string;
@@ -19,19 +25,44 @@ const initialPreviewState = ():PreviewState => ({trackId:null,status:"idle",posi
 class DeviceAudioService {
   private previewAudio: HTMLAudioElement | null = null;
   private previewResolver = new ITunesPreviewResolver();
-  private previewAbort: AbortController | null = null;
   private previewGeneration = 0;
   private previewRetried = false;
+  private previewRecoveryTrackId: string | null = null;
+  private selectedPreviewTrack: PreviewTrack | null = null;
   private previewPlayTimer: ReturnType<typeof setTimeout> | null = null;
   private previewState = initialPreviewState();
   private previewLastEvent: string | null = null;
   private previewPlayResult: string | null = null;
   private previewMetadataStatus: string = "idle";
   private previewListeners = new Set<(state:PreviewState)=>void>();
+  private metadataGeneration = 0;
+  private metadataStates = new Map<string, "resolving" | "ready" | "unavailable">();
+  private metadataListeners = new Set<() => void>();
+  subscribePreviewMetadata = (listener: () => void) => { this.metadataListeners.add(listener); return () => { this.metadataListeners.delete(listener); }; };
+  private metadataChanged() { this.metadataListeners.forEach(listener => listener()); }
+  selectPreviewTrack(track: PreviewTrack | null) { this.selectedPreviewTrack = track; }
+  previewReadiness(track: PreviewTrack | null): PreviewReadiness {
+    const present = Boolean(track && this.previewResolver.peek(track));
+    const ready = present && !this.previewResolver.isCoolingDown(track!);
+    return { selectedTrackMetadataReady: ready, playEnabled: ready, previewUrlPresent: present,
+      status: ready ? "ready" : track && this.previewResolver.isCoolingDown(track) ? "unavailable" : track ? this.metadataStates.get(track.id) ?? "idle" : "idle" };
+  }
+  async preparePreviewTrack(track: PreviewTrack, signal: AbortSignal): Promise<void> {
+    if (signal.aborted) return;
+    const generation = this.metadataGeneration;
+    if (this.metadataStates.get(track.id) === "unavailable" && !this.previewResolver.isCoolingDown(track) && this.previewRecoveryTrackId === track.id) this.previewRecoveryTrackId = null;
+    this.metadataStates.set(track.id, this.previewResolver.peek(track) ? "ready" : this.previewResolver.isCoolingDown(track) ? "unavailable" : "resolving");
+    this.metadataChanged();
+    const url = await this.previewResolver.resolve(track, signal);
+    if (generation !== this.metadataGeneration || signal.aborted) return;
+    this.metadataStates.set(track.id, url ? "ready" : "unavailable");
+    this.metadataChanged();
+  }
   prewarmPreviewMetadata(tracks:readonly PreviewTrack[],signal:AbortSignal):Promise<void> {
+    const generation = this.metadataGeneration;
     this.previewMetadataStatus="resolving";
-    return Promise.all(tracks.map(track=>this.previewResolver.resolve(track,signal))).then(urls=>{
-      if(!signal.aborted)this.previewMetadataStatus=`ready:${urls.filter(Boolean).length}/${tracks.length}`;
+    return Promise.all(tracks.map(track=>this.preparePreviewTrack(track,signal))).then(()=>{
+      if(!signal.aborted && generation === this.metadataGeneration)this.previewMetadataStatus=`ready:${tracks.filter(track => this.previewReadiness(track).selectedTrackMetadataReady).length}/${tracks.length}`;
     });
   }
   getPreviewState = () => this.previewState;
@@ -39,12 +70,12 @@ class DeviceAudioService {
   private updatePreview(next:PreviewState) {this.previewState=next;this.previewListeners.forEach(listener=>listener(next));}
   stopPreview() {
     if(this.previewPlayTimer!==null)clearTimeout(this.previewPlayTimer);this.previewPlayTimer=null;
-    this.previewGeneration++;this.previewAbort?.abort();this.previewAbort=null;
+    this.previewGeneration++;
     const audio=this.previewAudio;this.previewAudio=null;
     if(audio){audio.onended=null;audio.onerror=null;audio.ontimeupdate=null;audio.onloadedmetadata=null;audio.oncanplay=null;audio.onplaying=null;audio.onwaiting=null;audio.onstalled=null;audio.pause();audio.removeAttribute("src");audio.load();}
     this.updatePreview(initialPreviewState());
   }
-  resetPreview() {this.stopPreview();this.previewResolver.clear();this.previewLastEvent=null;this.previewPlayResult=null;this.previewMetadataStatus="idle";}
+  resetPreview() {this.metadataGeneration++;this.stopPreview();this.previewResolver.clear();this.metadataStates.clear();this.selectedPreviewTrack=null;this.previewRecoveryTrackId=null;this.previewLastEvent=null;this.previewPlayResult=null;this.previewMetadataStatus="idle";this.metadataChanged();}
   pausePreview() {
     if(this.previewPlayTimer!==null)clearTimeout(this.previewPlayTimer);this.previewPlayTimer=null;
     if(this.previewState.status==="loading") {this.stopPreview();return;}
@@ -56,9 +87,15 @@ class DeviceAudioService {
     const retry=!this.previewRetried;
     this.previewResolver.invalidate(track);
     this.stopPreview();
-    if(retry && this.canPlayAudio) void this.playPreview(track,true);
+    if(retry && this.canPlayAudio) {
+      this.previewRecoveryTrackId = track.id;
+      // Resolve recovery metadata without autoplaying outside a user gesture.
+      this.updatePreview({trackId:track.id,status:"unavailable",position:0,duration:0});
+      void this.preparePreviewTrack(track, new AbortController().signal);
+    }
     else {
       this.previewResolver.markFailure(track);
+      this.metadataStates.set(track.id, "unavailable"); this.metadataChanged();
       this.updatePreview({trackId:track.id,status:"unavailable",position:0,duration:0});
     }
   }
@@ -68,26 +105,16 @@ class DeviceAudioService {
     if(this.previewResolver.isCoolingDown(track)) {
       this.stopPreview();this.updatePreview({trackId:track.id,status:"unavailable",position:0,duration:0});return;
     }
+    // An actionable tap must have a validated URL before this function is called.
+    // Recheck at the boundary for expiry/reset races; a cold call never resolves-and-plays.
+    const url = this.previewResolver.peek(track);
+    if (!url) return;
     let audio=this.previewAudio;
     if(!audio || this.previewState.trackId!==track.id || !audio.src) {
-      this.stopPreview();audio=new Audio();this.previewAudio=audio;audio.preload="none";this.previewRetried=retrying;
-      const token=this.previewGeneration,controller=new AbortController();this.previewAbort=controller;
-
+      this.stopPreview();audio=new Audio();this.previewAudio=audio;audio.preload="none";this.previewRetried=retrying || this.previewRecoveryTrackId === track.id;
       this.updatePreview({trackId:track.id,status:"loading",position:0,duration:0});
-      try {
-        // A cached URL lets play() run in this same user-activation task.
-        const ready=this.previewResolver.peek(track);
-        this.previewMetadataStatus=ready?"cached":"resolving";
-        const url=ready ?? await this.previewResolver.resolve(track,controller.signal);
-        if(token!==this.previewGeneration)return;
-        if(!url)throw new Error("Preview unavailable");
-        this.previewMetadataStatus="ready";
-        audio.src=url;
-      } catch {
-        this.previewMetadataStatus="unavailable";
-        if(token===this.previewGeneration){this.stopPreview();this.updatePreview({trackId:track.id,status:"unavailable",position:0,duration:0});}
-        return;
-      }
+      this.previewMetadataStatus="cached";
+      audio.src=url;
     }
     if(!this.canPlayAudio || audio!==this.previewAudio)return;
     const token=++this.previewGeneration;
@@ -243,6 +270,7 @@ class DeviceAudioService {
       oneShotPlaybackAttempts: this.oneShotPlaybackAttempts.map(attempt => ({ ...attempt })),
       activeChannel: this.activeAudio ? "one-shot" : this.previewAudio ? "itunes-preview" : null,
       previewState: { ...this.previewState },
+      iTunes: this.previewReadiness(this.selectedPreviewTrack),
       previewMedia: {
         metadataStatus:this.previewMetadataStatus,
         sourcePresent:Boolean(media?.src),

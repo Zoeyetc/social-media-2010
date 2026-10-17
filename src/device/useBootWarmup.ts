@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { browserWarmupHost, createBootWarmup, type WarmupSnapshot } from "./bootWarmup";
+import { firstViewportImageCache } from "./imageReadiness";
 import { bootImageTasks } from "./bootWarmupImages";
 import { buildSessionTimelineEvents } from "../data/sessionTimeline";
 import { DeviceAudio } from "../audio/deviceAudio";
@@ -16,10 +17,12 @@ export function useBootWarmup(sessionId: string | null, bootStartedAt: number | 
     events: ReturnType<typeof buildSessionTimelineEvents> | null } | null>(null);
   const failure = useRef(onFailure); failure.current = onFailure;
   const [keyboardSession, setKeyboardSession] = useState<string | null>(null);
+  const [, setProgressRevision] = useState(0);
   const [readySession, setReadySession] = useState<string | null>(null);
   useEffect(() => {
     if (!sessionId || bootStartedAt === null) return;
     const run: NonNullable<typeof active.current> = { id: sessionId, schedule: null!, keyboardReady: null, events: null };
+    firstViewportImageCache.reset(sessionId);
     run.schedule = createBootWarmup([
       { id: "canonical-runtime", tier: 0, run: () => {
         // Existing reducer/notification owners are already committed in App.
@@ -31,19 +34,20 @@ export function useBootWarmup(sessionId: string | null, bootStartedAt: number | 
         signal.addEventListener("abort", () => reject(new Error("Keyboard warm-up cancelled")), { once: true });
         setKeyboardSession(sessionId);
       }) },
+      { id: "itunes-preview-metadata", tier: 1, run: signal => DeviceAudio.prewarmPreviewMetadata(ITUNES_TRACKS, signal) },
       ...bootImageTasks(),
-      { id: "itunes-preview-metadata", tier: 2, run: signal => DeviceAudio.prewarmPreviewMetadata(ITUNES_TRACKS, signal) },
-    ], browserWarmupHost(), () => setReadySession(sessionId), () => failure.current());
+    ], browserWarmupHost(), () => setReadySession(sessionId), () => failure.current(), () => setProgressRevision(value => value + 1));
     active.current = run;
-    run.schedule.start();
+    run.schedule.start(bootStartedAt);
     return () => {
-      run.schedule.cancel(); run.keyboardReady = null; run.events = null;
+      run.schedule.cancel(); firstViewportImageCache.reset(null); run.keyboardReady = null; run.events = null;
       if (active.current === run) active.current = null;
       setKeyboardSession(null); setReadySession(null);
     };
   }, [sessionId, bootStartedAt]);
   return {
-    bootCriticalReady: Boolean(sessionId && readySession === sessionId && active.current?.schedule.ready),
+    firstViewportReady: active.current?.schedule.firstViewportReady ?? false,
+    bootCriticalReady: Boolean(sessionId && readySession === sessionId && active.current?.schedule.canExit()),
     screen: {
       keyboardRequested: Boolean(sessionId && keyboardSession === sessionId),
       onKeyboardReady: () => {
@@ -52,7 +56,7 @@ export function useBootWarmup(sessionId: string | null, bootStartedAt: number | 
       },
     } satisfies BootWarmupScreen,
     preparedEvents: () => active.current?.id === sessionId ? active.current.events : null,
-    canExit: () => Boolean(active.current?.id === sessionId && active.current.schedule.ready),
+    canExit: () => Boolean(active.current?.id === sessionId && active.current.schedule.canExit()),
     bootExited: () => active.current?.schedule.markBootExit(),
     firstApp: () => active.current?.schedule.markFirstApp(),
     firstKeyboard: () => active.current?.schedule.markFirstKeyboard(),

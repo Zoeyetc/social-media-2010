@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { DeviceAudio } from "../audio/deviceAudio";
-import type { WarmupSnapshot } from "./bootWarmup";
+import type { WarmupSnapshot, FirstViewportSnapshot } from "./bootWarmup";
 import type { CoreFirstFrameApp, CoreFirstFrameRecord } from "./coreAppFirstFrame";
 
 export type ReleasePerformanceState = Readonly<{
@@ -19,6 +19,8 @@ export type ReleasePerformanceState = Readonly<{
 
 export type ReleasePerformanceSnapshot = ReleasePerformanceState & Readonly<{
   warmup: WarmupSnapshot | null;
+  warmupFirstViewport: FirstViewportSnapshot | null;
+  iTunes: ReturnType<typeof readAudioDiagnostics>["iTunes"];
   coreFirstFrames: Record<CoreFirstFrameApp, CoreFirstFrameRecord | null>;
   deviceScreen: {
     currentInstanceCount: number;
@@ -82,17 +84,20 @@ export function useReleasePerformanceDiagnostics(state: ReleasePerformanceState,
         const knownContinuousLoopCount = Number(ambientWorldActive)
           + Number(current.powerHoldRafActive)
           + Number(current.screenPortalBootRafActive);
+        const audio = readAudioDiagnostics();
         const snapshot: ReleasePerformanceSnapshot = {
           ...current,
           warmup: warmupRef.current?.() ?? null,
-          coreFirstFrames: coreFirstFramesRef.current?.() ?? { messages: null, facebook: null, twitter: null, instagram: null },
+          warmupFirstViewport: warmupRef.current?.()?.firstViewport ?? null,
+          coreFirstFrames: coreFirstFramesRef.current?.() ?? { messages: null, facebook: null, twitter: null, instagram: null, foursquare: null, flickr: null },
           deviceScreen: {
             currentInstanceCount: Math.max(0, (screen?.semanticMounts ?? 0) - (screen?.semanticUnmounts ?? 0)),
             totalSemanticMounts: screen?.semanticMounts ?? 0,
             totalSemanticUnmounts: screen?.semanticUnmounts ?? 0,
             instanceId: screen?.semanticInstanceId ?? null,
           },
-          audio: readAudioDiagnostics(),
+          audio,
+          iTunes: audio.iTunes,
           screenPortalMounted,
           approximateDomNodeCount: document.getElementsByTagName("*").length,
           raf: {

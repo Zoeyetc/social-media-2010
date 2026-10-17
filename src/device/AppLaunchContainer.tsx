@@ -21,7 +21,8 @@ export function AppLaunchContainer({ runtime, dispatch, onClosed, children, reta
     const expected = { messages: ".mobilesms-container .mobilesms-navigation-bar",
       facebook: ".facebook-container .facebook-navigation-bar",
       twitter: ".twitter-container .twitter-navigation-bar",
-      instagram: ".instagram-container .instagram-navigation-bar" }[appId];
+      instagram: ".instagram-container .instagram-navigation-bar",
+      foursquare: ".foursquare-container .foursquare-navigation-bar", flickr: ".flickr-container .flickr-navigation-bar" }[appId];
     if (!surface.current?.querySelector(expected)) return;
     if (reported.current !== appId) { reported.current = appId; onCoreFirstFrame?.(appId); }
   }, [inactive, runtime.activeAppId, runtime.phase, onCoreFirstFrame]);

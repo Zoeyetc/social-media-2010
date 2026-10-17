@@ -24,9 +24,9 @@ const tasks = [
 const run = createBootWarmup(tasks, h.api, () => ready++, () => failed++);
 run.start(); run.start();
 await h.turn(0); assert.equal(run.snapshot().completedTaskIds.length, 0, "busy browser yields");
-await h.turn(); assert.deepEqual(run.snapshot().completedTaskIds, ["runtime"], "one task per idle turn");
+await h.tick(32); assert.deepEqual(run.snapshot().completedTaskIds, ["runtime"], "one task per idle turn");
 await h.turn(); assert.equal(keyboardRuns, 1); assert.equal(run.ready, false);
-await h.tick(20000); assert.equal(run.ready, false, "20 seconds cannot bypass keyboard readiness");
+await h.tick(19968); assert.equal(run.ready, false, "20 seconds cannot bypass keyboard readiness");
 acknowledge(); await flush(); assert.equal(run.ready, true); assert.equal(ready, 1);
 run.markBootExit(); assert.equal(run.snapshot().bootExitMs, 20000);
 assert.deepEqual(run.snapshot().deferredTaskIds, ["optional-fails", "optional-later"]);
@@ -55,3 +55,42 @@ stuck.start(); await pending.turn(); await pending.tick(BOOT_CRITICAL_DEADLINE_M
 assert.equal(failures, 1); assert.equal(stuck.ready, false); assert.equal(stuck.snapshot().failure, "tier0-deadline");
 assert.equal(pending.idle.size, 0); assert.equal(pending.timers.size, 0);
 console.log("PASS: serial idle tiers, real critical acknowledgement, minimum boot gate, optional failure/defer, marks, cancellation, Run 2 and bounded critical failure");
+
+// First-viewport work makes serial progress even when every idle callback is busy.
+const busy = host(); let viewportRuns = 0;
+const busyRun = createBootWarmup([
+  { id: "system", tier: 0, run() {} },
+  ...[1, 2, 3].map(n => ({ id: `viewport-${n}`, tier: 1, bytes: 100, firstViewportApps: ["facebook"], run() { viewportRuns++; } })),
+  { id: "optional", tier: 2, run() {} },
+], busy.api, () => {}, () => assert.fail());
+busyRun.start(); await busy.turn(0); await busy.tick(32);
+assert.equal(busyRun.ready, true); assert.equal(busyRun.canExit(), false, "critical readiness alone does not release boot");
+for (let n = 0; n < 3; n++) { await busy.turn(0); await busy.tick(32); }
+assert.equal(viewportRuns, 3); assert.equal(busyRun.firstViewportReady, true);
+await busy.tick(20000); busyRun.markBootExit();
+assert.equal(busyRun.snapshot().firstViewport.completedTasks, 3);
+assert.equal(busyRun.snapshot().firstViewport.completedBytes, 300);
+assert.equal(busyRun.snapshot().firstViewport.deferredTasks, 0);
+assert.equal(busyRun.snapshot().firstViewport.bootExitWithIncompleteFirstViewport, false);
+busyRun.cancel(); assert.equal(busy.timers.size, 0);
+
+// Progress permits a short grace; even continuous progress cannot extend past +2s.
+const grace = host(); const releases = [];
+const graceRun = createBootWarmup([
+  { id: "system", tier: 0, run() {} },
+  ...[1, 2, 3, 4, 5].map(n => ({ id: `vp-${n}`, tier: 1, firstViewportApps: ["instagram"], run: () => new Promise(resolve => releases.push(resolve)) })),
+], grace.api, () => {}, () => assert.fail());
+graceRun.start(); await grace.turn(); await grace.tick(19000); await grace.turn();
+await grace.tick(600); releases[0](); await flush(); await grace.turn();
+await grace.tick(400); assert.equal(graceRun.canExit(), false);
+await grace.tick(300); releases[1](); await flush(); await grace.turn();
+await grace.tick(700); releases[2](); await flush(); await grace.turn();
+await grace.tick(700); releases[3](); await flush(); await grace.turn();
+await grace.tick(300); assert.equal(graceRun.canExit(), true, "hard first-viewport maximum is 22 seconds");
+graceRun.markBootExit(); const graceSnapshot = graceRun.snapshot().firstViewport;
+assert.equal(graceSnapshot.gracePeriodUsed, true);
+assert.equal(graceSnapshot.bootExitWithIncompleteFirstViewport, true);
+assert.equal(graceSnapshot.completedTasks, 4); assert.equal(graceSnapshot.deferredTasks, 1);
+graceRun.cancel(); releases[4](); await flush();
+assert.equal(graceRun.snapshot().firstViewport.completedTasks, 4, "stale completion cannot enter a cancelled session");
+console.log("PASS: busy-idle first-viewport progress, grouped byte/readiness diagnostics, progress-only grace, hard +2s maximum and reset cancellation");

@@ -1,3 +1,4 @@
+import { displayImageSrc } from "../data/displayImageDerivatives";
 import { Dispatch, useLayoutEffect, useRef } from "react";
 import { FlickrEvent, FlickrPhoto, FlickrState, FlickrView, selectFlickrPhotos, selectFlickrNavigationPhotos } from "../state/flickrState";
 import { useSessionIdentity } from "../state/sessionIdentity";
@@ -80,7 +81,7 @@ export function FlickrContainer({ state, dispatch, mail, elapsedMs = 0, experien
     </header>}
 
     {view === "home" && <><button className="flickr-search-launch" onClick={() => navigate("search")}><span>⌕ Search</span></button>
-      {slide && <button className="flickr-slideshow" onClick={() => open(slide, "home")}><img key={slide.id} src={slide.src} alt={slide.title} /><span>{owner(slide)}</span></button>}
+      {slide && <button className="flickr-slideshow" onClick={() => open(slide, "home")}><img key={slide.id} src={displayImageSrc(slide.src)} alt={slide.title} /><span>{owner(slide)}</span></button>}
       <nav className="flickr-home-buttons" aria-label="Flickr sections"><button onClick={() => navigate("recent")}>Recent</button><button onClick={() => dispatch({ type: "SHOW_PHOTOSTREAM" })}>You</button><button onClick={() => navigate("contacts")}>Contacts</button></nav></>}
 
     {view === "contacts" && <div className="flickr-scroll flickr-rows">{[...new Set(contacts.map(p => p.ownerId))].map(id => {

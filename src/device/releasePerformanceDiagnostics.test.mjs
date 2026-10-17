@@ -10,6 +10,7 @@ assert.match(diagnostics, /import\.meta\.env\.DEV[^\n]+performanceDebug/);
 assert.match(diagnostics, /__SM2010_PERFORMANCE_QA__/);
 assert.match(diagnostics, /snapshot: \(\): ReleasePerformanceSnapshot/);
 assert.match(diagnostics, /warmup: warmupRef\.current\?\.\(\) \?\? null/);
+for (const field of ["warmupFirstViewport", "iTunes"]) assert.ok(diagnostics.includes(field));
 assert.doesNotMatch(diagnostics, /setInterval|setTimeout|console\.|requestAnimationFrame/);
 assert.match(diagnostics, /document\.getElementsByTagName\("\*"\)\.length/);
 assert.match(screenDiagnostics, /const visible = import\.meta\.env\.DEV/);

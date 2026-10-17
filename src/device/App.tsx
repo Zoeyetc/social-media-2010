@@ -63,6 +63,7 @@ import { selectCameraVideoScene, type CameraVideoSceneSelection } from "../world
 import { useReleasePerformanceDiagnostics } from "./useReleasePerformanceDiagnostics";
 import { useBootWarmup } from "./useBootWarmup";
 import { browserCoreFirstFrameHost, createCoreAppFirstFrameGate, isCoreFirstFrameApp } from "./coreAppFirstFrame";
+import { firstViewportImageCache } from "./imageReadiness";
 import { coreAppFirstViewPlan } from "./coreAppFirstView";
 
 const TERMINAL_DEPLETED_DISPLAY_MS = 1_500;
@@ -221,7 +222,18 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const [instagramState, dispatchInstagram] = useReducer(instagramStateTransition, undefined, createInitialInstagramState);
   const [iTunesState, dispatchITunesState] = useReducer(iTunesTransition, undefined, initialITunesState);
   const [iTunesPreview, setITunesPreview] = useState(DeviceAudio.getPreviewState);
+  const [, setITunesMetadataRevision] = useState(0);
+  useEffect(() => DeviceAudio.subscribePreviewMetadata(() => setITunesMetadataRevision(value => value + 1)), []);
   useEffect(() => DeviceAudio.subscribePreview(setITunesPreview), []);
+  const selectedITunesTrack = iTunesState.selectedIndex === null ? null : ITUNES_TRACKS[iTunesState.selectedIndex];
+  const iTunesReadiness = DeviceAudio.previewReadiness(selectedITunesTrack);
+  useEffect(() => {
+    DeviceAudio.selectPreviewTrack(selectedITunesTrack);
+    if (!selectedITunesTrack || session.phase !== "app" || appRuntime.activeAppId !== "itunes") return;
+    const controller = new AbortController();
+    void DeviceAudio.preparePreviewTrack(selectedITunesTrack, controller.signal);
+    return () => controller.abort();
+  }, [session.phase, appRuntime.activeAppId, selectedITunesTrack]);
   useEffect(() => {
     if (session.phase !== "app" || appRuntime.activeAppId !== "itunes") return;
     const controller = new AbortController();
@@ -233,7 +245,10 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const dispatchITunes = (event: Parameters<typeof iTunesTransition>[1]) => {
     if (event.type === "RESET") DeviceAudio.resetPreview();
     else if (event.type === "PAUSE") DeviceAudio.pausePreview();
-    else if (event.type === "PLAY" && iTunesState.selectedIndex !== null) void DeviceAudio.playPreview(ITUNES_TRACKS[iTunesState.selectedIndex]);
+    else if (event.type === "PLAY") {
+      if (!selectedITunesTrack || !DeviceAudio.previewReadiness(selectedITunesTrack).playEnabled) return;
+      void DeviceAudio.playPreview(selectedITunesTrack);
+    }
     else if (iTunesTransition(iTunesState, event).selectedIndex !== iTunesState.selectedIndex) DeviceAudio.stopPreview();
     dispatchITunesState(event);
   };
@@ -257,7 +272,11 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const [publicTwitterState, dispatchPublicTwitter] = useReducer(publicTwitterStateTransition, initialPublicTwitterState);
   const coreFirstFrame = useRef<ReturnType<typeof createCoreAppFirstFrameGate> | null>(null);
   if (!coreFirstFrame.current) coreFirstFrame.current = createCoreAppFirstFrameGate(browserCoreFirstFrameHost());
-  useEffect(() => { coreFirstFrame.current?.reset(session.experienceSessionId); }, [session.experienceSessionId]);
+  useEffect(() => {
+    firstViewportImageCache.reset(session.experienceSessionId);
+    coreFirstFrame.current?.reset(session.experienceSessionId);
+    return () => firstViewportImageCache.reset(null);
+  }, [session.experienceSessionId]);
   useEffect(() => { if (session.phase !== "springboard") coreFirstFrame.current?.cancelPending(); }, [session.phase]);
   const [publicTwitterOutro, dispatchPublicTwitterOutro] = useReducer(publicTwitterOutroTransition, initialPublicTwitterOutroState);
   const publicTwitterStateRef = useRef(publicTwitterState);
@@ -1608,6 +1627,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           tumblrState,
           dispatchTumblr,
           iTunesPreview,
+          iTunesReadiness,
           iTunesState,
           dispatchITunes,
           remainingBasicApps,

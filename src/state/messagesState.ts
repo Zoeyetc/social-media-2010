@@ -118,7 +118,8 @@ export function classifyMomReply(text: string): MomReplyClassification {
   const normalized = normalizeMomReply(text);
   if (isLoveYouIntentNormalized(normalized)) return "love";
   if (NEGATIVE_MOM_REPLIES.has(normalized)) return "negative";
-  if (AFFIRMATIVE_MOM_REPLIES.has(normalized)) return "affirmative";
+  if (AFFIRMATIVE_MOM_REPLIES.has(normalized)
+    || /^(?:yes|yeah|yep|yup) (?:mom|mami|mommy)$/u.test(normalized)) return "affirmative";
   return "ambiguous";
 }
 
