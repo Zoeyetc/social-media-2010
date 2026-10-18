@@ -1,8 +1,26 @@
 # SM2010 Cloudflare staging deployment v0.1
 
+## Deployment ownership
+
+| Environment | Config | Worker | URL |
+| --- | --- | --- | --- |
+| Production | `wrangler.jsonc` | `social-media-2010` | https://social-media-2010.zetc.workers.dev/ |
+| Staging | `wrangler.staging.jsonc` | `sm2010-hero-staging` | https://sm2010-hero-staging.vincentfinn.workers.dev/ |
+
+`deploy:staging` targets the staging Worker only through an explicit config path.
+`deploy:staging:dry-run` selects the same config and adds `--dry-run`; it does not
+publish. Neither script falls back to the production config or depends on a shell
+environment variable to select its target. No production deploy script is defined.
+Any future production deploy script must explicitly select `wrangler.jsonc`.
+
+The production config, Worker name, bindings, required secret names and routes
+are unchanged. The separate staging config uses the same entry point,
+compatibility date/flags, `dist` assets and API routing contract, with its own
+Worker identity. It does not copy production secret values.
+
 ## Architecture
 
-The existing React/Vite application remains the client build. Workers Static Assets uploads the normal Vite `dist` output and serves `index.html`, `hero.html`, hashed bundles, the iPhone GLB, and historical media. A module Worker handles `/api/flickr-mail*` before static routing and delegates other selected requests to the `ASSETS` binding.
+The existing React/Vite application remains the client build. Workers Static Assets uploads the normal Vite `dist` output and serves `index.html`, `hero.html`, hashed bundles, the iPhone GLB, and historical media. A module Worker handles `/api/flickr-mail*` and `/api/itunes-preview/resolve` before static routing and delegates other selected requests to the `ASSETS` binding.
 
 The Cloudflare Vite plugin was evaluated but is not used in this staging path because its current build integration rejects this project's required multi-page `index.html` plus `hero.html` input. Direct Wrangler Static Assets deployment is the current supported fallback and avoids changing the application architecture.
 
@@ -18,7 +36,7 @@ API responses and the `/` and `/hero.html` entry pages use `Cache-Control: no-st
 
 ## Required staging secrets
 
-Configure these on `sm2010-hero-staging`; never prefix them with `VITE_`:
+These required names belong to `sm2010-hero-staging`; never prefix them with `VITE_`:
 
 - `MAIL_API_KEY`
 - `MAIL_FROM`
@@ -28,14 +46,33 @@ Configure these on `sm2010-hero-staging`; never prefix them with `VITE_`:
 
 Set `MAIL_RECIPIENT_ALLOWLIST` to the approved staging recipient. The deployed Worker derives its expected origin from the request URL and requires the browser `Origin` header to match exactly, so `MAIL_ORIGIN` is not required in Cloudflare. The local Node backend continues to use `MAIL_ORIGIN`.
 
+Existing staging secrets may be reused if already present. This configuration
+repair does not read, print, copy or change secret values, and does not modify
+production secrets. Presence of the remote staging secrets is not verified by a
+local dry run.
+
 ## Preparation and deployment
 
-1. Authenticate Wrangler with the intended Cloudflare account.
-2. Set each staging secret interactively with `npx wrangler secret put NAME`; do not paste secrets into tracked files or shell history.
+1. Authenticate Wrangler with the Cloudflare account owning the staging Worker and its `vincentfinn.workers.dev` subdomain.
+2. If a staging secret is missing, configure it only in a separately authorized operation using `npx wrangler secret put NAME --config wrangler.staging.jsonc`; do not paste values into tracked files or shell history.
 3. Validate the upload without publishing: `npm run deploy:staging:dry-run`.
 4. After explicit deployment approval: `npm run deploy:staging`.
 
-Expected default URL: `https://sm2010-hero-staging.<account-subdomain>.workers.dev/hero.html`. A custom domain may be attached later without changing the same-origin API contract.
+The package scripts expand to:
+
+```sh
+# Staging Worker only; publishes only when explicitly authorized.
+npm run build:staging && wrangler deploy --config wrangler.staging.jsonc
+
+# Staging validation only; no deployment.
+npm run build:staging && wrangler deploy --config wrangler.staging.jsonc --dry-run
+```
+
+Staging root: https://sm2010-hero-staging.vincentfinn.workers.dev/
+Staging alternate entry: https://sm2010-hero-staging.vincentfinn.workers.dev/hero.html
+Production remains https://social-media-2010.zetc.workers.dev/.
+The local config selects the Worker name; the account owning that existing Worker
+determines its workers.dev subdomain. This repair does not change account routing.
 
 ## Staging verification checklist
 
@@ -44,7 +81,7 @@ Do not mark this checklist passed until the Worker is deployed and tested on the
 - [ ] `/hero.html` loads directly; `/` loads `index.html`.
 - [ ] The iPhone GLB and historical images, icons, wallpapers, audio, and video assets load.
 - [ ] Boot, ScreenPortal projection, passcode, and SpringBoard work.
-- [ ] Direct Apple `country=US` preview resolution and playback work without a Cloudflare proxy.
+- [ ] Same-origin `/api/itunes-preview/resolve` resolves Apple `country=US` metadata; preview audio plays directly from Apple without proxying audio bytes.
 - [ ] `/api/flickr-mail/config` returns the expected enabled state with `Cache-Control: no-store`.
 - [ ] Flickr Mail sends only to the staging allowlist recipient and a retry remains idempotent.
 - [ ] Camera creates session-local synthetic video; Photos plays it without upload or persistent storage.

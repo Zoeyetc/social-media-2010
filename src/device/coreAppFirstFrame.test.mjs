@@ -83,7 +83,7 @@ try {
   assert.match(screen, /session\.phase === "app" && <>[\s\S]*appRuntime\.activeAppId === "twitter" && <TwitterContainer/, "only the selected app mounts");
   assert.match(shell, /useLayoutEffect[\s\S]*\.twitter-container \.twitter-navigation-bar/);
   assert.match(twitter, /useLayoutEffect\([\s\S]*timelineRef\.current\.scrollTop = state\.scrollPosition/);
-  assert.match(css, /\.app-launch-container\.is-launching \{ animation: app-runtime-open/);
+  assert.match(css, /\.app-launch-container\.is-launching:not\(\.is-system-cold-launch\) \{ animation: app-runtime-open/);
   assert.match(css, /\.twitter-avatar-fixture \{ width: 48px; height: 48px/);
   assert.match(css, /\.instagram-square-photo \{ width: 100%; aspect-ratio: 1 \/ 1/);
   assert.match(css, /\.facebook-home-icon \{[^}]*width: 64px; height: 58px/);

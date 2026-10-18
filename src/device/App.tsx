@@ -1,3 +1,5 @@
+import { useSystemAppLaunch } from "./useSystemAppLaunch";
+import type { IconOrigin } from "./systemAppLaunch";
 import { CameraVideoRecorder, VIDEO_MAX_CLIPS } from "../state/cameraVideoRecorder";
 import { initialRCSystemApps, rcSystemAppsTransition } from "../state/rcSystemApps";
 import { initialSmallApps, smallAppsTransition } from "../state/smallApps";
@@ -270,9 +272,11 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     createInitialTwitterState,
   );
   const [publicTwitterState, dispatchPublicTwitter] = useReducer(publicTwitterStateTransition, initialPublicTwitterState);
+  const systemAppLaunch = useSystemAppLaunch();
   const coreFirstFrame = useRef<ReturnType<typeof createCoreAppFirstFrameGate> | null>(null);
   if (!coreFirstFrame.current) coreFirstFrame.current = createCoreAppFirstFrameGate(browserCoreFirstFrameHost());
   useEffect(() => {
+    systemAppLaunch.owner.reset();
     firstViewportImageCache.reset(session.experienceSessionId);
     coreFirstFrame.current?.reset(session.experienceSessionId);
     return () => firstViewportImageCache.reset(null);
@@ -332,7 +336,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     currentApp: session.phase === "app" ? appRuntime.activeAppId : null,
     powerHoldRafActive: powerFrame.current !== null,
     screenPortalBootRafActive: presenter === "hero" && (lifecycle.phase === "powering-on" || lifecycle.phase === "front-aligned") && lifecycle.bootStartedAt !== null && !lifecycle.bootComplete,
-  }, warmup.snapshot, coreFirstFrame.current.snapshot);
+  }, warmup.snapshot, coreFirstFrame.current.snapshot, systemAppLaunch.owner.snapshot);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -424,6 +428,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const lockScreenModel = createLockScreenModel(lockScreenTime, deviceDate, statusBarState);
 
   const resetDisposableRuntime = useCallback(() => {
+    systemAppLaunch.owner.reset();
+    coreFirstFrame.current?.cancelPending();
     pendingUnlockDestination.current = null;
     videoRecorder.current?.cancel(); videoPending.current = false; setVideoStatus("idle"); setVideoError("");
     if (shutdownResetStarted.current) return;
@@ -1063,9 +1069,40 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   }, [appRuntime.phase, cameraRuntime.cameraApp.phase, cameraRuntime.cameraPicker.phase, multitaskingBar, session.phase, session.previousPhase, presenter, lifecycle.phase]);
 
   const recordInteraction = () => setActivityRevision(revision => revision + 1);
-  const launchSpringBoardApp = (appId: string) => {
+  const cancelSystemAppLaunch = () => {
+    const active = systemAppLaunch.owner.active;
+    if (!active || !systemAppLaunch.owner.cancel()) return false;
+    coreFirstFrame.current?.cancelPending();
+    const cameraOwner = cameraOwnerForApp(active.appId);
+    if (cameraOwner) dispatchCameraRuntime({ type: "SUSPEND", owner: cameraOwner });
+    dispatchAppRuntime({ type: "SUSPEND" });
+    return true;
+  };
+  useEffect(() => {
+    if (session.phase !== "springboard" && session.phase !== "app") cancelSystemAppLaunch();
+  }, [session.phase]);
+  useEffect(() => {
+    const cancel = () => {
+      if (cancelSystemAppLaunch()) update({ phase: "springboard" });
+    };
+    window.addEventListener("resize", cancel);
+    window.addEventListener("orientationchange", cancel);
+    return () => {
+      window.removeEventListener("resize", cancel);
+      window.removeEventListener("orientationchange", cancel);
+    };
+  }, []);
+  useEffect(() => () => { systemAppLaunch.owner.reset(); coreFirstFrame.current?.cancelPending(); }, []);
+  const launchSpringBoardApp = (appId: string, origin?: IconOrigin) => {
+    if (systemAppLaunch.owner.active) return;
     if (appRuntime.phase !== "none" && appRuntime.phase !== "suspended") return;
+    const retained = appRuntime.activeAppId === appId || appRuntime.suspendedAppIds.includes(appId);
+    // Real SpringBoard taps always carry measured geometry; origin-less calls retain dev/internal compatibility.
+    const token = origin && !retained ? systemAppLaunch.owner.begin(appId, origin,
+      Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches)) : null;
+    if (retained) systemAppLaunch.owner.observe(appId, "resume");
     const open = () => {
+      if (token !== null && systemAppLaunch.owner.active?.token !== token) return;
       const cameraOwner = cameraOwnerForApp(appId);
       if (cameraOwner) {
         dispatchCameraRuntime({
@@ -1073,7 +1110,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           owner: cameraOwner,
         });
       }
-      dispatchAppRuntime({ type: "LAUNCH", appId });
+      dispatchAppRuntime({ type: retained ? "RESUME" : "LAUNCH", appId });
       update({ phase: "app" });
     };
     if (session.phase === "springboard" && isCoreFirstFrameApp(appId)) {
@@ -1113,6 +1150,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     openNotificationApp(notification.target.appId);
   };
   const openNotificationApp = (targetAppId: string) => {
+    systemAppLaunch.owner.cancel(); coreFirstFrame.current?.cancelPending();
+    systemAppLaunch.owner.observe(targetAppId, "notification");
     const targetIsRetained = appRuntime.activeAppId === targetAppId
       || appRuntime.suspendedAppIds.includes(targetAppId);
     if (appRuntime.activeAppId && appRuntime.activeAppId !== targetAppId) {
@@ -1132,6 +1171,10 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     setUnlockReturnAppId(null);
   };
   const openMessagesConversation = (fromNotification = false, conversationId?: string) => {
+    if (fromNotification) {
+      systemAppLaunch.owner.cancel(); coreFirstFrame.current?.cancelPending();
+      systemAppLaunch.owner.observe("messages", "notification");
+    }
     if (fromNotification && currentNotification) dispatchNotifications({ type: "DISMISS", id: currentNotification.id });
     dispatchMessages({ type: "OPEN_CONVERSATION", conversationId });
 
@@ -1259,7 +1302,8 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
         powerStarted.current = null;
         if (session.phase === "poweredOff") update({ phase: "booting" });
         else {
-          const transition = longPowerTransition(session);
+          const cancelledLaunch = cancelSystemAppLaunch();
+          const transition = longPowerTransition(cancelledLaunch ? { ...session, phase: "springboard" } : session);
           if (transition) update(transition);
         }
         return;
@@ -1271,10 +1315,11 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
 
   const endPower = () => {
     if (powerStarted.current !== null && session.phase !== "poweredOff") {
-      const transition = shortPowerTransition(session);
+      const cancelledLaunch = cancelSystemAppLaunch();
+      const transition = shortPowerTransition(cancelledLaunch ? { ...session, phase: "springboard" } : session);
       if (transition) {
         if (transition.phase === "sleeping") {
-          const returnAppId = session.phase === "app" ? appRuntime.activeAppId : null;
+          const returnAppId = !cancelledLaunch && session.phase === "app" ? appRuntime.activeAppId : null;
           setUnlockReturnAppId(returnAppId);
           if (returnAppId) {
             const cameraOwner = cameraOwnerForApp(returnAppId);
@@ -1318,6 +1363,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   };
 
   const activateHome = () => {
+    if (cancelSystemAppLaunch()) { update({ phase: "springboard" }); return; }
     if (session.phase === "springboard" && (folderState === "open" || folderState === "opening")) {
       dispatchFolderEvent("CLOSE");
       return;
@@ -1383,6 +1429,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
     const canResume = unlockReturnAppId !== null
       && (appRuntime.activeAppId === unlockReturnAppId || appRuntime.suspendedAppIds.includes(unlockReturnAppId));
     if (canResume && unlockReturnAppId) {
+      systemAppLaunch.owner.observe(unlockReturnAppId, "resume");
       const cameraOwner = cameraOwnerForApp(unlockReturnAppId);
       if (cameraOwner) dispatchCameraRuntime({ type: "RESUME", owner: cameraOwner });
       dispatchAppRuntime({ type: "RESUME", appId: unlockReturnAppId });
@@ -1514,6 +1561,7 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
   const selectScreenMultitaskingApp: DeviceScreenProps["actions"]["selectScreenMultitaskingApp"] = appId => {
     dispatchMultitaskingBar("CLOSE");
     if (appRuntime.activeAppId !== appId || appRuntime.phase !== "running") {
+      systemAppLaunch.owner.observe(appId, "resume");
       const cameraOwner = cameraOwnerForApp(appId);
       if (cameraOwner) dispatchCameraRuntime({ type: "RESUME", owner: cameraOwner });
       dispatchAppRuntime({ type: "RESUME", appId });
@@ -1602,6 +1650,16 @@ export function App({ presenter = "legacy", renderHero }: { presenter?: DevicePr
           messagesBadgeCount: messagesUnreadIds.length,
           notificationBadgeCounts: notificationBadges(notifications),
           launchSpringBoardApp,
+          systemLaunch: systemAppLaunch.state,
+          prepareSystemLaunch: (token, fallback) => {
+            const active = systemAppLaunch.owner.active;
+            if (systemAppLaunch.owner.prepared(token, fallback) && active && isCoreFirstFrameApp(active.appId)) {
+              coreFirstFrame.current?.revealed(active.appId, session.experienceSessionId);
+            }
+          },
+          completeSystemLaunch: token => {
+            if (systemAppLaunch.owner.complete(token)) dispatchAppRuntime({ type: "ANIMATION_COMPLETE" });
+          },
           coreFirstFrameRevealed: (appId: string) => {
             if (isCoreFirstFrameApp(appId)) coreFirstFrame.current?.revealed(appId, session.experienceSessionId);
           },

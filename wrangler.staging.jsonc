@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "sm2010-hero-staging",
+  "main": "./worker/index.mjs",
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/", "/*.html"]
+  },
+  "secrets": {
+    "required": [
+      "MAIL_API_KEY",
+      "MAIL_FROM",
+      "MAIL_REPLY_TO",
+      "MAIL_RECIPIENT_ALLOWLIST",
+      "MAIL_LIMIT_SECRET"
+    ]
+  }
+}

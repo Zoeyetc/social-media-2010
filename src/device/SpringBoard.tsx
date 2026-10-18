@@ -1,3 +1,4 @@
+import { captureIconOrigin, type IconOrigin } from "./systemAppLaunch";
 import { WEATHER } from "../state/smallApps";
 import { CSSProperties, Dispatch, PointerEvent as ReactPointerEvent, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
@@ -44,7 +45,7 @@ type SpringBoardProps = {
   dispatchFolderEvent: Dispatch<FolderEvent>;
   activeFolderSlotIndex: number;
   onActiveFolderSlotChange: (slotIndex: number) => void;
-  onLaunchApp: (appId: string) => void;
+  onLaunchApp: (appId: string, origin?: IconOrigin) => void;
   messagesBadgeCount: number;
   flickrUploadCount?: number;
   notificationBadgeCounts?: Partial<Record<NotificationApp, number>>;
@@ -149,14 +150,20 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
+  const launchApp = (appId: string, event?: ReactMouseEvent<HTMLButtonElement>) => {
+    if (inactive) return;
+    const origin = event ? captureIconOrigin(event.currentTarget) : undefined;
+    if (event && !origin) return; // Unmeasurable projection must not silently select the generic cold animation.
+    onLaunchApp(appId, origin);
+  };
   const openFolder = (slotIndex: number) => {
-    if (folderState !== "closed") return;
+    if (inactive || folderState !== "closed") return;
     onActiveFolderSlotChange(slotIndex);
     dispatchFolderEvent("OPEN");
   };
 
   const beginSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (folderState !== "closed") return;
+    if (inactive || folderState !== "closed") return;
     if (!event.isPrimary || event.button !== 0) return;
     suppressIconActivation.current = false;
     swipeStart.current = { pointerId: event.pointerId, x: event.clientX, y: event.clientY, axis: "pending" };
@@ -165,6 +172,7 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
   };
 
   const moveSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (inactive) return;
     const start = swipeStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - start.x;
@@ -193,6 +201,7 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
   };
 
   const finishSwipe = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (inactive) return;
     const start = swipeStart.current;
     if (!start || start.pointerId !== event.pointerId) return;
     const deltaX = event.clientX - start.x;
@@ -213,9 +222,10 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
   };
 
   const folderIsActive = folderState !== "closed";
-  const activateIcon = (activate: () => void) => (event?: ReactMouseEvent<HTMLButtonElement>) => {
+  const activateIcon = (activate: (event?: ReactMouseEvent<HTMLButtonElement>) => void) => (event?: ReactMouseEvent<HTMLButtonElement>) => {
+    if (inactive) return;
     if ((event?.detail ?? 0) > 0 && suppressIconActivation.current) return;
-    activate();
+    activate(event);
   };
   const activeFolderRow = Math.floor(activeFolderSlotIndex / SPRINGBOARD_COLUMN_COUNT);
   const splitDistance = FOLDER_TRAY_BASE_HEIGHT - SPRINGBOARD_ROW_GAP;
@@ -232,6 +242,7 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
 
   return <div className={`springboard is-folder-${folderState}`} style={splitStyle} inert={inactive} aria-hidden={inactive || undefined}>
     {folderIsActive && <div className="springboard-folder-wallpaper-dim" aria-hidden="true" />}
+    <div className="springboard-launch-field">
     <div
       className="springboard-pages"
       onPointerDown={beginSwipe}
@@ -243,15 +254,15 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
         className={`springboard-pages-track${isDragging ? " is-dragging" : ""}`}
         style={{ transform: `translateX(${-currentPage * PAGE_WIDTH + dragOffset}px)` }}
       >
-        <SpringBoardPage apps={PAGE_ONE_APPS} pageNumber={1} badgeCounts={Object.fromEntries(PAGE_ONE_APPS.map((app, index) => [index, app?.launchId === "flickr" ? flickrUploadCount : notificationBadgeCounts?.[app?.launchId as NotificationApp] ?? 0]))} folderSourceSlotIndex={folderIsActive ? activeFolderSlotIndex : undefined} onAppActivate={index => {
+        <SpringBoardPage apps={PAGE_ONE_APPS} pageNumber={1} badgeCounts={Object.fromEntries(PAGE_ONE_APPS.map((app, index) => [index, app?.launchId === "flickr" ? flickrUploadCount : notificationBadgeCounts?.[app?.launchId as NotificationApp] ?? 0]))} folderSourceSlotIndex={folderIsActive ? activeFolderSlotIndex : undefined} onAppActivate={(index, event) => {
           const app = PAGE_ONE_APPS[index];
           if (app?.folderId) openFolder(index);
-          else if (app?.launchId) onLaunchApp(app.launchId);
+          else if (app?.launchId) launchApp(app.launchId, event);
         }} onIconActivate={activateIcon} />
-        <SpringBoardPage apps={PAGE_TWO_APPS} pageNumber={2} onAppActivate={index => {
+        <SpringBoardPage apps={PAGE_TWO_APPS} pageNumber={2} onAppActivate={(index, event) => {
           const app = PAGE_TWO_APPS[index];
           if (app?.folderId) openFolder(index);
-          else if (app?.launchId) onLaunchApp(app.launchId);
+          else if (app?.launchId) launchApp(app.launchId, event);
         }} onIconActivate={activateIcon} />
       </div>
     </div>
@@ -264,15 +275,16 @@ export function SpringBoard({ currentPage, onPageChange, folderState, dispatchFo
         dock
         badgeCount={app.name === "Messages" ? messagesBadgeCount : 0}
         onActivate={app.name === "Messages"
-          ? () => onLaunchApp("messages")
+          ? event => launchApp("messages", event)
           : app.name === "Camera"
-            ? () => onLaunchApp("camera")
-            : app.name === "Safari" ? () => onLaunchApp("safari")
-              : app.name === "YouTube" ? () => onLaunchApp("youtube")
+            ? event => launchApp("camera", event)
+            : app.name === "Safari" ? event => launchApp("safari", event)
+              : app.name === "YouTube" ? event => launchApp("youtube", event)
                 : undefined}
       />)}
     </div>
-    <SpringBoardFolder sourceSlotIndex={activeFolderSlotIndex} panelTop={folderTrayTop} state={folderState} dispatch={dispatchFolderEvent} onLaunchApp={onLaunchApp} />
+    <SpringBoardFolder sourceSlotIndex={activeFolderSlotIndex} panelTop={folderTrayTop} state={folderState} dispatch={dispatchFolderEvent} onLaunchApp={(appId, origin) => { if (!inactive) onLaunchApp(appId, origin); }} />
+    </div>
   </div>;
 }
 
@@ -281,7 +293,7 @@ function SpringBoardFolder({ sourceSlotIndex, panelTop, state, dispatch, onLaunc
   panelTop: number;
   state: FolderState;
   dispatch: Dispatch<FolderEvent>;
-  onLaunchApp: (appId: string) => void;
+  onLaunchApp: (appId: string, origin?: IconOrigin) => void;
 }) {
   if (state === "closed") return null;
   const apps: readonly FolderApp[] = UTILITIES_APPS;
@@ -328,7 +340,11 @@ function SpringBoardFolder({ sourceSlotIndex, panelTop, state, dispatch, onLaunc
             key={app.name}
             name={app.name}
             iconSrc={app.iconSrc}
-            onActivate={state === "open" ? () => onLaunchApp(app.launchId) : undefined}
+            onActivate={state === "open" ? event => {
+              const origin = event ? captureIconOrigin(event.currentTarget) : undefined;
+              if (event && !origin) return;
+              onLaunchApp(app.launchId, origin);
+            } : undefined}
           />)}
         </div>
       </div>
@@ -348,8 +364,8 @@ function SpringBoardFolder({ sourceSlotIndex, panelTop, state, dispatch, onLaunc
 function SpringBoardPage({ apps, pageNumber, onAppActivate, onIconActivate, badgeCounts, folderSourceSlotIndex }: {
   apps: readonly (SpringBoardApp | undefined)[];
   pageNumber: number;
-  onAppActivate?: (index: number) => void;
-  onIconActivate: (activate: () => void) => (event?: ReactMouseEvent<HTMLButtonElement>) => void;
+  onAppActivate?: (index: number, event?: ReactMouseEvent<HTMLButtonElement>) => void;
+  onIconActivate: (activate: (event?: ReactMouseEvent<HTMLButtonElement>) => void) => (event?: ReactMouseEvent<HTMLButtonElement>) => void;
   badgeCounts?: Partial<Record<number, number>>;
   folderSourceSlotIndex?: number;
 }) {
@@ -358,7 +374,7 @@ function SpringBoardPage({ apps, pageNumber, onAppActivate, onIconActivate, badg
       key={app?.name ?? `empty-${index}`}
       {...(includeSlot(index) ? app : undefined)}
       badgeCount={includeSlot(index) ? (badgeCounts?.[index] ?? 0) : 0}
-      onActivate={includeSlot(index) && app && onAppActivate ? onIconActivate(() => onAppActivate(index)) : undefined}
+      onActivate={includeSlot(index) && app && onAppActivate ? onIconActivate(event => onAppActivate(index, event)) : undefined}
     />)}
   </div>;
 
@@ -385,7 +401,7 @@ function SpringBoardIcon({ name, iconSrc, iconPresentation, kind, folderApps, so
   socialAppId?: SocialAppId;
   calendarDay?: string;
   dock?: boolean;
-  onActivate?: () => void;
+  onActivate?: (event?: ReactMouseEvent<HTMLButtonElement>) => void;
   badgeCount?: number;
 }) {
   const content = <>

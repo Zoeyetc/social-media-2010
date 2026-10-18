@@ -1,3 +1,4 @@
+import type { AppLaunchRecord } from "./systemAppLaunch";
 import { useEffect, useRef } from "react";
 import { DeviceAudio } from "../audio/deviceAudio";
 import type { WarmupSnapshot, FirstViewportSnapshot } from "./bootWarmup";
@@ -18,6 +19,7 @@ export type ReleasePerformanceState = Readonly<{
 }>;
 
 export type ReleasePerformanceSnapshot = ReleasePerformanceState & Readonly<{
+  appLaunch: AppLaunchRecord | null;
   warmup: WarmupSnapshot | null;
   warmupFirstViewport: FirstViewportSnapshot | null;
   iTunes: ReturnType<typeof readAudioDiagnostics>["iTunes"];
@@ -63,7 +65,9 @@ function readAudioDiagnostics() {
 
 /** On-demand Release Gate 3 diagnostics. No polling, logging, or visible overlay. */
 export function useReleasePerformanceDiagnostics(state: ReleasePerformanceState, readWarmup?: () => WarmupSnapshot | null,
-  readCoreFirstFrames?: () => Record<CoreFirstFrameApp, CoreFirstFrameRecord | null>) {
+  readCoreFirstFrames?: () => Record<CoreFirstFrameApp, CoreFirstFrameRecord | null>, readAppLaunch?: () => AppLaunchRecord | null) {
+  const appLaunchRef = useRef(readAppLaunch);
+  appLaunchRef.current = readAppLaunch;
   const stateRef = useRef(state);
   stateRef.current = state;
   const warmupRef = useRef(readWarmup);
@@ -87,6 +91,7 @@ export function useReleasePerformanceDiagnostics(state: ReleasePerformanceState,
         const audio = readAudioDiagnostics();
         const snapshot: ReleasePerformanceSnapshot = {
           ...current,
+          appLaunch: appLaunchRef.current?.() ?? null,
           warmup: warmupRef.current?.() ?? null,
           warmupFirstViewport: warmupRef.current?.()?.firstViewport ?? null,
           coreFirstFrames: coreFirstFramesRef.current?.() ?? { messages: null, facebook: null, twitter: null, instagram: null, foursquare: null, flickr: null },

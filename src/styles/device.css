@@ -1114,7 +1114,7 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .tumblr-notes article { min-height: 44px; padding: 0 12px; display: flex; align-items: center; gap: 5px; border-bottom: 1px solid #bbb; }
 .tumblr-notes strong { color: #2f5f7a; font-size: 13px; }
 .tumblr-notes span { color: #555; font-size: 13px; }
-.app-launch-container.is-launching { animation: app-runtime-open 180ms ease-out both; }
+.app-launch-container.is-launching:not(.is-system-cold-launch) { animation: app-runtime-open 180ms ease-out both; }
 .app-launch-container.is-resuming { animation: app-runtime-open 180ms ease-out both; }
 .app-launch-container.is-closing { animation: app-runtime-close 160ms ease-in both; }
 @keyframes app-runtime-open { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: scale(1); } }
@@ -1503,3 +1503,20 @@ button.twitter-compose-tool { appearance: none; padding: 0; border: 0; border-ra
 .camera-video-status{position:absolute;top:40px;left:35px;right:35px;text-align:center;color:white;text-shadow:0 1px 1px black;font:14px Helvetica,Arial,sans-serif;pointer-events:none}
 .photos-camera-roll-thumbnail{position:relative}.photos-video-badge{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);color:white;font:10px Helvetica,Arial,sans-serif;text-align:right;padding:2px}
 .photos-video-viewer{background:black}.photos-video-viewer video{display:block;width:320px;height:356px;object-fit:contain}.photos-video-play{display:block;margin:8px auto;padding:5px 22px;border:1px solid #555;border-radius:4px;background:linear-gradient(#777,#303030);color:white;font:bold 14px Helvetica,Arial,sans-serif}
+
+/* System-owned cold launch. 280ms/easing/outward amount are reconstructed, not Apple constants. */
+.app-launch-container.is-system-cold-launch { visibility: hidden; pointer-events: none; animation: none; }
+.system-app-launch-snapshot.app-launch-container { z-index: 25; bottom: auto; background: #d6d9dd; pointer-events: none; transform-origin: center; }
+.system-app-launch-snapshot.is-preparing { visibility: hidden; }
+.system-app-launch-snapshot.is-animating { animation: system-icon-launch var(--app-launch-duration) cubic-bezier(.18,.7,.25,1) both; }
+.system-app-launch-snapshot *, .system-app-launch-snapshot *::before, .system-app-launch-snapshot *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }
+@keyframes system-icon-launch { from { transform: var(--launch-start); } to { transform: translate(0px,0px) scale(1); } }
+.springboard-launch-field { position: absolute; inset: 0; }
+.screen[data-system-launch-phase="animating"] .springboard-launch-field {
+  transform-origin: var(--launch-origin-x) var(--launch-origin-y);
+  animation: system-springboard-launch var(--app-launch-duration) cubic-bezier(.18,.7,.25,1) both;
+}
+@keyframes system-springboard-launch { from { transform: scale(1); } to { transform: scale(1.18); } }
+.screen[data-launch-reduced-motion="true"] .springboard-launch-field { animation: none; }
+.system-app-launch-snapshot[data-reduced-motion="true"].is-animating { animation-name: system-icon-launch-reduced; }
+@keyframes system-icon-launch-reduced { from, to { transform: translate(0px,0px) scale(1); } }

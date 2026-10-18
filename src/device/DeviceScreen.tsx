@@ -1,3 +1,5 @@
+import { SystemAppLaunchLayer } from "./SystemAppLaunchLayer";
+import { launchDuration, type SystemLaunch } from "./systemAppLaunch";
 import { StocksContainer, SettingsContainer, type RCSystemAppsProps } from "./RCSystemApps";
 import { WeatherContainer, NotesContainer, AppleAccountGate } from "./SmallApps";
 import { SafariContainer, YouTubeContainer, ITunesContainer, type ITunesProps } from "./FinalDecorativeApps";
@@ -71,6 +73,9 @@ export type DeviceScreenProps = {
     messagesBadgeCount: number;
     notificationBadgeCounts: ComponentProps<typeof SpringBoard>["notificationBadgeCounts"];
     launchSpringBoardApp: ComponentProps<typeof SpringBoard>["onLaunchApp"];
+    systemLaunch?: SystemLaunch | null;
+    prepareSystemLaunch?: (token: number, fallbackUsed: boolean) => void;
+    completeSystemLaunch?: (token: number) => void;
     coreFirstFrameRevealed: (appId: string) => void;
     multitaskingBar: ComponentProps<typeof MultitaskingBar>["state"];
     dispatchMultitaskingBar: ComponentProps<typeof MultitaskingBar>["dispatch"];
@@ -236,17 +241,25 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
     setNotificationKeyboardVisible,
   } = actions;
 
+  const systemLaunch = navigation.systemLaunch ?? null;
+  const coldLaunch = systemLaunch !== null && (session.phase === "springboard" || session.phase === "app");
   const entering = session.phase === "passcodeEntering";
   const lockedPresentation = session.phase === "locked" || entering || session.phase === "passcode";
   const passcodeEntry = usePasscodeEntryTransition(entering, session.experienceSessionId, completeScreenPasscodeEntry);
 
-  return <div className={`screen ${session.phase}`} data-media-camera={media.cameraActive || undefined}
+  return <div className={`screen ${session.phase}${coldLaunch ? " is-system-launching" : ""}`}
+    data-system-launch-phase={coldLaunch ? systemLaunch.phase : undefined}
+    data-launch-reduced-motion={coldLaunch && systemLaunch.reducedMotion || undefined} data-media-camera={media.cameraActive || undefined}
     data-entry-reduced-motion={passcodeEntry.reducedMotion || undefined}
-    style={{ "--passcode-entry-duration": `${passcodeEntry.durationMs}ms` } as CSSProperties}
+    style={{ "--passcode-entry-duration": `${passcodeEntry.durationMs}ms`,
+      "--app-launch-duration": `${launchDuration(systemLaunch?.reducedMotion ?? false)}ms`,
+      "--launch-origin-x": `${systemLaunch?.originRect?.center.x ?? 160}px`,
+      "--launch-origin-y": `${systemLaunch?.originRect?.center.y ?? 240}px`,
+    } as CSSProperties}
     onAnimationEnd={event => {
       if (entering && event.animationName === "system-passcode-keypad-enter") passcodeEntry.complete();
     }}>
-    {(lockedPresentation
+    {(coldLaunch || lockedPresentation
       || session.phase === "springboard"
       || (session.phase === "app"
         && !((appRuntime.activeAppId === "camera" || media.cameraActive) && cameraRuntime.cameraApp.phase !== "none"))) && <div className="device-status-bar-layer">
@@ -276,9 +289,9 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       onCancel={cancelScreenPasscode}
     />}
     </div>}
-    {(session.phase === "springboard" || (session.phase === "app" && appRuntime.phase === "launching"
+    {(coldLaunch || session.phase === "springboard" || (session.phase === "app" && appRuntime.phase === "launching"
       && appRuntime.activeAppId !== null && isCoreFirstFrameApp(appRuntime.activeAppId))) && <SpringBoard
-      inactive={session.phase !== "springboard"}
+      inactive={coldLaunch || session.phase !== "springboard"}
       currentPage={springBoardPage}
       onPageChange={setSpringBoardPage}
       folderState={folderState}
@@ -294,6 +307,7 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       key={session.experienceSessionId ?? "pre-session"}
       retainShell={warmup?.keyboardRequested}
       inactive={session.phase !== "app"}
+      systemColdLaunch={coldLaunch}
       runtime={appRuntime}
       onCoreFirstFrame={coreFirstFrameRevealed}
       dispatch={dispatchAppRuntime}
@@ -405,6 +419,9 @@ export function DeviceScreen({ presentation, display, navigation, apps, camera, 
       </>}
       </IOS4KeyboardSystem>
     </AppLaunchContainer>}
+    {coldLaunch && <SystemAppLaunchLayer launch={systemLaunch} mounted={session.phase === "app"}
+      onPrepared={navigation.prepareSystemLaunch ?? (() => {})}
+      onComplete={navigation.completeSystemLaunch ?? (() => {})} />}
     {session.phase === "app" && <MultitaskingBar
       state={multitaskingBar}
       appRuntime={appRuntime}
